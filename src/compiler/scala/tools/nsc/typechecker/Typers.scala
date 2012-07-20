@@ -1972,7 +1972,8 @@ trait Typers extends Modes with Adaptations with Tags {
                 case SilentResultValue(tpt) =>
                   val alias = enclClass.newAliasType(name.toTypeName, useCase.pos)
                   val tparams = cloneSymbolsAtOwner(tpt.tpe.typeSymbol.typeParams, alias)
-                  alias setInfo typeFun(tparams, appliedType(tpt.tpe, tparams map (_.tpe)))
+                  val newInfo = genPolyType(tparams, appliedType(tpt.tpe, tparams map (_.tpe)))
+                  alias setInfo newInfo
                   context.scope.enter(alias)
                 case _ =>
               }
@@ -4509,6 +4510,8 @@ trait Typers extends Modes with Adaptations with Tags {
           assert(errorContainer == null, "Cannot set ambiguous error twice for identifier")
           errorContainer = tree
         }
+        
+        val fingerPrint: Long = name.fingerPrint
 
         var defSym: Symbol = tree.symbol  // the directly found symbol
         var pre: Type = NoPrefix          // the prefix type of defSym, if a class member
@@ -4547,7 +4550,10 @@ trait Typers extends Modes with Adaptations with Tags {
           var cx = startingIdentContext
           while (defSym == NoSymbol && cx != NoContext && (cx.scope ne null)) { // cx.scope eq null arises during FixInvalidSyms in Duplicators
             pre = cx.enclClass.prefix
-            defEntry = cx.scope.lookupEntry(name)
+            defEntry = {
+                val scope = cx.scope
+                if ((fingerPrint & scope.fingerPrints) != 0) scope.lookupEntry(name) else null
+              }
             if ((defEntry ne null) && qualifies(defEntry.sym)) {
               // Right here is where SI-1987, overloading in package objects, can be
               // seen to go wrong. There is an overloaded symbol, but when referring

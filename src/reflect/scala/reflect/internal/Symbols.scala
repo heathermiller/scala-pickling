@@ -100,13 +100,13 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
           case _ =>
             false
         }
-        (tp <:< pt) || isCompatibleByName(tp, pt)
+        (tp weak_<:< pt) || isCompatibleByName(tp, pt)
       }
 
       def signatureAsSpecific(method1: MethodSymbol, method2: MethodSymbol): Boolean = {
         (substituteTypeParams(method1), substituteTypeParams(method2)) match {
           case (NullaryMethodType(r1), NullaryMethodType(r2)) =>
-            r1 <:< r2
+            r1 weak_<:< r2
           case (NullaryMethodType(_), MethodType(_, _)) =>
             true
           case (MethodType(_, _), NullaryMethodType(_)) =>
@@ -298,7 +298,7 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
           else {
             val a = argTypes
             val p = extend(paramTypes, argTypes.length)
-            (a corresponds p)(_ <:< _)
+            (a corresponds p)(_ weak_<:< _)
           }
         }
       }
@@ -812,11 +812,6 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
     /** Is this symbol an effective root for fullname string?
      */
     def isEffectiveRoot = false
-
-    /** For RootClass, this is EmptyPackageClass.  For all other symbols,
-     *  the symbol itself.
-     */
-    def ownerOfNewSymbols = this
 
     final def isLazyAccessor       = isLazy && lazyAccessor != NoSymbol
     final def isOverridableMember  = !(isClass || isEffectivelyFinal) && (this ne NoSymbol) && owner.isClass

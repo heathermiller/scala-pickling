@@ -397,7 +397,7 @@ INITIALISATION
   </target>
 
   <target name="init" depends="init.jars, init.maven.jars, init.version.done, init.fail.bad.jdk, init.warn.jdk7">
-    <property name="scalac.args.always" value="" />
+    <property name="scalac.args.always" value="-Yreify-copypaste" />
   <!-- scalac.args.optimise is selectively overridden in certain antcall tasks. -->
     <property name="scalac.args.optimise" value=""/>
   <!-- scalac.args.quickonly are added to quick.* targets but not others (particularly, locker.)
@@ -1337,7 +1337,7 @@ QUICK BUILD (QUICK)
     <stopwatch name="quick.scalap.timer" action="total"/>
   </target>
 
-  <target name="quick.pre-partest" depends="quick.scalap">
+  <target name="quick.pre-partest" depends="quick.scalap, asm.done">
     <uptodate property="quick.partest.available" targetfile="${build-quick.dir}/partest.complete">
       <srcfiles dir="${src.dir}/partest"/>
     </uptodate>
@@ -1356,6 +1356,7 @@ QUICK BUILD (QUICK)
         <pathelement location="${build-quick.dir}/classes/compiler"/>
         <pathelement location="${build-quick.dir}/classes/scalap"/>
         <pathelement location="${build-quick.dir}/classes/partest"/>
+        <path refid="asm.classpath"/>
       </classpath>
       <include name="**/*.java"/>
       <compilerarg line="${javac.args}"/>
@@ -1575,7 +1576,14 @@ PACKED QUICK BUILD (PACK)
   <target name="pack.partest" depends="pack.pre-partest" unless="pack.partest.available">
     <mkdir dir="${build-pack.dir}/lib"/>
     <jar destfile="${build-pack.dir}/lib/scala-partest.jar">
-      <fileset dir="${build-quick.dir}/classes/partest"/>
+      <fileset dir="${build-quick.dir}/classes/partest">
+        <exclude name="scala/tools/partest/javaagent/**"/>
+      </fileset>
+    </jar>
+    <jar destfile="${build-pack.dir}/lib/scala-partest-javaagent.jar" manifest="${src.dir}/partest/scala/tools/partest/javaagent/MANIFEST.MF">
+      <fileset dir="${build-quick.dir}/classes/partest">
+        <include name="scala/tools/partest/javaagent/**"/>
+      </fileset>
     </jar>
   </target>
 
@@ -1974,7 +1982,7 @@ BOOTSTRAPPING BUILD (STRAP)
     <stopwatch name="strap.scalap.timer" action="total"/>
   </target>
 
-  <target name="strap.pre-partest" depends="strap.scalap">
+  <target name="strap.pre-partest" depends="strap.scalap, asm.done">
     <uptodate property="strap.partest.available" targetfile="${build-strap.dir}/partest.complete">
       <srcfiles dir="${src.dir}/partest"/>
     </uptodate>
@@ -1993,6 +2001,7 @@ BOOTSTRAPPING BUILD (STRAP)
         <pathelement location="${build-strap.dir}/classes/compiler"/>
         <pathelement location="${build-strap.dir}/classes/scalap"/>
         <pathelement location="${build-strap.dir}/classes/partest"/>
+        <path refid="asm.classpath"/>
       </classpath>
       <include name="**/*.java"/>
       <compilerarg line="${javac.args}"/>
@@ -2012,6 +2021,7 @@ BOOTSTRAPPING BUILD (STRAP)
         <pathelement location="${build-strap.dir}/classes/partest"/>
         <pathelement location="${ant.jar}"/>
         <path refid="forkjoin.classpath"/>
+        <path refid="asm.classpath"/>
         <pathelement location="${scalacheck.jar}"/>
       </compilationpath>
     </scalacfork>
@@ -2034,7 +2044,7 @@ BOOTSTRAPPING BUILD (STRAP)
 LIBRARIES (Forkjoin, FJBG, ASM)
 ============================================================================ -->
 
- 
+
   <target name="libs.clean" depends="pack.clean, asm.clean">
     <delete dir="${build-libs.dir}" includeemptydirs="yes" quiet="yes" failonerror="no"/>
   </target>
@@ -2072,8 +2082,9 @@ DOCUMENTATION
     <property name="scaladoc.url" value="https://github.com/scala/scala/tree/${scaladoc.git.commit}/src"/>
     <echo message="Scaladoc will point to ${scaladoc.url} for source files."/>
 
-    <!-- Unless set with -Dscaladoc.raw.output, it won't be activated -->
+    <!-- Unless set with -Dscaladoc.<...>, these won't be activated -->
     <property name="scaladoc.raw.output" value="no"/>
+    <property name="scaladoc.no.prefixes" value="no"/>
   </target>
 
   <target name="docs.pre-lib" depends="docs.start">
@@ -2101,7 +2112,11 @@ DOCUMENTATION
       classpathref="pack.classpath"
       addparams="${scalac.args.all}"
       docRootContent="${src.dir}/library/rootdoc.txt"
-      implicits="on" diagrams="on" rawOutput="${scaladoc.raw.output}">
+      implicits="on"
+      diagrams="on"
+      groups="on"
+      rawOutput="${scaladoc.raw.output}"
+      noPrefixes="${scaladoc.no.prefixes}">
       <src>
         <files includes="${src.dir}/actors-migration"/>
         <files includes="${src.dir}/actors"/>
@@ -2185,7 +2200,11 @@ DOCUMENTATION
       srcdir="${src.dir}/compiler"
       docRootContent="${src.dir}/compiler/rootdoc.txt"
       addparams="${scalac.args.all}"
-      implicits="on" diagrams="on" rawOutput="${scaladoc.raw.output}">
+      implicits="on"
+      diagrams="on"
+      groups="on"
+      rawOutput="${scaladoc.raw.output}"
+      noPrefixes="${scaladoc.no.prefixes}">
       <include name="**/*.scala"/>
     </scaladoc>
     <touch file="${build-docs.dir}/compiler.complete" verbose="no"/>
@@ -2207,7 +2226,11 @@ DOCUMENTATION
       classpathref="pack.classpath"
       srcdir="${src.dir}/jline/src/main/java"
       addparams="${scalac.args.all}"
-      implicits="on" diagrams="on" rawOutput="${scaladoc.raw.output}">
+      implicits="on"
+      diagrams="on"
+      groups="on"
+      rawOutput="${scaladoc.raw.output}"
+      noPrefixes="${scaladoc.no.prefixes}">
       <include name="**/*.scala"/>
       <include name="**/*.java"/>
     </scaladoc>
@@ -2231,7 +2254,11 @@ DOCUMENTATION
       classpathref="pack.classpath"
       srcdir="${src.dir}/scalap"
       addparams="${scalac.args.all}"
-      implicits="on" diagrams="on" rawOutput="${scaladoc.raw.output}">
+      implicits="on"
+      diagrams="on"
+      groups="on"
+      rawOutput="${scaladoc.raw.output}"
+      noPrefixes="${scaladoc.no.prefixes}">
       <include name="**/*.scala"/>
     </scaladoc>
     <touch file="${build-docs.dir}/scalap.complete" verbose="no"/>
@@ -2253,7 +2280,11 @@ DOCUMENTATION
       classpathref="pack.classpath"
       srcdir="${src.dir}/partest"
       addparams="${scalac.args.all}"
-      implicits="on" diagrams="on" rawOutput="${scaladoc.raw.output}">
+      implicits="on"
+      diagrams="on"
+      groups="on"
+      rawOutput="${scaladoc.raw.output}"
+      noPrefixes="${scaladoc.no.prefixes}">
       <include name="**/*.scala"/>
     </scaladoc>
     <touch file="${build-docs.dir}/partest.complete" verbose="no"/>
@@ -2275,7 +2306,11 @@ DOCUMENTATION
       classpathref="pack.classpath"
       srcdir="${src.dir}/continuations/plugin"
       addparams="${scalac.args.all}"
-      implicits="on" diagrams="on" rawOutput="${scaladoc.raw.output}">
+      implicits="on"
+      diagrams="on"
+      groups="on"
+      rawOutput="${scaladoc.raw.output}"
+      noPrefixes="${scaladoc.no.prefixes}">
       <include name="**/*.scala"/>
     </scaladoc>
     <touch file="${build-docs.dir}/continuations-plugin.complete" verbose="no"/>
@@ -2297,7 +2332,11 @@ DOCUMENTATION
       classpathref="pack.classpath"
       srcdir="${src.dir}/actors-migration"
       addparams="${scalac.args.all}"
-      implicits="on" diagrams="on" rawOutput="${scaladoc.raw.output}">
+      implicits="on"
+      diagrams="on"
+      groups="on"
+      rawOutput="${scaladoc.raw.output}"
+      noPrefixes="${scaladoc.no.prefixes}">
       <include name="**/*.scala"/>
     </scaladoc>
     <touch file="${build-docs.dir}/actors-migration.complete" verbose="no"/>
@@ -2393,6 +2432,9 @@ BOOTRAPING TEST AND TEST SUITE
       <specializedtests dir="${partest.dir}/${partest.srcdir}/specialized">
         <include name="*.scala"/>
       </specializedtests>
+      <instrumentedtests dir="${partest.dir}/${partest.srcdir}/instrumented">
+        <include name="*.scala"/>
+      </instrumentedtests>
       <presentationtests dir="${partest.dir}/${partest.srcdir}/presentation">
         <include name="*/*.scala"/>
       </presentationtests>
