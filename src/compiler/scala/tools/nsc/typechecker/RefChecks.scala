@@ -122,7 +122,7 @@ abstract class RefChecks extends InfoTransform with reflect.internal.transform.R
       val defaultGetters     = clazz.info.findMembers(0L, DEFAULTPARAM)
       val defaultMethodNames = defaultGetters map (sym => nme.defaultGetterToMethod(sym.name))
 
-      defaultMethodNames.distinct foreach { name =>
+      defaultMethodNames.toList.distinct foreach { name =>
         val methods      = clazz.info.findMember(name, 0L, METHOD, false).alternatives
         val haveDefaults = methods filter (sym => sym.hasParamWhich(_.hasDefault) && !nme.isProtectedAccessorName(sym.name))
 
@@ -172,7 +172,7 @@ abstract class RefChecks extends InfoTransform with reflect.internal.transform.R
         def varargBridge(member: Symbol, bridgetpe: Type): Tree = {
           log("Generating varargs bridge for " + member.fullLocationString + " of type " + bridgetpe)
 
-          val bridge = member.cloneSymbolImpl(clazz, member.flags | VBRIDGE) setPos clazz.pos
+          val bridge = member.cloneSymbolImpl(clazz, member.flags | VBRIDGE | HIDDEN) setPos clazz.pos
           bridge.setInfo(bridgetpe.cloneInfo(bridge))
           clazz.info.decls enter bridge
 
@@ -543,13 +543,13 @@ abstract class RefChecks extends InfoTransform with reflect.internal.transform.R
               def uncurryAndErase(tp: Type) = erasure.erasure(sym)(uncurry.transformInfo(sym, tp))
               val tp1 = uncurryAndErase(clazz.thisType.memberType(sym))
               val tp2 = uncurryAndErase(clazz.thisType.memberType(other))
-              afterErasure(tp1 matches tp2)
+              exitingErasure(tp1 matches tp2)
             })
 
         def ignoreDeferred(member: Symbol) = (
           (member.isAbstractType && !member.isFBounded) || (
             member.isJavaDefined &&
-            // the test requires afterErasure so shouldn't be
+            // the test requires exitingErasure so shouldn't be
             // done if the compiler has no erasure phase available
             (currentRun.erasurePhase == NoPhase || javaErasedOverridingSym(member) != NoSymbol)
           )
@@ -628,7 +628,7 @@ abstract class RefChecks extends InfoTransform with reflect.internal.transform.R
 
               matchingArity match {
                 // So far so good: only one candidate method
-                case concrete :: Nil   =>
+                case Scope(concrete)   =>
                   val mismatches  = abstractParams zip concrete.tpe.paramTypes filterNot { case (x, y) => x =:= y }
                   mismatches match {
                     // Only one mismatched parameter: say something useful.
@@ -1239,7 +1239,7 @@ abstract class RefChecks extends InfoTransform with reflect.internal.transform.R
           case vsym     => ValDef(vsym)
         }
       }
-      def createStaticModuleAccessor() = afterRefchecks {
+      def createStaticModuleAccessor() = exitingRefchecks {
         val method = (
           sym.owner.newMethod(sym.name.toTermName, sym.pos, (sym.flags | STABLE) & ~MODULE)
             setInfoAndEnter NullaryMethodType(sym.moduleClass.tpe)
@@ -1250,7 +1250,7 @@ abstract class RefChecks extends InfoTransform with reflect.internal.transform.R
         vdef,
         localTyper.typedPos(tree.pos) {
           val vsym = vdef.symbol
-          afterRefchecks {
+          exitingRefchecks {
             val rhs  = gen.newModule(sym, vsym.tpe)
             val body = if (sym.owner.isTrait) rhs else gen.mkAssignAndReturn(vsym, rhs)
             DefDef(sym, body.changeOwner(vsym -> sym))
@@ -1291,7 +1291,7 @@ abstract class RefChecks extends InfoTransform with reflect.internal.transform.R
       if (hasUnitType) List(typed(lazyDef))
       else List(
         typed(ValDef(vsym)),
-        afterRefchecks(typed(lazyDef))
+        exitingRefchecks(typed(lazyDef))
       )
     }
 

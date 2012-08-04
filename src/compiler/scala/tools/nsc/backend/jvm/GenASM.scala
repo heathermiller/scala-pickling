@@ -33,7 +33,7 @@ abstract class GenASM extends SubComponent with BytecodeWriters {
   override def newPhase(p: Phase): Phase = new AsmPhase(p)
 
   private def outputDirectory(sym: Symbol): AbstractFile =
-    settings.outputDirs outputDirFor beforeFlatten(sym.sourceFile)
+    settings.outputDirs outputDirFor enteringFlatten(sym.sourceFile)
 
   private def getFile(base: AbstractFile, clsName: String, suffix: String): AbstractFile = {
     var dir = base
@@ -81,7 +81,7 @@ abstract class GenASM extends SubComponent with BytecodeWriters {
       // At this point it's a module with a main-looking method, so either succeed or warn that it isn't.
       hasApproximate && {
         // Before erasure so we can identify generic mains.
-        beforeErasure {
+        enteringErasure {
           val companion     = sym.linkedClassOfClass
           val companionMain = companion.tpe.member(nme.main)
 
@@ -311,7 +311,7 @@ abstract class GenASM extends SubComponent with BytecodeWriters {
   }
 
   def isTopLevelModule(sym: Symbol): Boolean =
-    afterPickler { sym.isModuleClass && !sym.isImplClass && !sym.isNestedClass }
+    exitingPickler { sym.isModuleClass && !sym.isImplClass && !sym.isNestedClass }
 
   def isStaticModule(sym: Symbol): Boolean = {
     sym.isModuleClass && !sym.isImplClass && !sym.isLifted
@@ -569,7 +569,7 @@ abstract class GenASM extends SubComponent with BytecodeWriters {
          * of inner class all until root class.
          */
         def collectInnerClass(s: Symbol): Unit = {
-          // TODO: some beforeFlatten { ... } which accounts for
+          // TODO: some enteringFlatten { ... } which accounts for
           // being nested in parameterized classes (if we're going to selectively flatten.)
           val x = innerClassSymbolFor(s)
           if(x ne NoSymbol) {
@@ -598,7 +598,7 @@ abstract class GenASM extends SubComponent with BytecodeWriters {
             reverseJavaName.put(internalName, trackedSym)
           case Some(oldsym) =>
             assert((oldsym == trackedSym) || (oldsym == RuntimeNothingClass) || (oldsym == RuntimeNullClass), // In contrast, neither NothingClass nor NullClass show up bytecode-level.
-                   "how can getCommonSuperclass() do its job if different class symbols get the same bytecode-level internal name.")
+                   "how can getCommonSuperclass() do its job if different class symbols get the same bytecode-level internal name: " + internalName)
         }
       }
 
@@ -671,7 +671,7 @@ abstract class GenASM extends SubComponent with BytecodeWriters {
           innerSym.rawname + innerSym.moduleSuffix
 
       // add inner classes which might not have been referenced yet
-      afterErasure {
+      exitingErasure {
         for (sym <- List(csym, csym.linkedClassOfClass); m <- sym.info.decls.map(innerClassSymbolFor) if m.isClass)
           innerClassBuffer += m
       }
@@ -867,7 +867,7 @@ abstract class GenASM extends SubComponent with BytecodeWriters {
 
       if (!needsGenericSignature(sym)) { return null }
 
-      val memberTpe = beforeErasure(owner.thisType.memberInfo(sym))
+      val memberTpe = enteringErasure(owner.thisType.memberInfo(sym))
 
       val jsOpt: Option[String] = erasure.javaSig(sym, memberTpe)
       if (jsOpt.isEmpty) { return null }
@@ -877,7 +877,7 @@ abstract class GenASM extends SubComponent with BytecodeWriters {
 
           def wrap(op: => Unit) = {
             try   { op; true }
-            catch { case _ => false }
+            catch { case _: Throwable => false }
           }
 
       if (settings.Xverify.value) {
@@ -901,7 +901,7 @@ abstract class GenASM extends SubComponent with BytecodeWriters {
       }
 
       if ((settings.check containsName phaseName)) {
-        val normalizedTpe = beforeErasure(erasure.prepareSigMap(memberTpe))
+        val normalizedTpe = enteringErasure(erasure.prepareSigMap(memberTpe))
         val bytecodeTpe = owner.thisType.memberInfo(sym)
         if (!sym.isType && !sym.isConstructor && !(erasure.erasure(sym)(normalizedTpe) =:= bytecodeTpe)) {
           getCurrentCUnit().warning(sym.pos,
@@ -993,8 +993,13 @@ abstract class GenASM extends SubComponent with BytecodeWriters {
         case sb@ScalaSigBytes(bytes) =>
           // see http://www.scala-lang.org/sid/10 (Storage of pickled Scala signatures in class files)
           // also JVMS Sec. 4.7.16.1 The element_value structure and JVMS Sec. 4.4.7 The CONSTANT_Utf8_info Structure.
-          val assocValue = (if(sb.fitsInOneString) strEncode(sb) else arrEncode(sb))
-          av.visit(name, assocValue)
+          if (sb.fitsInOneString)
+            av.visit(name, strEncode(sb))
+          else {
+            val arrAnnotV: asm.AnnotationVisitor = av.visitArray(name)
+            for(arg <- arrEncode(sb)) { arrAnnotV.visit(name, arg) }
+            arrAnnotV.visitEnd()
+          }
           // for the lazy val in ScalaSigBytes to be GC'ed, the invoker of emitAnnotations() should hold the ScalaSigBytes in a method-local var that doesn't escape.
 
         case ArrayAnnotArg(args) =>
@@ -1159,7 +1164,7 @@ abstract class GenASM extends SubComponent with BytecodeWriters {
       val linkedClass  = moduleClass.companionClass
       val linkedModule = linkedClass.companionSymbol
       lazy val conflictingNames: Set[Name] = {
-        linkedClass.info.members collect { case sym if sym.name.isTermName => sym.name } toSet
+        (linkedClass.info.members collect { case sym if sym.name.isTermName => sym.name }).toSet
       }
       debuglog("Potentially conflicting names for forwarders: " + conflictingNames)
 
@@ -1170,7 +1175,9 @@ abstract class GenASM extends SubComponent with BytecodeWriters {
           log("No forwarder for " + m + " due to conflict with " + linkedClass.info.member(m.name))
         else {
           log("Adding static forwarder for '%s' from %s to '%s'".format(m, jclassName, moduleClass))
-          addForwarder(isRemoteClass, jclass, moduleClass, m)
+          if (m.isAccessor && m.accessed.hasStaticAnnotation) {
+            log("@static: accessor " + m + ", accessed: " + m.accessed)
+          } else addForwarder(isRemoteClass, jclass, moduleClass, m)
         }
       }
     }
@@ -1349,7 +1356,7 @@ abstract class GenASM extends SubComponent with BytecodeWriters {
 
       val ps = c.symbol.info.parents
       val superInterfaces0: List[Symbol] = if(ps.isEmpty) Nil else c.symbol.mixinClasses;
-      val superInterfaces = superInterfaces0 ++ c.symbol.annotations.flatMap(ann => newParentForAttr(ann.symbol)) distinct
+      val superInterfaces = (superInterfaces0 ++ c.symbol.annotations.flatMap(ann => newParentForAttr(ann.symbol))).distinct
 
       if(superInterfaces.isEmpty) EMPTY_STRING_ARRAY
       else mkArray(minimizeInterfaces(superInterfaces) map javaName)
@@ -1427,7 +1434,7 @@ abstract class GenASM extends SubComponent with BytecodeWriters {
           if (lmoc != NoSymbol) {
             // it must be a top level class (name contains no $s)
             val isCandidateForForwarders = {
-              afterPickler { !(lmoc.name.toString contains '$') && lmoc.hasModuleFlag && !lmoc.isImplClass && !lmoc.isNestedClass }
+              exitingPickler { !(lmoc.name.toString contains '$') && lmoc.hasModuleFlag && !lmoc.isImplClass && !lmoc.isNestedClass }
             }
             if (isCandidateForForwarders) {
               log("Adding static forwarders from '%s' to implementations in '%s'".format(c.symbol, lmoc))
@@ -1675,6 +1682,7 @@ abstract class GenASM extends SubComponent with BytecodeWriters {
        	  jmethod = clinitMethod
           jMethodName = CLASS_CONSTRUCTOR_NAME
           jmethod.visitCode()
+          computeLocalVarsIndex(m)
        	  genCode(m, false, true)
           jmethod.visitMaxs(0, 0) // just to follow protocol, dummy arguments
           jmethod.visitEnd()
@@ -3180,7 +3188,7 @@ abstract class GenASM extends SubComponent with BytecodeWriters {
             hops ::= prev
             if (hops.contains(dest)) {
               // leave infinite-loops in place
-              return (dest, hops filterNot (dest eq))
+              return (dest, hops filterNot (dest eq _))
             }
             prev = dest;
             false

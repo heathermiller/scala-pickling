@@ -649,19 +649,18 @@ trait Printers extends api.Printers { self: SymbolTable =>
   }
 
   def show(name: Name): String = name match {
-    // base.StandardNames
     case tpnme.EMPTY => "tpnme.EMPTY"
     case tpnme.ROOT => "tpnme.ROOT"
+    case tpnme.PACKAGE => "tpnme.PACKAGE"
     case tpnme.EMPTY_PACKAGE_NAME => "tpnme.EMPTY_PACKAGE_NAME"
     case tpnme.WILDCARD => "tpnme.WILDCARD"
-    case nme.CONSTRUCTOR => "nme.CONSTRUCTOR"
-    case nme.NO_NAME => "nme.NO_NAME"
-    // api.StandardNames
-    case tpnme.ERROR => "tpnme.ERROR"
-    case nme.ERROR => "nme.ERROR"
     case nme.EMPTY => "nme.EMPTY"
-    case tpnme.PACKAGE => "tpnme.PACKAGE"
+    case nme.ROOT => "nme.ROOT"
     case nme.PACKAGE => "nme.PACKAGE"
+    case nme.EMPTY_PACKAGE_NAME => "nme.EMPTY_PACKAGE_NAME"
+    case nme.WILDCARD => "nme.WILDCARD"
+    case nme.CONSTRUCTOR => "nme.CONSTRUCTOR"
+    case nme.ROOTPKG => "nme.ROOTPKG"
     case _ =>
       val prefix = if (name.isTermName) "newTermName(\"" else "newTypeName(\""
       prefix + name.toString + "\")"
@@ -671,7 +670,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
     if (flags == NoFlags) nme.NoFlags.toString
     else {
       val s_flags = new collection.mutable.ListBuffer[String]
-      for (i <- 0 to 63 if (flags containsAll (1L << i)))
+      for (i <- 0 to 63 if (flags hasFlag (1L << i)))
         s_flags += flagToString(1L << i).replace("<", "").replace(">", "").toUpperCase
       s_flags mkString " | "
     }

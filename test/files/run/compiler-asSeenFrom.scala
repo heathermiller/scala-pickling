@@ -99,7 +99,7 @@ package ll {
   def pretty(xs: List[_]) = if (xs.isEmpty) "" else xs.mkString("\n  ", "\n  ", "\n")
 
   def signaturesIn(info: Type): List[String] = (
-    info.members 
+    info.members.toList
       filterNot (s => s.isType || s.owner == ObjectClass || s.owner == AnyClass || s.isConstructor)
       map (_.defString)
   )
@@ -107,7 +107,7 @@ package ll {
   def check(source: String, unit: global.CompilationUnit) = {
     import syms._
 
-    afterTyper {
+    exitingTyper {
       val typeArgs = List[Type](IntClass.tpe, ListClass[Int]) ++ tparams.map(_.tpe)
       permute(typeArgs) foreach println
     }

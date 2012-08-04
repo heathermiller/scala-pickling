@@ -54,6 +54,25 @@ trait PatternMatching extends Transform with TypingTransformers with ast.TreeDSL
   }
   import debugging.patmatDebug
 
+  // to govern how much time we spend analyzing matches for unreachability/exhaustivity
+  object AnalysisBudget {
+    import scala.tools.cmd.FromString.IntFromString
+    val max = sys.props.get("scalac.patmat.analysisBudget").collect(IntFromString.orElse{case "off" => Integer.MAX_VALUE}).getOrElse(256)
+
+    abstract class Exception extends RuntimeException("CNF budget exceeded") {
+      val advice: String
+      def warn(pos: Position, kind: String) = currentUnit.uncheckedWarning(pos, s"Cannot check match for $kind.\n$advice")
+    }
+
+    object exceeded extends Exception {
+      val advice = s"(The analysis required more space than allowed. Please try with scalac -Dscalac.patmat.analysisBudget=${AnalysisBudget.max*2} or -Dscalac.patmat.analysisBudget=off.)"
+    }
+
+    object stackOverflow extends Exception {
+      val advice = "(There was a stack overflow. Please try increasing the stack available to the compiler using e.g., -Xss2m.)"
+    }
+  }
+
   def newTransformer(unit: CompilationUnit): Transformer =
     if (!settings.XoldPatmat.value) new MatchTransformer(unit)
     else noopTransformer
@@ -198,11 +217,6 @@ trait PatternMatching extends Transform with TypingTransformers with ast.TreeDSL
       //  and the only place that emits Matches after typers is for exception handling anyway)
       if(phase.id >= currentRun.uncurryPhase.id) debugwarn("running translateMatch at "+ phase +" on "+ selector +" match "+ cases)
       patmatDebug("translating "+ cases.mkString("{", "\n", "}"))
-
-      def repeatedToSeq(tp: Type): Type = (tp baseType RepeatedParamClass) match {
-        case TypeRef(_, RepeatedParamClass, arg :: Nil) => seqType(arg)
-        case _                                          => tp
-      }
 
       val start = Statistics.startTimer(patmatNanos)
 
@@ -398,8 +412,9 @@ trait PatternMatching extends Transform with TypingTransformers with ast.TreeDSL
         **/
         // must treat Typed and Bind together -- we need to know the patBinder of the Bind pattern to get at the actual type
         case MaybeBoundTyped(subPatBinder, pt) =>
+          val next = glb(List(patBinder.info.widen, pt)).normalize
           // a typed pattern never has any subtrees
-          noFurtherSubPats(TypeTestTreeMaker(subPatBinder, patBinder, pt, glb(List(patBinder.info.widen, pt)).normalize)(pos))
+          noFurtherSubPats(TypeTestTreeMaker(subPatBinder, patBinder, pt, next)(pos))
 
         /** A pattern binder x@p consists of a pattern variable x and a pattern p.
             The type of the variable x is the static type T of the pattern p.
@@ -422,7 +437,7 @@ trait PatternMatching extends Transform with TypingTransformers with ast.TreeDSL
               The pattern matches any value v such that r == v (§12.1).
               The type of r must conform to the expected type of the pattern.
         **/
-        case Literal(Constant(_)) | Ident(_) | Select(_, _) =>
+        case Literal(Constant(_)) | Ident(_) | Select(_, _) | This(_) =>
           noFurtherSubPats(EqualityTestTreeMaker(patBinder, patTree, pos))
 
         case Alternative(alts)    =>
@@ -439,7 +454,7 @@ trait PatternMatching extends Transform with TypingTransformers with ast.TreeDSL
           patmatDebug("WARNING: Bind tree with unbound symbol "+ patTree)
           noFurtherSubPats() // there's no symbol -- something's wrong... don't fail here though (or should we?)
 
-        // case Star(_) | ArrayValue | This => error("stone age pattern relics encountered!")
+        // case Star(_) | ArrayValue  => error("stone age pattern relics encountered!")
 
         case _                       =>
           error("unsupported pattern: "+ patTree +"(a "+ patTree.getClass +")")
@@ -1946,14 +1961,14 @@ trait PatternMatching extends Transform with TypingTransformers with ast.TreeDSL
     type Formula
     def andFormula(a: Formula, b: Formula): Formula
 
-    class CNFBudgetExceeded extends RuntimeException("CNF budget exceeded")
 
-    // may throw an CNFBudgetExceeded
-    def propToSolvable(p: Prop) = {
+    // may throw an AnalysisBudget.Exception
+    def propToSolvable(p: Prop): Formula = {
       val (eqAxioms, pure :: Nil) = removeVarEq(List(p), modelNull = false)
       eqFreePropToSolvable(And(eqAxioms, pure))
     }
 
+    // may throw an AnalysisBudget.Exception
     def eqFreePropToSolvable(p: Prop): Formula
     def cnfString(f: Formula): String
 
@@ -1979,7 +1994,7 @@ trait PatternMatching extends Transform with TypingTransformers with ast.TreeDSL
     type Lit
     def Lit(sym: Sym, pos: Boolean = true): Lit
 
-    // throws an CNFBudgetExceeded when the prop results in a CNF that's too big
+    // throws an AnalysisBudget.Exception when the prop results in a CNF that's too big
     def eqFreePropToSolvable(p: Prop): Formula = {
       // TODO: for now, reusing the normalization from DPLL
       def negationNormalForm(p: Prop): Prop = p match {
@@ -2001,9 +2016,9 @@ trait PatternMatching extends Transform with TypingTransformers with ast.TreeDSL
       def lit(s: Sym)    = formula(clause(Lit(s)))
       def negLit(s: Sym) = formula(clause(Lit(s, false)))
 
-      def conjunctiveNormalForm(p: Prop, budget: Int = 256): Formula = {
+      def conjunctiveNormalForm(p: Prop, budget: Int = AnalysisBudget.max): Formula = {
         def distribute(a: Formula, b: Formula, budget: Int): Formula =
-          if (budget <= 0) throw new CNFBudgetExceeded
+          if (budget <= 0) throw AnalysisBudget.exceeded
           else
             (a, b) match {
               // true \/ _ = true
@@ -2018,7 +2033,7 @@ trait PatternMatching extends Transform with TypingTransformers with ast.TreeDSL
                 big flatMap (c => distribute(formula(c), small, budget - (big.size*small.size)))
             }
 
-        if (budget <= 0) throw new CNFBudgetExceeded
+        if (budget <= 0) throw AnalysisBudget.exceeded
 
         p match {
           case True        => TrueF
@@ -2037,9 +2052,17 @@ trait PatternMatching extends Transform with TypingTransformers with ast.TreeDSL
       }
 
       val start = Statistics.startTimer(patmatCNF)
-      val res = conjunctiveNormalForm(negationNormalForm(p))
+      val res =
+        try {
+          conjunctiveNormalForm(negationNormalForm(p))
+        } catch { case ex : StackOverflowError =>
+          throw AnalysisBudget.stackOverflow
+        }
+
       Statistics.stopTimer(patmatCNF, start)
-      patmatCNFSizes(res.size).value += 1
+
+      //
+      if (Statistics.enabled) patmatCNFSizes(res.size).value += 1
 
 //      patmatDebug("cnf for\n"+ p +"\nis:\n"+cnfString(res))
       res
@@ -2440,6 +2463,7 @@ trait PatternMatching extends Transform with TypingTransformers with ast.TreeDSL
     // right now hackily implement this by pruning counter-examples
     // unreachability would also benefit from a more faithful representation
 
+
     // reachability (dead code)
 
     // computes the first 0-based case index that is unreachable (if any)
@@ -2508,9 +2532,8 @@ trait PatternMatching extends Transform with TypingTransformers with ast.TreeDSL
 
         if (reachable) None else Some(caseIndex)
       } catch {
-        case e : CNFBudgetExceeded =>
-//          debugWarn(util.Position.formatMessage(prevBinder.pos, "Cannot check match for reachability", false))
-//          e.printStackTrace()
+        case ex: AnalysisBudget.Exception =>
+          ex.warn(prevBinder.pos, "unreachability")
           None // CNF budget exceeded
       }
     }
@@ -2651,9 +2674,8 @@ trait PatternMatching extends Transform with TypingTransformers with ast.TreeDSL
           Statistics.stopTimer(patmatAnaExhaust, start)
           pruned
         } catch {
-          case e : CNFBudgetExceeded =>
-            patmatDebug(util.Position.formatMessage(prevBinder.pos, "Cannot check match for exhaustivity", false))
-            // e.printStackTrace()
+          case ex : AnalysisBudget.Exception =>
+            ex.warn(prevBinder.pos, "exhaustivity")
             Nil // CNF budget exceeded
         }
       }

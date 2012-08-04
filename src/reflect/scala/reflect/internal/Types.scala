@@ -323,6 +323,7 @@ trait Types extends api.Types { self: SymbolTable =>
 
     /** Is this type higher-kinded, i.e., is it a type constructor @M */
     def isHigherKinded: Boolean = false
+    def takesTypeArgs: Boolean = this.isHigherKinded
 
     /** Does this type denote a stable reference (i.e. singleton type)? */
     def isStable: Boolean = false
@@ -600,7 +601,7 @@ trait Types extends api.Types { self: SymbolTable =>
     def decl(name: Name): Symbol = findDecl(name, 0)
 
     /** A list of all non-private members defined or declared in this type. */
-    def nonPrivateDecls: List[Symbol] = decls filter (x => !x.isPrivate) toList
+    def nonPrivateDecls: List[Symbol] = decls.filterNot(_.isPrivate).toList
 
     /** The non-private defined or declared members with name `name` in this type;
      *  an OverloadedSymbol if several exist, NoSymbol if none exist.
@@ -612,21 +613,21 @@ trait Types extends api.Types { self: SymbolTable =>
      *  Members appear in linearization order of their owners.
      *  Members with the same owner appear in reverse order of their declarations.
      */
-    def members: List[Symbol] = membersBasedOnFlags(0, 0)
+    def members: Scope = membersBasedOnFlags(0, 0)
 
     /** A list of all non-private members of this type (defined or inherited) */
-    def nonPrivateMembers: List[Symbol] = membersBasedOnFlags(BridgeAndPrivateFlags, 0)
+    def nonPrivateMembers: Scope = membersBasedOnFlags(BridgeAndPrivateFlags, 0)
 
     /** A list of all non-private members of this type  (defined or inherited),
      *  admitting members with given flags `admit`
      */
-    def nonPrivateMembersAdmitting(admit: Long): List[Symbol] = membersBasedOnFlags(BridgeAndPrivateFlags & ~admit, 0)
+    def nonPrivateMembersAdmitting(admit: Long): Scope = membersBasedOnFlags(BridgeAndPrivateFlags & ~admit, 0)
 
     /** A list of all implicit symbols of this type  (defined or inherited) */
-    def implicitMembers: List[Symbol] = membersBasedOnFlags(BridgeFlags, IMPLICIT)
+    def implicitMembers: Scope = membersBasedOnFlags(BridgeFlags, IMPLICIT)
 
     /** A list of all deferred symbols of this type  (defined or inherited) */
-    def deferredMembers: List[Symbol] = membersBasedOnFlags(BridgeFlags, DEFERRED)
+    def deferredMembers: Scope = membersBasedOnFlags(BridgeFlags, DEFERRED)
 
     /** The member with given name,
      *  an OverloadedSymbol if several exist, NoSymbol if none exist */
@@ -642,12 +643,12 @@ trait Types extends api.Types { self: SymbolTable =>
 
     /** All members with the given flags, excluding bridges.
      */
-    def membersWithFlags(requiredFlags: Long): List[Symbol] =
+    def membersWithFlags(requiredFlags: Long): Scope =
       membersBasedOnFlags(BridgeFlags, requiredFlags)
 
     /** All non-private members with the given flags, excluding bridges.
      */
-    def nonPrivateMembersWithFlags(requiredFlags: Long): List[Symbol] =
+    def nonPrivateMembersWithFlags(requiredFlags: Long): Scope =
       membersBasedOnFlags(BridgeAndPrivateFlags, requiredFlags)
 
     /** The non-private member with given name, admitting members with given flags `admit`.
@@ -668,7 +669,7 @@ trait Types extends api.Types { self: SymbolTable =>
     /** Members excluding and requiring the given flags.
      *  Note: unfortunately it doesn't work to exclude DEFERRED this way.
      */
-    def membersBasedOnFlags(excludedFlags: Long, requiredFlags: Long): List[Symbol] =
+    def membersBasedOnFlags(excludedFlags: Long, requiredFlags: Long): Scope =
       findMembers(excludedFlags, requiredFlags)
 //      findMember(nme.ANYNAME, excludedFlags, requiredFlags, false).alternatives
 
@@ -1020,7 +1021,7 @@ trait Types extends api.Types { self: SymbolTable =>
       else (baseClasses.head.newOverloaded(this, alts))
     }
 
-    def findMembers(excludedFlags: Long, requiredFlags: Long): List[Symbol] = {
+    def findMembers(excludedFlags: Long, requiredFlags: Long): Scope = {
       // if this type contains type variables, put them to sleep for a while -- don't just wipe them out by
       // replacing them by the corresponding type parameter, as that messes up (e.g.) type variables in type refinements
       // without this, the matchesType call would lead to type variables on both sides
@@ -1054,7 +1055,7 @@ trait Types extends api.Types { self: SymbolTable =>
                    (bcs eq bcs0) ||
                    (flags & PrivateLocal) != PrivateLocal ||
                    (bcs0.head.hasTransOwner(bcs.head)))) {
-                if (members eq null) members = newScope
+                if (members eq null) members = newFindMemberScope
                 var others: ScopeEntry = members.lookupEntry(sym.name)
                 var symtpe: Type = null
                 while ((others ne null) && {
@@ -1083,7 +1084,7 @@ trait Types extends api.Types { self: SymbolTable =>
       } // while (continue)
       Statistics.popTimer(typeOpsStack, start)
       if (suspension ne null) suspension foreach (_.suspended = false)
-      if (members eq null) Nil else members.toList
+      if (members eq null) EmptyScope else members
     }
 
     /**
@@ -1392,11 +1393,9 @@ trait Types extends api.Types { self: SymbolTable =>
   final class UniqueThisType(sym: Symbol) extends ThisType(sym) with UniqueType { }
 
   object ThisType extends ThisTypeExtractor {
-    def apply(sym: Symbol): Type = {
-      if (!phase.erasedTypes) unique(new UniqueThisType(sym))
-      else if (sym.isImplClass) sym.typeOfThis
-      else sym.tpe
-    }
+    def apply(sym: Symbol): Type =
+      if (phase.erasedTypes) sym.tpe
+      else unique(new UniqueThisType(sym))
   }
 
   /** A class for singleton types of the form `<prefix>.<sym.name>.type`.
@@ -2080,7 +2079,8 @@ trait Types extends api.Types { self: SymbolTable =>
     override protected def finishPrefix(rest: String) = objectPrefix + rest
     override def directObjectString = super.safeToString
     override def toLongString = toString
-    override def safeToString = narrow.toString
+    override def safeToString = prefixString + "type"
+    override def prefixString = if (sym.isOmittablePrefix) "" else prefix.prefixString + sym.nameString + "."
   }
   class PackageTypeRef(pre0: Type, sym0: Symbol) extends ModuleTypeRef(pre0, sym0) {
     require(sym.isPackageClass, sym)
@@ -2613,7 +2613,7 @@ trait Types extends api.Types { self: SymbolTable =>
   case class PolyType(override val typeParams: List[Symbol], override val resultType: Type)
        extends Type with PolyTypeApi {
     //assert(!(typeParams contains NoSymbol), this)
-    assert(typeParams nonEmpty, this) // used to be a marker for nullary method type, illegal now (see @NullaryMethodType)
+    assert(typeParams.nonEmpty, this) // used to be a marker for nullary method type, illegal now (see @NullaryMethodType)
 
     override def paramSectionCount: Int = resultType.paramSectionCount
     override def paramss: List[List[Symbol]] = resultType.paramss
@@ -3275,7 +3275,7 @@ trait Types extends api.Types { self: SymbolTable =>
       // to never be resumed with the current implementation
       assert(!suspended, this)
       TypeVar.trace("clone", originLocation)(
-        TypeVar(origin, constr cloneInternal, typeArgs, params) // @M TODO: clone args/params?
+        TypeVar(origin, constr.cloneInternal, typeArgs, params) // @M TODO: clone args/params?
       )
     }
   }
@@ -3637,7 +3637,7 @@ trait Types extends api.Types { self: SymbolTable =>
    */
   object GenPolyType {
     def apply(tparams: List[Symbol], tpe: Type): Type = (
-      if (tparams nonEmpty) typeFun(tparams, tpe)
+      if (tparams.nonEmpty) typeFun(tparams, tpe)
       else tpe // it's okay to be forgiving here
     )
     def unapply(tpe: Type): Option[(List[Symbol], Type)] = tpe match {
@@ -4666,14 +4666,14 @@ trait Types extends api.Types { self: SymbolTable =>
 // dependent method types
   object IsDependentCollector extends TypeCollector(false) {
     def traverse(tp: Type) {
-      if(tp isImmediatelyDependent) result = true
+      if (tp.isImmediatelyDependent) result = true
       else if (!result) mapOver(tp)
     }
   }
 
   object ApproximateDependentMap extends TypeMap {
     def apply(tp: Type): Type =
-      if(tp isImmediatelyDependent) WildcardType
+      if (tp.isImmediatelyDependent) WildcardType
       else mapOver(tp)
   }
 
@@ -6173,7 +6173,7 @@ trait Types extends api.Types { self: SymbolTable =>
     }
 
     val sorted       = btsMap.toList.sortWith((x, y) => x._1.typeSymbol isLess y._1.typeSymbol)
-    val maxSeqLength = sorted map (_._2.size) max
+    val maxSeqLength = sorted.map(_._2.size).max
     val padded       = sorted map (_._2.padTo(maxSeqLength, NoType))
     val transposed   = padded.transpose
 
@@ -6279,7 +6279,7 @@ trait Types extends api.Types { self: SymbolTable =>
             }).mkString("")
 
             println("Frontier(\n" + str + ")")
-            printLubMatrix(ts zip tsBts toMap, lubListDepth)
+            printLubMatrix((ts zip tsBts).toMap, lubListDepth)
           }
 
           loop(newtps)
@@ -6289,7 +6289,7 @@ trait Types extends api.Types { self: SymbolTable =>
 
     val initialBTSes = ts map (_.baseTypeSeq.toList)
     if (printLubs)
-      printLubMatrix(ts zip initialBTSes toMap, depth)
+      printLubMatrix((ts zip initialBTSes).toMap, depth)
 
     loop(initialBTSes)
   }
@@ -6497,7 +6497,7 @@ trait Types extends api.Types { self: SymbolTable =>
                 map2(narrowts, syms)((t, sym) => t.memberInfo(sym).substThis(t.typeSymbol, lubThisType))
               if (proto.isTerm) // possible problem: owner of info is still the old one, instead of new refinement class
                 proto.cloneSymbol(lubRefined.typeSymbol).setInfoOwnerAdjusted(lub(symtypes, decr(depth)))
-              else if (symtypes.tail forall (symtypes.head =:=))
+              else if (symtypes.tail forall (symtypes.head =:= _))
                 proto.cloneSymbol(lubRefined.typeSymbol).setInfoOwnerAdjusted(symtypes.head)
               else {
                 def lubBounds(bnds: List[TypeBounds]): TypeBounds =
@@ -6871,7 +6871,7 @@ trait Types extends api.Types { self: SymbolTable =>
     tps map {
       case MethodType(params1, res) if (isSameTypes(params1 map (_.tpe), pts)) =>
         res
-      case NullaryMethodType(res) if pts isEmpty =>
+      case NullaryMethodType(res) if pts.isEmpty =>
         res
       case _ =>
         throw new NoCommonType(tps)
@@ -6966,8 +6966,13 @@ trait Types extends api.Types { self: SymbolTable =>
   private var tostringRecursions = 0
 
   protected def typeToString(tpe: Type): String =
-    if (tostringRecursions >= maxTostringRecursions)
+    if (tostringRecursions >= maxTostringRecursions) {
+      debugwarn("Exceeded recursion depth attempting to print type.")
+      if (settings.debug.value)
+        (new Throwable).printStackTrace
+
       "..."
+    }
     else
       try {
         tostringRecursions += 1

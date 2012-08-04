@@ -420,9 +420,9 @@ abstract class ClassfileParser {
     var sym: Symbol = rootMirror.RootClass
 
     // was "at flatten.prev"
-    beforeFlatten {
+    enteringFlatten {
       for (part0 <- parts; if !(part0 == ""); part = newTermName(part0)) {
-        val sym1 = beforeIcode {
+        val sym1 = enteringIcode {
           sym.linkedClassOfClass.info
           sym.info.decl(part.encode)
         }//.suchThat(module == _.isModule)
@@ -872,7 +872,7 @@ abstract class ClassfileParser {
           sym.setFlag(SYNTHETIC | HIDDEN)
           in.skip(attrLen)
         case tpnme.BridgeATTR =>
-          sym.setFlag(BRIDGE)
+          sym.setFlag(BRIDGE | HIDDEN)
           in.skip(attrLen)
         case tpnme.DeprecatedATTR =>
           val arg = Literal(Constant("see corresponding Javadoc for more information."))
@@ -1203,7 +1203,7 @@ abstract class ClassfileParser {
               // if loading during initialization of `definitions` typerPhase is not yet set.
               // in that case we simply load the member at the current phase
               if (currentRun.typerPhase != null)
-                beforeTyper(getMember(sym, innerName.toTypeName))
+                enteringTyper(getMember(sym, innerName.toTypeName))
               else
                 getMember(sym, innerName.toTypeName)
 

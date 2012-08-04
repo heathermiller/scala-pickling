@@ -47,15 +47,15 @@ class JLineCompletion(val intp: IMain) extends Completion with CompletionOutput 
     def anyRefMethodsToShow = Set("isInstanceOf", "asInstanceOf", "toString")
 
     def tos(sym: Symbol): String = sym.decodedName
-    def memberNamed(s: String) = afterTyper(effectiveTp member newTermName(s))
+    def memberNamed(s: String) = exitingTyper(effectiveTp member newTermName(s))
     def hasMethod(s: String) = memberNamed(s).isMethod
 
     // XXX we'd like to say "filterNot (_.isDeprecated)" but this causes the
     // compiler to crash for reasons not yet known.
-    def members     = afterTyper((effectiveTp.nonPrivateMembers ++ anyMembers) filter (_.isPublic))
-    def methods     = members filter (_.isMethod)
-    def packages    = members filter (_.isPackage)
-    def aliases     = members filter (_.isAliasType)
+    def members     = exitingTyper((effectiveTp.nonPrivateMembers.toList ++ anyMembers) filter (_.isPublic))
+    def methods     = members.toList filter (_.isMethod)
+    def packages    = members.toList filter (_.isPackage)
+    def aliases     = members.toList filter (_.isAliasType)
 
     def memberNames   = members map tos
     def methodNames   = methods map tos
@@ -111,7 +111,7 @@ class JLineCompletion(val intp: IMain) extends Completion with CompletionOutput 
     def excludeNames: List[String] = (anyref.methodNames filterNot anyRefMethodsToShow) :+ "_root_"
 
     def methodSignatureString(sym: Symbol) = {
-      IMain stripString afterTyper(new MethodSymbolOutput(sym).methodString())
+      IMain stripString exitingTyper(new MethodSymbolOutput(sym).methodString())
     }
 
     def exclude(name: String): Boolean = (

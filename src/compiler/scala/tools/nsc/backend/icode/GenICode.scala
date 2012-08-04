@@ -73,6 +73,14 @@ abstract class GenICode extends SubComponent  {
       ctx1
     }
 
+    /** If the selector type has a member with the right name,
+     *  it is the host class; otherwise the symbol's owner.
+     */
+    def findHostClass(selector: Type, sym: Symbol) = selector member sym.name match {
+      case NoSymbol   => log(s"Rejecting $selector as host class for $sym") ; sym.owner
+      case _          => selector.typeSymbol
+    }
+
     /////////////////// Code generation ///////////////////////
 
     def gen(tree: Tree, ctx: Context): Context = tree match {
@@ -113,26 +121,42 @@ abstract class GenICode extends SubComponent  {
         m.native = m.symbol.hasAnnotation(definitions.NativeAttr)
 
         if (!m.isAbstractMethod && !m.native) {
-          ctx1 = genLoad(rhs, ctx1, m.returnType);
-
-          // reverse the order of the local variables, to match the source-order
-          m.locals = m.locals.reverse
-
-          rhs match {
-            case Block(_, Return(_)) => ()
-            case Return(_) => ()
-            case EmptyTree =>
-              globalError("Concrete method has no definition: " + tree + (
-                if (settings.debug.value) "(found: " + m.symbol.owner.info.decls.toList.mkString(", ") + ")"
-                else "")
-              )
-            case _ => if (ctx1.bb.isEmpty)
-              ctx1.bb.closeWith(RETURN(m.returnType), rhs.pos)
-            else
+          if (m.symbol.isAccessor && m.symbol.accessed.hasStaticAnnotation) {
+            // in companion object accessors to @static fields, we access the static field directly
+            val hostClass = m.symbol.owner.companionClass
+            val staticfield = hostClass.info.findMember(m.symbol.accessed.name, NoFlags, NoFlags, false)
+            
+            if (m.symbol.isGetter) {
+              ctx1.bb.emit(LOAD_FIELD(staticfield, true) setHostClass hostClass, tree.pos)
               ctx1.bb.closeWith(RETURN(m.returnType))
+            } else if (m.symbol.isSetter) {
+              ctx1.bb.emit(LOAD_LOCAL(m.locals.head), tree.pos)
+              ctx1.bb.emit(STORE_FIELD(staticfield, true), tree.pos)
+              ctx1.bb.closeWith(RETURN(m.returnType))
+            } else assert(false, "unreachable")
+          } else {
+            ctx1 = genLoad(rhs, ctx1, m.returnType);
+
+            // reverse the order of the local variables, to match the source-order
+            m.locals = m.locals.reverse
+
+            rhs match {
+              case Block(_, Return(_)) => ()
+              case Return(_) => ()
+              case EmptyTree =>
+                globalError("Concrete method has no definition: " + tree + (
+                  if (settings.debug.value) "(found: " + m.symbol.owner.info.decls.toList.mkString(", ") + ")"
+                  else "")
+                )
+              case _ =>
+                if (ctx1.bb.isEmpty)
+                  ctx1.bb.closeWith(RETURN(m.returnType), rhs.pos)
+                else
+                  ctx1.bb.closeWith(RETURN(m.returnType))
+            }
+            if (!ctx1.bb.closed) ctx1.bb.close
+            prune(ctx1.method)
           }
-          if (!ctx1.bb.closed) ctx1.bb.close
-          prune(ctx1.method)
         } else
           ctx1.method.setCode(NoCode)
         ctx1
@@ -854,9 +878,32 @@ abstract class GenICode extends SubComponent  {
           generatedType = toTypeKind(fun.symbol.tpe.resultType)
           ctx1
 
+        case app @ Apply(fun @ Select(qual, _), args)
+        if !ctx.method.symbol.isStaticConstructor 
+        && fun.symbol.isAccessor && fun.symbol.accessed.hasStaticAnnotation =>
+          // bypass the accessor to the companion object and load the static field directly
+          // the only place were this bypass is not done, is the static intializer for the static field itself
+          val sym = fun.symbol
+          generatedType = toTypeKind(sym.accessed.info)
+          val hostClass = qual.tpe.typeSymbol.orElse(sym.owner).companionClass
+          val staticfield = hostClass.info.findMember(sym.accessed.name, NoFlags, NoFlags, false)
+          
+          if (sym.isGetter) {
+            ctx.bb.emit(LOAD_FIELD(staticfield, true) setHostClass hostClass, tree.pos)
+            ctx
+          } else if (sym.isSetter) {
+            val ctx1 = genLoadArguments(args, sym.info.paramTypes, ctx)
+            ctx1.bb.emit(STORE_FIELD(staticfield, true), tree.pos)
+            ctx1.bb.emit(CONSTANT(Constant(false)), tree.pos)
+            ctx1
+          } else {
+            assert(false, "supposedly unreachable")
+            ctx
+          }
+        
         case app @ Apply(fun, args) =>
           val sym = fun.symbol
-
+          
           if (sym.isLabel) {  // jump to a label
             val label = ctx.labels.getOrElse(sym, {
               // it is a forward jump, scan for labels
@@ -910,13 +957,14 @@ abstract class GenICode extends SubComponent  {
              */
             fun match {
               case Select(qual, _) =>
-                val qualSym = qual.tpe.typeSymbol
+                val qualSym = findHostClass(qual.tpe, sym)
+
                 if (qualSym == ArrayClass) cm setTargetTypeKind toTypeKind(qual.tpe)
                 else cm setHostClass qualSym
 
-                debuglog(
+                log(
                   if (qualSym == ArrayClass) "Stored target type kind " + toTypeKind(qual.tpe) + " for " + sym.fullName
-                  else "Set more precise host class for " + sym.fullName + " host: " + qualSym
+                  else s"Set more precise host class for ${sym.fullName} hostClass: $qualSym"
                 )
               case _ =>
             }
@@ -966,13 +1014,14 @@ abstract class GenICode extends SubComponent  {
         case Select(qualifier, selector) =>
           val sym = tree.symbol
           generatedType = toTypeKind(sym.info)
-          val hostClass = qualifier.tpe.typeSymbol.orElse(sym.owner)
+          val hostClass = findHostClass(qualifier.tpe, sym)
+          log(s"Host class of $sym with qual $qualifier (${qualifier.tpe}) is $hostClass")
 
           if (sym.isModule) {
             genLoadModule(ctx, tree)
           }
           else if (sym.isStaticMember) {
-            ctx.bb.emit(LOAD_FIELD(sym, true)  setHostClass hostClass, tree.pos)
+            ctx.bb.emit(LOAD_FIELD(sym, true) setHostClass hostClass, tree.pos)
             ctx
           }
           else {
@@ -1623,8 +1672,12 @@ abstract class GenICode extends SubComponent  {
        *  backend emits them as static).
        *  No code is needed for this module symbol.
        */
-      for (f <- cls.info.decls ; if !f.isMethod && f.isTerm && !f.isModule)
+      for (
+        f <- cls.info.decls;
+        if !f.isMethod && f.isTerm && !f.isModule && !(f.owner.isModuleClass && f.hasStaticAnnotation)
+      ) {
         ctx.clazz addField new IField(f)
+      }
     }
 
     /**

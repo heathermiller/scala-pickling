@@ -556,7 +556,7 @@ trait Namers extends MethodSynthesis {
       // via "x$lzy" as can be seen in test #3927.
       val sym = (
         if (owner.isClass) createFieldSymbol(tree)
-        else owner.newValue(tree.name append nme.LAZY_LOCAL, tree.pos, tree.mods.flags & ~IMPLICIT)
+        else owner.newValue(tree.name append nme.LAZY_LOCAL, tree.pos, (tree.mods.flags | HIDDEN) & ~IMPLICIT)
       )
       enterValSymbol(tree, sym setFlag MUTABLE setLazyAccessor lazyAccessor)
     }
@@ -577,7 +577,7 @@ trait Namers extends MethodSynthesis {
       case DefDef(_, nme.CONSTRUCTOR, _, _, _, _) =>
         assignAndEnterFinishedSymbol(tree)
       case DefDef(mods, name, tparams, _, _, _) =>
-        val bridgeFlag = if (mods hasAnnotationNamed tpnme.bridgeAnnot) BRIDGE else 0
+        val bridgeFlag = if (mods hasAnnotationNamed tpnme.bridgeAnnot) BRIDGE | HIDDEN else 0
         val sym = assignAndEnterSymbol(tree) setFlag bridgeFlag
 
         if (name == nme.copy && sym.isSynthetic)
@@ -983,15 +983,10 @@ trait Namers extends MethodSynthesis {
       }
       addDefaultGetters(meth, vparamss, tparams, overriddenSymbol)
 
-      // macro defs need to be typechecked in advance
-      // because @macroImpl annotation only gets assigned during typechecking
-      // otherwise we might find ourselves in the situation when we specified -Xmacro-fallback-classpath
-      // but macros still don't expand
-      // that might happen because macro def doesn't have its link a macro impl yet
-      if (ddef.symbol.isTermMacro) {
-        val pt = resultPt.substSym(tparamSyms, tparams map (_.symbol))
-        typer.computeMacroDefType(ddef, pt)
-      }
+      // fast track macros, i.e. macros defined inside the compiler, are hardcoded
+      // hence we make use of that and let them have whatever right-hand side they need
+      // (either "macro ???" as they used to or just "???" to maximally simplify their compilation)
+      if (fastTrack contains ddef.symbol) ddef.symbol setFlag MACRO
 
       thisMethodType({
         val rt = (
@@ -1214,8 +1209,8 @@ trait Namers extends MethodSynthesis {
         if (!annotated.isInitialized) tree match {
           case defn: MemberDef =>
             val ainfos = defn.mods.annotations filterNot (_ eq null) map { ann =>
-              // need to be lazy, #1782. beforeTyper to allow inferView in annotation args, SI-5892.
-              AnnotationInfo lazily beforeTyper(typer typedAnnotation ann)
+              // need to be lazy, #1782. enteringTyper to allow inferView in annotation args, SI-5892.
+              AnnotationInfo lazily enteringTyper(typer typedAnnotation ann)
             }
             if (ainfos.nonEmpty) {
               annotated setAnnotations ainfos

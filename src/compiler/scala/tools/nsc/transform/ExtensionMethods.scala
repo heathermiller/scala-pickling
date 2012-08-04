@@ -69,7 +69,7 @@ abstract class ExtensionMethods extends Transform with TypingTransformers {
 
   /** Return the extension method that corresponds to given instance method `meth`.
    */
-  def extensionMethod(imeth: Symbol): Symbol = atPhase(currentRun.refchecksPhase) {
+  def extensionMethod(imeth: Symbol): Symbol = enteringPhase(currentRun.refchecksPhase) {
     val companionInfo = imeth.owner.companionModule.info
     val candidates = extensionNames(imeth) map (companionInfo.decl(_))
     val matching = candidates filter (alt => normalize(alt.tpe, imeth.owner) matches imeth.tpe)
@@ -105,6 +105,14 @@ abstract class ExtensionMethods extends Transform with TypingTransformers {
 
     private val extensionDefs = mutable.Map[Symbol, mutable.ListBuffer[Tree]]()
 
+    def checkNonCyclic(pos: Position, seen: Set[Symbol], clazz: Symbol): Unit =
+      if (seen contains clazz)
+        unit.error(pos, "value class may not unbox to itself")
+      else {
+        val unboxed = erasure.underlyingOfValueClass(clazz).typeSymbol
+        if (unboxed.isDerivedValueClass) checkNonCyclic(pos, seen + clazz, unboxed)
+      }
+
     def extensionMethInfo(extensionMeth: Symbol, origInfo: Type, clazz: Symbol): Type = {
       var newTypeParams = cloneSymbolsAtOwner(clazz.typeParams, extensionMeth)
       val thisParamType = appliedType(clazz.typeConstructor, newTypeParams map (_.tpeHK))
@@ -129,6 +137,7 @@ abstract class ExtensionMethods extends Transform with TypingTransformers {
       tree match {
         case Template(_, _, _) =>
           if (currentOwner.isDerivedValueClass) {
+            checkNonCyclic(currentOwner.pos, Set(), currentOwner)
             extensionDefs(currentOwner.companionModule) = new mutable.ListBuffer[Tree]
             currentOwner.primaryConstructor.makeNotPrivate(NoSymbol)
             super.transform(tree)

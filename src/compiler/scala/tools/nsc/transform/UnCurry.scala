@@ -35,8 +35,8 @@ import language.postfixOps
  *  - convert non-local returns to throws with enclosing try statements.
  *  - convert try-catch expressions in contexts where there might be values on the stack to
  *      a local method and a call to it (since an exception empties the evaluation stack):
- *      
- *      meth(x_1,..., try { x_i } catch { ..}, .. x_b0) ==> 
+ *
+ *      meth(x_1,..., try { x_i } catch { ..}, .. x_b0) ==>
  *        {
  *          def liftedTry$1 = try { x_i } catch { .. }
  *          meth(x_1, .., liftedTry$1(), .. )
@@ -225,38 +225,15 @@ abstract class UnCurry extends InfoTransform
     }
 
 
-    /*  Transform a function node (x_1,...,x_n) => body of type FunctionN[T_1, .., T_N, R] to
+    /**  Transform a function node (x_1,...,x_n) => body of type FunctionN[T_1, .., T_N, R] to
      *
      *    class $anon() extends AbstractFunctionN[T_1, .., T_N, R] with Serializable {
      *      def apply(x_1: T_1, ..., x_N: T_n): R = body
      *    }
      *    new $anon()
      *
-     *  transform a function node (x => body) of type PartialFunction[T, R] where
-     *    body = expr match { case P_i if G_i => E_i }_i=1..n
-     *  to:
+     * If `settings.XoldPatmat.value`, also synthesized AbstractPartialFunction subclasses (see synthPartialFunction).
      *
-     //TODO: correct code template below
-     *    class $anon() extends AbstractPartialFunction[T, R] with Serializable {
-     *      def applyOrElse[A1 <: A, B1 >: B](x: A1, default: A1 => B1): B1 = (expr: @unchecked) match {
-     *        case P_1 if G_1 => E_1
-     *        ...
-     *        case P_n if G_n => E_n
-     *        case _ => default(expr)
-     *      }
-     *      def isDefinedAt(x: T): boolean = (x: @unchecked) match {
-     *        case P_1 if G_1 => true
-     *        ...
-     *        case P_n if G_n => true
-     *        case _ => false
-     *      }
-     *    }
-     *    new $anon()
-     *
-     *  However, if one of the patterns P_i if G_i is a default pattern,
-     *  drop the last default clause in the definition of `apply` and generate for `_isDefinedAt` instead
-     *
-     *      def isDefinedAtCurrent(x: T): boolean = true
      */
     def transformFunction(fun: Function): Tree =
       deEta(fun) match {
@@ -300,6 +277,28 @@ abstract class UnCurry extends InfoTransform
 
       }
 
+    /** Transform a function node (x => body) of type PartialFunction[T, R] where
+     *    body = expr match { case P_i if G_i => E_i }_i=1..n
+     *  to (assuming none of the cases is a default case):
+     *
+     *    class $anon() extends AbstractPartialFunction[T, R] with Serializable {
+     *      def applyOrElse[A1 <: A, B1 >: B](x: A1, default: A1 => B1): B1 = (expr: @unchecked) match {
+     *        case P_1 if G_1 => E_1
+     *        ...
+     *        case P_n if G_n => E_n
+     *        case _ => default(expr)
+     *      }
+     *      def isDefinedAt(x: T): boolean = (x: @unchecked) match {
+     *        case P_1 if G_1 => true
+     *        ...
+     *        case P_n if G_n => true
+     *        case _ => false
+     *      }
+     *    }
+     *    new $anon()
+     *
+     *  If there's a default case, the original match is used for applyOrElse, and isDefinedAt returns `true`
+     */
     def synthPartialFunction(fun: Function) = {
       if (!settings.XoldPatmat.value) debugwarn("Under the new pattern matching scheme, PartialFunction should have been synthesized during typers.")
 
@@ -410,7 +409,7 @@ abstract class UnCurry extends InfoTransform
 
         // when calling into scala varargs, make sure it's a sequence.
         def arrayToSequence(tree: Tree, elemtp: Type) = {
-          afterUncurry {
+          exitingUncurry {
             localTyper.typedPos(pos) {
               val pt = arrayType(elemtp)
               val adaptedTree = // might need to cast to Array[elemtp], as arrays are not covariant
@@ -440,7 +439,7 @@ abstract class UnCurry extends InfoTransform
               case _          => EmptyTree
             }
           }
-          afterUncurry {
+          exitingUncurry {
             localTyper.typedPos(pos) {
               gen.mkMethodCall(tree, toArraySym, Nil, List(traversableClassTag(tree.tpe)))
             }
@@ -464,7 +463,7 @@ abstract class UnCurry extends InfoTransform
             else arrayToSequence(mkArray, varargsElemType)
           }
 
-        afterUncurry {
+        exitingUncurry {
           if (isJava && !isReferenceArray(suffix.tpe) && isArrayOfSymbol(fun.tpe.params.last.tpe, ObjectClass)) {
             // The array isn't statically known to be a reference array, so call ScalaRuntime.toObjectArray.
             suffix = localTyper.typedPos(pos) {
@@ -619,7 +618,7 @@ abstract class UnCurry extends InfoTransform
             val fn1 = withInPattern(false)(transform(fn))
             val args1 = transformTrees(fn.symbol.name match {
               case nme.unapply    => args
-              case nme.unapplySeq => transformArgs(tree.pos, fn.symbol, args, analyzer.unapplyTypeListFromReturnTypeSeq(fn.tpe))
+              case nme.unapplySeq => transformArgs(tree.pos, fn.symbol, args, analyzer.unapplyTypeList(fn.symbol, fn.tpe, args.length))
               case _              => sys.error("internal error: UnApply node has wrong symbol")
             })
             treeCopy.UnApply(tree, fn1, args1)
@@ -633,7 +632,7 @@ abstract class UnCurry extends InfoTransform
                 treeCopy.Apply(tree, transform(fn), transformTrees(transformArgs(tree.pos, fn.symbol, args, formals)))
               }
 
-          case Assign(Select(_, _), _) =>
+          case Assign(_: RefTree, _) =>
             withNeedLift(true) { super.transform(tree) }
 
           case Assign(lhs, _) if lhs.symbol.owner != currentMethod || lhs.symbol.hasFlag(LAZY | ACCESSOR) =>
@@ -642,7 +641,7 @@ abstract class UnCurry extends InfoTransform
           case ret @ Return(_) if (isNonLocalReturn(ret)) =>
             withNeedLift(true) { super.transform(ret) }
 
-          case Try(_, Nil, _) => 
+          case Try(_, Nil, _) =>
             // try-finally does not need lifting: lifting is needed only for try-catch
             // expressions that are evaluated in a context where the stack might not be empty.
             // `finally` does not attempt to continue evaluation after an exception, so the fact
@@ -679,7 +678,7 @@ abstract class UnCurry extends InfoTransform
       result setType uncurryTreeType(result.tpe)
     }
 
-    def postTransform(tree: Tree): Tree = afterUncurry {
+    def postTransform(tree: Tree): Tree = exitingUncurry {
       def applyUnary(): Tree = {
         // TODO_NMT: verify that the inner tree of a type-apply also gets parens if the
         // whole tree is a polymorphic nullary method application
