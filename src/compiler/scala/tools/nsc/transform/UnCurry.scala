@@ -1,5 +1,5 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2011 LAMP/EPFL
+ * Copyright 2005-2012 LAMP/EPFL
  * @author
  */
 
@@ -203,6 +203,12 @@ abstract class UnCurry extends InfoTransform
         )
         val keyDef   = ValDef(key, New(ObjectClass.tpe))
         val tryCatch = Try(body, pat -> rhs)
+
+        body foreach {
+          case Try(t, catches, _) if catches exists treeInfo.catchesThrowable =>
+            unit.warning(body.pos, "catch block may intercept non-local return from " + meth)
+          case _ =>
+        }
 
         Block(List(keyDef), tryCatch)
       }

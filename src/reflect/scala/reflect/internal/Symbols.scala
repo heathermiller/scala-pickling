@@ -1,5 +1,5 @@
  /* NSC -- new Scala compiler
- * Copyright 2005-2011 LAMP/EPFL
+ * Copyright 2005-2012 LAMP/EPFL
  * @author  Martin Odersky
  */
 
@@ -64,6 +64,8 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
 
     def kind: String = kindString
     def isExistential: Boolean = this.isExistentiallyBound
+    def isParamWithDefault: Boolean = this.hasDefault
+    def isByNameParam: Boolean = this.isValueParameter && (this hasFlag BYNAMEPARAM)
 
     def newNestedSymbol(name: Name, pos: Position, newFlags: Long, isClass: Boolean): Symbol = name match {
       case n: TermName => newTermSymbol(n, pos, newFlags)
@@ -78,8 +80,6 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
     def toType: Type = tpe
     def toTypeIn(site: Type): Type = site.memberType(this)
     def toTypeConstructor: Type = typeConstructor
-    def setFlags(flags: FlagSet): this.type = setInternalFlags(flags)
-    def setInternalFlags(flag: Long): this.type = { setFlag(flag); this }
     def setTypeSignature(tpe: Type): this.type = { setInfo(tpe); this }
     def getAnnotations: List[AnnotationInfo] = { initialize; annotations }
     def setAnnotations(annots: AnnotationInfo*): this.type = { setAnnotations(annots.toList); this }
@@ -313,10 +313,16 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
       skolem setInfo (basis.info cloneInfo skolem)
     }
 
+    // don't test directly -- use isGADTSkolem
+    // used to single out a gadt skolem symbol in deskolemizeGADT
+    // gadtskolems are created in adaptConstrPattern and removed at the end of typedCase
+    @inline final protected[Symbols] def GADT_SKOLEM_FLAGS = CASEACCESSOR | SYNTHETIC
+
     // flags set up to maintain TypeSkolem's invariant: origin.isInstanceOf[Symbol] == !hasFlag(EXISTENTIAL)
-    // CASEACCESSOR | SYNTHETIC used to single this symbol out in deskolemizeGADT
+    // GADT_SKOLEM_FLAGS (== CASEACCESSOR | SYNTHETIC) used to single this symbol out in deskolemizeGADT
+    // TODO: it would be better to allocate a new bit in the flag long for GADTSkolem rather than OR'ing together CASEACCESSOR | SYNTHETIC
     def newGADTSkolem(name: TypeName, origin: Symbol, info: Type): TypeSkolem =
-      newTypeSkolemSymbol(name, origin, origin.pos, origin.flags & ~(EXISTENTIAL | PARAM) | CASEACCESSOR | SYNTHETIC) setInfo info
+      newTypeSkolemSymbol(name, origin, origin.pos, origin.flags & ~(EXISTENTIAL | PARAM) | GADT_SKOLEM_FLAGS) setInfo info
 
     final def freshExistential(suffix: String): TypeSymbol =
       newExistential(freshExistentialName(suffix), pos)
@@ -382,6 +388,16 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
     final def newErrorSymbol(name: Name): Symbol = name match {
       case x: TypeName  => newErrorClass(x)
       case x: TermName  => newErrorValue(x)
+    }
+
+    /** Creates a placeholder symbol for when a name is encountered during
+     *  unpickling for which there is no corresponding classfile.  This defers
+     *  failure to the point when that name is used for something, which is
+     *  often to the point of never.
+     */
+    def newStubSymbol(name: Name): Symbol = name match {
+      case n: TypeName  => new StubClassSymbol(this, n)
+      case _            => new StubTermSymbol(this, name.toTermName)
     }
 
     @deprecated("Use the other signature", "2.10.0")
@@ -876,7 +892,7 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
 // ------ owner attribute --------------------------------------------------------------
 
     def owner: Symbol = {
-      Statistics.incCounter(ownerCount)
+      if (Statistics.hotEnabled) Statistics.incCounter(ownerCount)
       rawowner
     }
 
@@ -2277,7 +2293,7 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
     private[this] var _rawname: TermName = initName
     def rawname = _rawname
     def name = {
-      Statistics.incCounter(nameCount)
+      if (Statistics.hotEnabled) Statistics.incCounter(nameCount)
       _rawname
     }
     def name_=(name: Name) {
@@ -2419,12 +2435,12 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
       flatOwnerInfo.decl(name.toTypeName).suchThat(sym => sym.isClass && (sym isCoDefinedWith this))
 
     override def owner = {
-      Statistics.incCounter(ownerCount)
+      if (Statistics.hotEnabled) Statistics.incCounter(ownerCount)
       if (!isMethod && needsFlatClasses) rawowner.owner
       else rawowner
     }
     override def name: TermName = {
-      Statistics.incCounter(nameCount)
+      if (Statistics.hotEnabled) Statistics.incCounter(nameCount)
       if (!isMethod && needsFlatClasses) {
         if (flatname eq null)
           flatname = nme.flattenedName(rawowner.name, rawname)
@@ -2473,6 +2489,8 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
 
     override def params: List[List[Symbol]] = paramss
 
+    override def isVarargs: Boolean = definitions.isVarArgsList(paramss.flatten)
+
     override def returnType: Type = {
       def loop(tpe: Type): Type =
         tpe match {
@@ -2516,7 +2534,7 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
 
     def rawname = _rawname
     def name = {
-      Statistics.incCounter(nameCount)
+      if (Statistics.hotEnabled) Statistics.incCounter(nameCount)
       _rawname
     }
     final def asNameType(n: Name) = n.toTypeName
@@ -2645,7 +2663,7 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
      * info for T in Test1 should be >: Nothing <: Test3[_]
      */
 
-    Statistics.incCounter(typeSymbolCount)
+    if (Statistics.hotEnabled) Statistics.incCounter(typeSymbolCount)
   }
   implicit val TypeSymbolTag = ClassTag[TypeSymbol](classOf[TypeSymbol])
 
@@ -2673,7 +2691,7 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
     // a type symbol bound by an existential type, for instance the T in
     // List[T] forSome { type T }
     override def isExistentialSkolem = this hasFlag EXISTENTIAL
-    override def isGADTSkolem        = this hasFlag CASEACCESSOR | SYNTHETIC
+    override def isGADTSkolem        = this hasAllFlags GADT_SKOLEM_FLAGS
     override def isTypeSkolem        = this hasFlag PARAM
     override def isAbstractType      = this hasFlag DEFERRED
 
@@ -2824,7 +2842,7 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
     }
 
     override def owner: Symbol = {
-      Statistics.incCounter(ownerCount)
+      if (Statistics.hotEnabled) Statistics.incCounter(ownerCount)
       if (needsFlatClasses) rawowner.owner else rawowner
     }
 
@@ -2868,7 +2886,7 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
     override def children = childSet
     override def addChild(sym: Symbol) { childSet = childSet + sym }
 
-    Statistics.incCounter(classSymbolCount)
+    if (Statistics.hotEnabled) Statistics.incCounter(classSymbolCount)
   }
   implicit val ClassSymbolTag = ClassTag[ClassSymbol](classOf[ClassSymbol])
 
@@ -2962,6 +2980,37 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
       || info.parents.exists(_.typeSymbol hasTransOwner sym)
     )
   }
+  trait StubSymbol extends Symbol {
+    protected def stubWarning = {
+      val from = if (associatedFile == null) "" else s" - referenced from ${associatedFile.canonicalPath}"
+      s"$kindString $nameString$locationString$from (a classfile may be missing)"
+    }
+    private def fail[T](alt: T): T = {
+      // Avoid issuing lots of redundant errors
+      if (!hasFlag(IS_ERROR)) {
+        globalError(s"bad symbolic reference to " + stubWarning)
+        if (settings.debug.value)
+          (new Throwable).printStackTrace
+
+        this setFlag IS_ERROR
+      }
+      alt
+    }
+    // This one doesn't call fail because SpecializeTypes winds up causing
+    // isMonomorphicType to be called, which calls this, which would fail us
+    // in all the scenarios we're trying to keep from failing.
+    override def originalInfo    = NoType
+    override def associatedFile  = owner.associatedFile
+    override def info            = fail(NoType)
+    override def rawInfo         = fail(NoType)
+    override def companionSymbol = fail(NoSymbol)
+
+    locally {
+      debugwarn("creating stub symbol for " + stubWarning)
+    }
+  }
+  class StubClassSymbol(owner0: Symbol, name0: TypeName) extends ClassSymbol(owner0, owner0.pos, name0) with StubSymbol
+  class StubTermSymbol(owner0: Symbol, name0: TermName) extends TermSymbol(owner0, owner0.pos, name0) with StubSymbol
 
   trait FreeSymbol extends Symbol {
     def origin: String

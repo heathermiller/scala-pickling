@@ -1,5 +1,5 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2011 LAMP/EPFL
+ * Copyright 2005-2012 LAMP/EPFL
  * @author  Iulian Dragos
  */
 
@@ -247,7 +247,7 @@ abstract class Inliners extends SubComponent {
         debuglog("Analyzing " + cls)
 
         this.currentIClazz = cls
-        val ms = cls.methods filterNot { _.symbol.isConstructor } sorted imethodOrdering
+        val ms = cls.methods sorted imethodOrdering
         ms foreach { im =>
           if(hasInline(im.symbol)) {
             log("Not inlining into " + im.symbol.originalName.decode + " because it is marked @inline.")
@@ -404,6 +404,12 @@ abstract class Inliners extends SubComponent {
             case Some(callee) if callee.hasCode =>
               val inc   = new IMethodInfo(callee)
               val pair  = new CallerCalleeInfo(caller, inc, fresh, inlinedMethodCount)
+
+              if(inc.hasHandlers && (stackLength == -1)) {
+                // no inlining is done, yet don't warn about it, stackLength == -1 indicates we're trying to inlineWithoutTFA.
+                // Shortly, a TFA will be computed and an error message reported if indeed inlining not possible.
+                return false
+              }
 
                (pair isStampedForInlining stackLength) match {
 
@@ -605,7 +611,7 @@ abstract class Inliners extends SubComponent {
       def isSmall       = (length <= SMALL_METHOD_SIZE) && blocks(0).length < 10
       def isLarge       = length > MAX_INLINE_SIZE
       def isRecursive   = m.recursive
-      def hasHandlers   = handlers.nonEmpty
+      def hasHandlers   = handlers.nonEmpty || m.bytecodeHasEHs
 
       def isSynchronized         = sym.hasFlag(Flags.SYNCHRONIZED)
       def hasNonFinalizerHandler = handlers exists {
@@ -655,13 +661,15 @@ abstract class Inliners extends SubComponent {
          *
          * TODO handle more robustly the case of a trait var changed at the source-level from public to private[this]
          *      (eg by having ICodeReader use unpickler, see SI-5442).
-         * */
+         
+         DISABLED
+         
         def potentiallyPublicized(f: Symbol): Boolean = {
           (m.sourceFile eq NoSourceFile) && f.name.containsChar('$')
         }
+        */
 
-        def checkField(f: Symbol)   = check(f, potentiallyPublicized(f) ||
-                                               (f.isPrivate && !canMakePublic(f)))
+        def checkField(f: Symbol)   = check(f, f.isPrivate && !canMakePublic(f))
         def checkSuper(n: Symbol)   = check(n, n.isPrivate || !n.isClassConstructor)
         def checkMethod(n: Symbol)  = check(n, n.isPrivate)
 
@@ -941,6 +949,7 @@ abstract class Inliners extends SubComponent {
             if(inc.isRecursive)    { rs ::= "is recursive"           }
             if(isInlineForbidden)  { rs ::= "is annotated @noinline" }
             if(inc.isSynchronized) { rs ::= "is synchronized method" }
+            if(inc.m.bytecodeHasEHs) { rs ::= "bytecode contains exception handlers / finally clause" } // SI-6188
             if(rs.isEmpty) null else rs.mkString("", ", and ", "")
           }
 
@@ -972,6 +981,10 @@ abstract class Inliners extends SubComponent {
           // During inlining retry, a previous caller-callee pair that scored low may pass.
           // Thus, adding the callee to tfa.knownUnsafe isn't warranted.
           return DontInlineHere("too low score (heuristics)")
+        }
+
+        if(inc.hasHandlers && (stackLength > inc.minimumStack)) {
+          return DontInlineHere("callee contains exception handlers / finally clause, and is invoked with non-empty operand stack") // SI-6157
         }
 
         if(isKnownToInlineSafely) { return InlineableAtThisCaller }

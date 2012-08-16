@@ -1,5 +1,5 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2011 LAMP/EPFL
+ * Copyright 2005-2012 LAMP/EPFL
  * @author  Martin Odersky
  */
 package scala.reflect
@@ -1359,7 +1359,9 @@ trait Trees { self: Universe =>
   implicit val ModifiersTag: ClassTag[Modifiers]
 
   /** ... */
-  abstract class ModifiersBase extends HasFlagsBase {
+  abstract class ModifiersBase {
+    def flags: FlagSet // default: NoFlags
+    def hasFlag(flag: FlagSet): Boolean
     def privateWithin: Name  // default: EmptyTypeName
     def annotations: List[Tree] // default: List()
     def mapAnnotations(f: List[Tree] => List[Tree]): Modifiers =

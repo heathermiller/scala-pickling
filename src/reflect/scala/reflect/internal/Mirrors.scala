@@ -1,6 +1,6 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2011 LAMP/EPFL
- * Copyright 2005-2011 LAMP/EPFL
+ * Copyright 2005-2012 LAMP/EPFL
+ * Copyright 2005-2012 LAMP/EPFL
  * @author  Martin Odersky
  */
 
@@ -247,7 +247,7 @@ trait Mirrors extends api.Mirrors {
     // is very beneficial for a handful of bootstrap symbols to have
     // first class identities
     sealed trait WellKnownSymbol extends Symbol {
-      this initFlags TopLevelCreationFlags
+      this initFlags (TopLevelCreationFlags | STATIC)
     }
     // Features common to RootClass and RootPackage, the roots of all
     // type and term symbols respectively.
@@ -276,7 +276,6 @@ trait Mirrors extends api.Mirrors {
 
       override def isRoot            = true
       override def isEffectiveRoot   = true
-      override def isStatic          = true
       override def isNestedClass     = false
     }
     // The empty package, which holds all top level types without given packages.

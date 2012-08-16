@@ -1,5 +1,5 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2011 LAMP/EPFL
+ * Copyright 2005-2012 LAMP/EPFL
  * @author  Martin Odersky
  */
 
@@ -236,7 +236,7 @@ abstract class TreeInfo {
     case _ =>
       tree
   }
-  
+
   /** Is tree a self or super constructor call? */
   def isSelfOrSuperConstrCall(tree: Tree) = {
     // stripNamedApply for SI-3584: adaptToImplicitMethod in Typers creates a special context
@@ -326,9 +326,6 @@ abstract class TreeInfo {
     case _ => false
   }
 
-  /** a Match(Typed(_, tpt), _) is unchecked if isUncheckedAnnotation(tpt.tpe) */
-  def isUncheckedAnnotation(tpe: Type) = tpe hasAnnotation definitions.UncheckedClass
-
   /** a Match(Typed(_, tpt), _) must be translated into a switch if isSwitchAnnotation(tpt.tpe) */
   def isSwitchAnnotation(tpe: Type) = tpe hasAnnotation definitions.SwitchClass
 
@@ -405,11 +402,15 @@ abstract class TreeInfo {
   def catchesThrowable(cdef: CaseDef) = catchesAllOf(cdef, ThrowableClass.tpe)
 
   /** Does this CaseDef catch everything of a certain Type? */
-  def catchesAllOf(cdef: CaseDef, threshold: Type) =
-    isDefaultCase(cdef) || (cdef.guard.isEmpty && (unbind(cdef.pat) match {
-      case Typed(Ident(nme.WILDCARD), tpt)  => (tpt.tpe != null) && (threshold <:< tpt.tpe)
-      case _                                => false
-    }))
+  def catchesAllOf(cdef: CaseDef, threshold: Type) = {
+    def unbound(t: Tree) = t.symbol == null || t.symbol == NoSymbol
+    cdef.guard.isEmpty && (unbind(cdef.pat) match {
+      case Ident(nme.WILDCARD)       => true
+      case i@Ident(name)             => unbound(i)
+      case Typed(_, tpt)             => (tpt.tpe != null) && (threshold <:< tpt.tpe)
+      case _                         => false
+    })
+  }
 
   /** Is this pattern node a catch-all or type-test pattern? */
   def isCatchCase(cdef: CaseDef) = cdef match {
@@ -463,6 +464,16 @@ abstract class TreeInfo {
     case Star(_)  => true
     case _        => false
   }
+
+
+  // used in the symbols for labeldefs and valdefs emitted by the pattern matcher
+  // tailcalls, cps,... use this flag combination to detect translated matches
+  // TODO: move to Flags
+  final val SYNTH_CASE_FLAGS  = CASE | SYNTHETIC
+
+  def isSynthCaseSymbol(sym: Symbol) = sym hasAllFlags SYNTH_CASE_FLAGS
+  def hasSynthCaseSymbol(t: Tree)    = t.symbol != null && isSynthCaseSymbol(t.symbol)
+
 
   /** The method part of an application node
    */

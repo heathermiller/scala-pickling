@@ -1,5 +1,5 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2011 LAMP/EPFL
+ * Copyright 2005-2012 LAMP/EPFL
  * @author  Martin Odersky
  */
 
@@ -149,14 +149,13 @@ trait Infer {
       case tv @ TypeVar(origin, constr) if !tv.untouchable =>
         if (constr.inst == NoType) {
           throw new DeferredNoInstance(() =>
-            "no unique instantiation of type variable " + origin + " could be found")
+            s"no unique instantiation of type variable $origin could be found")
         } else if (excludedVars(tv)) {
           throw new NoInstance("cyclic instantiation")
         } else {
           excludedVars += tv
-          val res = apply(constr.inst)
-          excludedVars -= tv
-          res
+          try apply(constr.inst)
+          finally excludedVars -= tv
         }
       case _ =>
         mapOver(tp)
@@ -643,6 +642,25 @@ trait Infer {
         tvars, tparams, tparams map inferVariance(formals, restpe),
         false, lubDepth(formals) max lubDepth(argtpes)
       )
+      // Can warn about inferring Any/AnyVal as long as they don't appear
+      // explicitly anywhere amongst the formal, argument, result, or expected type.
+      def canWarnAboutAny = !(pt :: restpe :: formals ::: argtpes exists (t => (t contains AnyClass) || (t contains AnyValClass)))
+      def argumentPosition(idx: Int): Position = context.tree match {
+        case x: ValOrDefDef => x.rhs match {
+          case Apply(fn, args) if idx < args.size => args(idx).pos
+          case _                                  => context.tree.pos
+        }
+        case _ => context.tree.pos
+      }
+      if (settings.warnInferAny.value && context.reportErrors && canWarnAboutAny) {
+        foreachWithIndex(targs) ((targ, idx) =>
+          targ.typeSymbol match {
+            case sym @ (AnyClass | AnyValClass) =>
+              context.unit.warning(argumentPosition(idx), s"a type was inferred to be `${sym.name}`; this may indicate a programming error.")
+            case _ =>
+          }
+        )
+      }
       adjustTypeArgs(tparams, tvars, targs, restpe)
     }
 
@@ -1088,12 +1106,12 @@ trait Infer {
      *  @param targs ...
      *  @param pt ...
      */
-    private def substExpr(tree: Tree, undetparams: List[Symbol],
-                          targs: List[Type], pt: Type) {
+    private def substExpr(tree: Tree, undetparams: List[Symbol], targs: List[Type], pt: Type) {
       if (targs eq null) {
         if (!tree.tpe.isErroneous && !pt.isErroneous)
           PolymorphicExpressionInstantiationError(tree, undetparams, pt)
-      } else {
+      }
+      else {
         new TreeTypeSubstituter(undetparams, targs).traverse(tree)
         notifyUndetparamsInferred(undetparams, targs)
       }
@@ -1221,16 +1239,18 @@ trait Infer {
           }
         } else None
 
-      (inferFor(pt) orElse inferForApproxPt) map { targs =>
-        new TreeTypeSubstituter(undetparams, targs).traverse(tree)
-        notifyUndetparamsInferred(undetparams, targs)
-      } getOrElse {
-        debugwarn("failed inferConstructorInstance for "+ tree  +" : "+ tree.tpe +" under "+ undetparams +" pt = "+ pt +(if(isFullyDefined(pt)) " (fully defined)" else " (not fully defined)"))
-        // if (settings.explaintypes.value) explainTypes(resTp.instantiateTypeParams(undetparams, tvars), pt)
-        ConstrInstantiationError(tree, resTp, pt)
+      val inferred = inferFor(pt) orElse inferForApproxPt
+
+      inferred match {
+        case Some(targs) =>
+          new TreeTypeSubstituter(undetparams, targs).traverse(tree)
+          notifyUndetparamsInferred(undetparams, targs)
+        case _ =>
+          debugwarn("failed inferConstructorInstance for "+ tree  +" : "+ tree.tpe +" under "+ undetparams +" pt = "+ pt +(if(isFullyDefined(pt)) " (fully defined)" else " (not fully defined)"))
+          // if (settings.explaintypes.value) explainTypes(resTp.instantiateTypeParams(undetparams, tvars), pt)
+          ConstrInstantiationError(tree, resTp, pt)
       }
     }
-
 
     def instBounds(tvar: TypeVar): (Type, Type) = {
       val tparam = tvar.origin.typeSymbol
@@ -1366,14 +1386,16 @@ trait Infer {
             else if (param.isContravariant) >:>
             else =:=
           )
-          val TypeRef(_, sym, args) = arg
+          (arg hasAnnotation UncheckedClass) || {
+            val TypeRef(_, sym, args) = arg.withoutAnnotations
 
-          (    isLocalBinding(sym)
-            || arg.typeSymbol.isTypeParameterOrSkolem
-            || (sym.name == tpnme.WILDCARD) // avoid spurious warnings on HK types
-            || check(arg, param.tpe, conforms)
-            || warn("non-variable type argument " + arg)
-          )
+            (    isLocalBinding(sym)
+              || arg.typeSymbol.isTypeParameterOrSkolem
+              || (sym.name == tpnme.WILDCARD) // avoid spurious warnings on HK types
+              || check(arg, param.tpe, conforms)
+              || warn("non-variable type argument " + arg)
+            )
+          }
         }
 
         // Checking if pt (the expected type of the pattern, and the type
@@ -1404,8 +1426,11 @@ trait Infer {
         case _ =>
           def where = ( if (inPattern) "pattern " else "" ) + typeToTest
           if (check(typeToTest, typeEnsured, =:=)) ()
+          // Note that this is a regular warning, not an uncheckedWarning,
+          // which is now the province of such notifications as "pattern matcher
+          // exceeded its analysis budget."
           else warningMessages foreach (m =>
-            context.unit.uncheckedWarning(tree.pos, s"$m in type $where is unchecked since it is eliminated by erasure"))
+            context.unit.warning(tree.pos, s"$m in type $where is unchecked since it is eliminated by erasure"))
       }
     }
 

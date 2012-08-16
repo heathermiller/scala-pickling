@@ -1,5 +1,5 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2011 LAMP/EPFL
+ * Copyright 2005-2012 LAMP/EPFL
  * @author  Martin Odersky
  */
 
@@ -219,10 +219,10 @@ class Global(var currentSettings: Settings, var reporter: Reporter)
 
   // not deprecated yet, but a method called "error" imported into
   // nearly every trait really must go.  For now using globalError.
-  def error(msg: String)       = globalError(msg)
-  def globalError(msg: String) = reporter.error(NoPosition, msg)
-  def inform(msg: String)      = reporter.echo(msg)
-  def warning(msg: String)     =
+  def error(msg: String)                = globalError(msg)
+  def inform(msg: String)               = reporter.echo(msg)
+  override def globalError(msg: String) = reporter.error(NoPosition, msg)
+  override def warning(msg: String)     =
     if (settings.fatalWarnings.value) globalError(msg)
     else reporter.warning(NoPosition, msg)
 
@@ -1481,6 +1481,9 @@ class Global(var currentSettings: Settings, var reporter: Reporter)
     }
 
     def reportCompileErrors() {
+      if (!reporter.hasErrors && reporter.hasWarnings && settings.fatalWarnings.value)
+        globalError("No warnings can be incurred under -Xfatal-warnings.")
+
       if (reporter.hasErrors) {
         for ((sym, file) <- symSource.iterator) {
           sym.reset(new loaders.SourcefileLoader(file))
