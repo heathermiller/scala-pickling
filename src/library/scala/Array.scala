@@ -11,7 +11,7 @@ package scala
 import scala.collection.generic._
 import scala.collection.{ mutable, immutable }
 import mutable.{ ArrayBuilder, ArraySeq }
-import compat.Platform.arraycopy
+import scala.compat.Platform.arraycopy
 import scala.reflect.ClassTag
 import scala.runtime.ScalaRunTime.{ array_apply, array_update }
 
@@ -48,6 +48,16 @@ class FallbackArrayBuilding {
  *  @version 1.0
  */
 object Array extends FallbackArrayBuilding {
+  val emptyBooleanArray = new Array[Boolean](0)
+  val emptyByteArray    = new Array[Byte](0)
+  val emptyCharArray    = new Array[Char](0)
+  val emptyDoubleArray  = new Array[Double](0)
+  val emptyFloatArray   = new Array[Float](0)
+  val emptyIntArray     = new Array[Int](0)
+  val emptyLongArray    = new Array[Long](0)
+  val emptyShortArray   = new Array[Short](0)
+  val emptyObjectArray  = new Array[Object](0)
+
   implicit def canBuildFrom[T](implicit t: ClassTag[T]): CanBuildFrom[Array[_], T, Array[T]] =
     new CanBuildFrom[Array[_], T, Array[T]] {
       def apply(from: Array[_]) = ArrayBuilder.make[T]()(t)
@@ -511,5 +521,5 @@ final class Array[T](_length: Int) extends java.io.Serializable with java.lang.C
    *
    *  @return A clone of the Array.
    */
-  override def clone: Array[T] = throw new Error()
+  override def clone(): Array[T] = throw new Error()
 }

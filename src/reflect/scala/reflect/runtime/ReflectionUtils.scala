@@ -38,7 +38,7 @@ object ReflectionUtils {
   )
 
   def show(cl: ClassLoader): String = {
-    import language.reflectiveCalls
+    import scala.language.reflectiveCalls
 
     def isAbstractFileClassLoader(clazz: Class[_]): Boolean = {
       if (clazz == null) return false
@@ -49,7 +49,7 @@ object ReflectionUtils {
       case cl: java.net.URLClassLoader =>
         (cl.getURLs mkString ",")
       case cl if cl != null && isAbstractFileClassLoader(cl.getClass) =>
-        cl.asInstanceOf[{val root: scala.reflect.internal.AbstractFileApi}].root.canonicalPath
+        cl.asInstanceOf[{val root: scala.reflect.io.AbstractFile}].root.canonicalPath
       case null =>
         inferBootClasspath
       case _ =>

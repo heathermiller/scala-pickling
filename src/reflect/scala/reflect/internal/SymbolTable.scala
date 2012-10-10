@@ -47,6 +47,9 @@ abstract class SymbolTable extends macros.Universe
   def globalError(msg: String): Unit = abort(msg)
   def abort(msg: String): Nothing    = throw new FatalError(supplementErrorMessage(msg))
 
+  def shouldLogAtThisPhase = false
+  def isPastTyper = false
+
   @deprecated("Give us a reason", "2.10.0")
   def abort(): Nothing = abort("unknown error")
 
@@ -63,7 +66,7 @@ abstract class SymbolTable extends macros.Universe
 
   private[scala] def printCaller[T](msg: String)(result: T) = {
     Console.err.println("%s: %s\nCalled from: %s".format(msg, result,
-      (new Throwable).getStackTrace.drop(2).take(15).mkString("\n")))
+      (new Throwable).getStackTrace.drop(2).take(50).mkString("\n")))
 
     result
   }
@@ -72,11 +75,13 @@ abstract class SymbolTable extends macros.Universe
     Console.err.println(msg + ": " + result)
     result
   }
-  private[scala] def logResult[T](msg: String)(result: T): T = {
+  @inline
+  final private[scala] def logResult[T](msg: => String)(result: T): T = {
     log(msg + ": " + result)
     result
   }
-  private[scala] def logResultIf[T](msg: String, cond: T => Boolean)(result: T): T = {
+  @inline
+  final private[scala] def logResultIf[T](msg: => String, cond: T => Boolean)(result: T): T = {
     if (cond(result))
       log(msg + ": " + result)
 

@@ -24,7 +24,7 @@ package scala.annotation
  *
  * @since 2.8
  */
- private[scala] final class migration(message: String, changedIn: String) extends annotation.StaticAnnotation {
-   @deprecated("Use the constructor taking two Strings instead.", "2.10")
+ private[scala] final class migration(message: String, changedIn: String) extends scala.annotation.StaticAnnotation {
+   @deprecated("Use the constructor taking two Strings instead.", "2.10.0")
    def this(majorVersion: Int, minorVersion: Int, message: String) = this(message, majorVersion + "." + minorVersion)
  }

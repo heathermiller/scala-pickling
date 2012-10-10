@@ -13,7 +13,7 @@ package immutable
 
 import generic._
 import mutable.{Builder, ListBuffer}
-import annotation.tailrec
+import scala.annotation.tailrec
 import java.io._
 
 /** A class for immutable linked lists representing ordered collections
@@ -229,7 +229,7 @@ sealed abstract class List[+A] extends AbstractSeq[A]
    *  }}}
    */
   override def slice(from: Int, until: Int): List[A] = {
-    val lo = math.max(from, 0)
+    val lo = scala.math.max(from, 0)
     if (until <= lo || isEmpty) Nil
     else this drop lo take (until - lo)
   }
@@ -331,7 +331,7 @@ case object Nil extends List[Nothing] {
     throw new UnsupportedOperationException("tail of empty list")
   // Removal of equals method here might lead to an infinite recursion similar to IntMap.equals.
   override def equals(that: Any) = that match {
-    case that1: collection.GenSeq[_] => that1.isEmpty
+    case that1: scala.collection.GenSeq[_] => that1.isEmpty
     case _ => false
   }
 }
@@ -388,7 +388,6 @@ final case class ::[B](private var hd: B, private[scala] var tl: List[B]) extend
     while (!xs.isEmpty) { out.writeObject(xs.head); xs = xs.tail }
     out.writeObject(ListSerializeEnd)
   }
-
 }
 
 /** $factoryInfo

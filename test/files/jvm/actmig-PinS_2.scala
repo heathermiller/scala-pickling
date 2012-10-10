@@ -1,10 +1,15 @@
-import scala.actors.{ MigrationSystem, StashingActor, ActorRef, Props, Exit }
-import scala.concurrent.util.duration._
+/**
+ * NOTE: Code snippets from this test are included in the Actor Migration Guide. In case you change
+ * code in these tests prior to the 2.10.0 release please send the notification to @vjovanov.
+ */
+import scala.actors._
+import scala.actors.migration._
+import scala.concurrent.duration._
 import scala.concurrent.{ Promise, Await }
 
 object SillyActor {
   val startPromise = Promise[Boolean]()
-  val ref = MigrationSystem.actorOf(Props(() => new SillyActor, "default-stash-dispatcher"))
+  val ref = ActorDSL.actor(new SillyActor)
 }
 
 /* PinS, Listing 32.1: A simple actor
@@ -24,7 +29,7 @@ class SillyActor extends StashingActor {
 
 object SeriousActor {
   val startPromise = Promise[Boolean]()
-  val ref = MigrationSystem.actorOf(Props(() => new SeriousActor, "default-stash-dispatcher"))
+  val ref = ActorDSL.actor(new SeriousActor)
 }
 
 class SeriousActor extends StashingActor {
@@ -39,7 +44,7 @@ class SeriousActor extends StashingActor {
 /* PinS, Listing 32.3: An actor that calls react
  */
 object NameResolver {
-  val ref = MigrationSystem.actorOf(Props(() => new NameResolver, "default-stash-dispatcher"))
+  val ref = ActorDSL.actor(new NameResolver)
 }
 
 class NameResolver extends StashingActor {
@@ -75,7 +80,7 @@ object Test extends App {
 
   /* PinS, Listing 32.2: An actor that calls receive
    */
-  def makeEchoActor(): ActorRef = MigrationSystem.actorOf(Props(() =>
+  def makeEchoActor(): ActorRef = ActorDSL.actor(
     new StashingActor {
     def receive = { case _ => println("Nop") }
 
@@ -89,11 +94,11 @@ object Test extends App {
         }
       }
     }
-  }, "default-stash-dispatcher"))
+  })
 
   /* PinS, page 696
    */
-  def makeIntActor(): ActorRef = MigrationSystem.actorOf(Props(() =>new StashingActor {
+  def makeIntActor(): ActorRef = ActorDSL.actor(new StashingActor {
 
     def receive = { case _ => println("Nop") }
 
@@ -103,9 +108,9 @@ object Test extends App {
           println("Got an Int: " + x)
       }
     }
-  }, "default-stash-dispatcher"))
+  })
 
- MigrationSystem.actorOf(Props(() => new StashingActor {
+ ActorDSL.actor(new StashingActor {
 
     def receive = { case _ => println("Nop") }
 
@@ -121,7 +126,7 @@ object Test extends App {
             case Exit(_: SeriousActor, _) =>
               val seriousPromise2 = Promise[Boolean]()
               // PinS, page 694
-              val seriousActor2 = MigrationSystem.actorOf(Props(() =>{
+              val seriousActor2 = ActorDSL.actor(
                 new StashingActor {
 
                   def receive = { case _ => println("Nop") }
@@ -131,8 +136,7 @@ object Test extends App {
                       println("That is the question.")
                       seriousPromise2.success(true)
                   }
-                }
-              }, "default-stash-dispatcher"))
+                })
 
               Await.ready(seriousPromise2.future, 5 seconds)
               val echoActor = makeEchoActor()
@@ -151,5 +155,5 @@ object Test extends App {
           }
       }
     }
-  }, "default-stash-dispatcher"))
+  })
 }

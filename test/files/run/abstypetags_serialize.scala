@@ -1,9 +1,10 @@
 import java.io._
 import scala.reflect.runtime.universe._
+import scala.reflect.runtime.{universe => ru}
 import scala.reflect.runtime.{currentMirror => cm}
 
 object Test extends App {
-  def test(tag: AbsTypeTag[_]) =
+  def test(tag: WeakTypeTag[_]) =
     try {
       val fout = new ByteArrayOutputStream()
       val out = new ObjectOutputStream(fout)
@@ -13,7 +14,7 @@ object Test extends App {
 
       val fin = new ByteArrayInputStream(fout.toByteArray)
       val in = new ObjectInputStream(fin)
-      val retag = in.readObject().asInstanceOf[scala.reflect.basis.AbsTypeTag[_]].in(cm)
+      val retag = in.readObject().asInstanceOf[ru.WeakTypeTag[_]].in(cm)
       in.close()
       fin.close()
 
@@ -24,8 +25,8 @@ object Test extends App {
     }
 
   def qwe[T, U[_]] = {
-    test(implicitly[AbsTypeTag[T]])
-    test(implicitly[AbsTypeTag[U[String]]])
+    test(implicitly[WeakTypeTag[T]])
+    test(implicitly[WeakTypeTag[U[String]]])
   }
 
   qwe

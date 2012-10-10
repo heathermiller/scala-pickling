@@ -10,7 +10,7 @@ package scala.xml
 
 import scala.collection.mutable
 import parsing.XhtmlEntities
-import language.implicitConversions
+import scala.language.implicitConversions
 
 /**
  * The `Utility` object provides utility functions for processing instances
@@ -175,7 +175,7 @@ object Utility extends AnyRef with parsing.TokenTests {
    * Note that calling this source-compatible method will result in the same old, arguably almost universally unwanted,
    * behaviour.
    */
-  @deprecated("Please use `serialize` instead and specify a `minimizeTags` parameter", "2.10")
+  @deprecated("Please use `serialize` instead and specify a `minimizeTags` parameter", "2.10.0")
   def toXML(
     x: Node,
     pscope: NamespaceBinding = TopScope,

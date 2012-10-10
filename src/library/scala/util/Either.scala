@@ -10,7 +10,7 @@
 
 package scala.util
 
-import language.implicitConversions
+import scala.language.implicitConversions
 
 /** Represents a value of one of two possible types (a disjoint union.)
  *  Instances of Either are either an instance of [[scala.util.Left]] or [[scala.util.Right]].
@@ -221,7 +221,7 @@ object Either {
       case Right(a) => a
     }
   }
-  @deprecated("use MergeableEither instead", "2.10")
+  @deprecated("use MergeableEither instead", "2.10.0")
   def either2mergeable[A](x: Either[A, A]): MergeableEither[A] = new MergeableEither(x)
 
   /**

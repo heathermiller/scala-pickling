@@ -6,8 +6,8 @@
 package scala.tools.nsc
 package ast
 
-import reflect.internal.HasFlags
-import reflect.internal.Flags._
+import scala.reflect.internal.HasFlags
+import scala.reflect.internal.Flags._
 import symtab._
 
 /** This class ...
@@ -15,7 +15,7 @@ import symtab._
  *  @author Martin Odersky
  *  @version 1.0
  */
-abstract class TreeInfo extends reflect.internal.TreeInfo {
+abstract class TreeInfo extends scala.reflect.internal.TreeInfo {
   val global: Global
   import global._
 
@@ -45,11 +45,4 @@ abstract class TreeInfo extends reflect.internal.TreeInfo {
 
   def isInterface(mods: HasFlags, body: List[Tree]) =
     mods.isTrait && (body forall isInterfaceMember)
-
-  def isAllowedInUniversalTrait(stat: Tree): Boolean = stat match {
-    case _: ValDef => false
-    case Import(_, _) | EmptyTree => true
-    case _: DefTree => true
-    case _ => false
-  }
 }

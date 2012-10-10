@@ -25,6 +25,7 @@ package scala.testing
  *  where `&lt;result&gt;` is the result of evaluating the call.
  *
  */
+@deprecated("This class will be removed.", "2.10.0")
 trait Show {
 
   /** An implicit definition that adds an apply method to Symbol which forwards to `test`. 
@@ -36,7 +37,7 @@ trait Show {
     }
   }
 
-  @deprecated("use SymApply instead", "2.10")
+  @deprecated("use SymApply instead", "2.10.0")
   def symApply(sym: Symbol): SymApply = new SymApply(sym)
 
   /** Apply method with name of given symbol `f` to given arguments and return

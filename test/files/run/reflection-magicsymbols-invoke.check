@@ -90,7 +90,7 @@ method $asInstanceOf: [T0]()T0
 method $isInstanceOf: [T0]()Boolean
 method ==: (x$1: Any)Boolean
 method ==: (x$1: AnyRef)Boolean
-method apply: (i: <?>)T
+method apply: (i: Int)T
 method asInstanceOf: [T0]=> T0
 method clone: ()Array[T]
 method eq: (x$1: AnyRef)Boolean
@@ -105,7 +105,7 @@ method notify: ()Unit
 method notifyAll: ()Unit
 method synchronized: [T0](x$1: T0)T0
 method toString: ()java.lang.String
-method update: (i: <?>, x: <?>)Unit
+method update: (i: Int, x: T)Unit
 method wait: ()Unit
 method wait: (x$1: Long)Unit
 method wait: (x$1: Long, x$2: Int)Unit
@@ -121,4 +121,4 @@ testing String.+: 23
 CTM
 testing Predef.classOf: class scala.ScalaReflectionException: Predef.classOf is a compile-time function, it cannot be invoked with mirrors
 testing Predef.classOf: class scala.ScalaReflectionException: scala.Predef.classOf[T]: Class[T] takes 0 arguments
-testing Universe.reify: class scala.ScalaReflectionException: scala.reflect.base.Universe.reify is a macro, i.e. a compile-time function, it cannot be invoked with mirrors
+testing Universe.reify: class scala.ScalaReflectionException: scala.reflect.api.Universe.reify is a macro, i.e. a compile-time function, it cannot be invoked with mirrors

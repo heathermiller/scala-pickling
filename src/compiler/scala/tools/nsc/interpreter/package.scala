@@ -5,7 +5,7 @@
 
 package scala.tools.nsc
 
-import language.implicitConversions
+import scala.language.implicitConversions
 
 /** The main REPL related classes and values are as follows.
  *  In addition to standard compiler classes Global and Settings, there are:
@@ -35,10 +35,10 @@ package object interpreter extends ReplConfig with ReplStrings {
 
   val IR = Results
 
-  implicit def postfixOps = language.postfixOps // make all postfix ops in this package compile without warning
+  implicit def postfixOps = scala.language.postfixOps // make all postfix ops in this package compile without warning
 
   private[interpreter] implicit def javaCharSeqCollectionToScala(xs: JCollection[_ <: CharSequence]): List[String] = {
-    import collection.JavaConverters._
+    import scala.collection.JavaConverters._
     xs.asScala.toList map ("" + _)
   }
 

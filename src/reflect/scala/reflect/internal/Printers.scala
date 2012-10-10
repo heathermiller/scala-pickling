@@ -3,14 +3,14 @@
  * @author  Martin Odersky
  */
 
-// [Eugene++ to Martin] we need to unify this prettyprinter with NodePrinters
+// todo. we need to unify this prettyprinter with NodePrinters
 
 package scala.reflect
 package internal
 
 import java.io.{ OutputStream, PrintWriter, StringWriter, Writer }
 import Flags._
-import compat.Platform.EOL
+import scala.compat.Platform.EOL
 
 trait Printers extends api.Printers { self: SymbolTable =>
 
@@ -174,12 +174,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
     }
 
     def printAnnotations(tree: Tree) {
-      if (!isCompilerUniverse && tree.symbol != null && tree.symbol != NoSymbol)
-        // [Eugene++] todo. this is not 100% correct, but is necessary for sane printing
-        // the problem is that getting annotations doesn't automatically initialize the symbol
-        // so we might easily print something as if it doesn't have annotations, whereas it does
-        tree.symbol.initialize
-
+      // SI-5885: by default this won't print annotations of not yet initialized symbols
       val annots = tree.symbol.annotations match {
         case Nil  => tree.asInstanceOf[MemberDef].mods.annotations
         case anns => anns
@@ -551,8 +546,8 @@ trait Printers extends api.Printers { self: SymbolTable =>
             case _ => print(value.toString)
           }
         case tree: Tree =>
-          val hasSymbol = tree.hasSymbol && tree.symbol != NoSymbol
-          val isError = hasSymbol && tree.symbol.name.toString == nme.ERROR.toString
+          val hasSymbolField = tree.hasSymbolField && tree.symbol != NoSymbol
+          val isError = hasSymbolField && tree.symbol.name.toString == nme.ERROR.toString
           printProduct(
             tree,
             preamble = _ => {
@@ -565,7 +560,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
                   if (isError) print("<")
                   print(name)
                   if (isError) print(": error>")
-                } else if (hasSymbol) {
+                } else if (hasSymbolField) {
                   tree match {
                     case _: Ident | _: Select | _: SelectFromTypeTree => print(tree.symbol)
                     case _ => print(tree.symbol.name)
@@ -581,11 +576,12 @@ trait Printers extends api.Printers { self: SymbolTable =>
               case _ => // do nothing
             })
         case sym: Symbol =>
-          if (sym.isStatic && (sym.isClass || sym.isModule)) print(sym.fullName)
+          if (sym == NoSymbol) print("NoSymbol")
+          else if (sym.isStatic && (sym.isClass || sym.isModule)) print(sym.fullName)
           else print(sym.name)
           if (printIds) print("#", sym.id)
           if (printKinds) print("#", sym.abbreviatedKindString)
-          if (printMirrors) print("%M", footnotes.put[MirrorOf[_]](mirrorThatLoaded(sym)))
+          if (printMirrors) print("%M", footnotes.put[scala.reflect.api.Mirror[_]](mirrorThatLoaded(sym)))
         case NoType =>
           print("NoType")
         case NoPrefix =>
@@ -614,7 +610,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
       if (depth == 0 && !printingFootnotes) {
         printingFootnotes = true
         footnotes.print[Type](this)
-        footnotes.print[MirrorOf[_]](this)
+        footnotes.print[scala.reflect.api.Mirror[_]](this)
         printingFootnotes = false
       }
     }
@@ -669,7 +665,7 @@ trait Printers extends api.Printers { self: SymbolTable =>
   def show(flags: FlagSet): String = {
     if (flags == NoFlags) nme.NoFlags.toString
     else {
-      val s_flags = new collection.mutable.ListBuffer[String]
+      val s_flags = new scala.collection.mutable.ListBuffer[String]
       def hasFlag(left: Long, right: Long): Boolean = (left & right) != 0
       for (i <- 0 to 63 if hasFlag(flags, 1L << i))
         s_flags += flagToString(1L << i).replace("<", "").replace(">", "").toUpperCase

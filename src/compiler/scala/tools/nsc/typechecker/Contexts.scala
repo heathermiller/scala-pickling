@@ -8,7 +8,7 @@ package typechecker
 
 import symtab.Flags._
 import scala.collection.mutable.{LinkedHashSet, Set}
-import annotation.tailrec
+import scala.annotation.tailrec
 
 /**
  *  @author  Martin Odersky
@@ -26,6 +26,13 @@ trait Contexts { self: Analyzer =>
     override def enclosingContextChain: List[Context] = Nil
     override def implicitss: List[List[ImplicitInfo]] = Nil
     override def toString = "NoContext"
+  }
+  private object RootImports {
+    import definitions._
+    // Possible lists of root imports
+    val javaList         = JavaLangPackage :: Nil
+    val javaAndScalaList = JavaLangPackage :: ScalaPackage :: Nil
+    val completeList     = JavaLangPackage :: ScalaPackage :: PredefModule :: Nil
   }
 
   private val startContext = {
@@ -46,13 +53,12 @@ trait Contexts { self: Analyzer =>
    *    among its leading imports, or if the tree is [[scala.Predef]], `Predef` is not imported.
    */
   protected def rootImports(unit: CompilationUnit): List[Symbol] = {
-    import definitions._
-    assert(isDefinitionsInitialized, "definitions uninitialized")
+    assert(definitions.isDefinitionsInitialized, "definitions uninitialized")
 
     if (settings.noimports.value) Nil
-    else if (unit.isJava) List(JavaLangPackage)
-    else if (settings.nopredef.value || treeInfo.noPredefImportForUnit(unit.body)) List(JavaLangPackage, ScalaPackage)
-    else List(JavaLangPackage, ScalaPackage, PredefModule)
+    else if (unit.isJava) RootImports.javaList
+    else if (settings.nopredef.value || treeInfo.noPredefImportForUnit(unit.body)) RootImports.javaAndScalaList
+    else RootImports.completeList
   }
 
   def rootContext(unit: CompilationUnit): Context             = rootContext(unit, EmptyTree, false)
@@ -481,7 +487,7 @@ trait Contexts { self: Analyzer =>
       lastAccessCheckDetails = ""
       // Console.println("isAccessible(%s, %s, %s)".format(sym, pre, superAccess))
 
-      @inline def accessWithinLinked(ab: Symbol) = {
+      def accessWithinLinked(ab: Symbol) = {
         val linked = ab.linkedClassOfClass
         // don't have access if there is no linked class
         // (before adding the `ne NoSymbol` check, this was a no-op when linked eq NoSymbol,

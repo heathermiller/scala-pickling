@@ -25,7 +25,7 @@ import scala.util.control.Exception.{ ultimately }
 import IMain._
 import java.util.concurrent.Future
 import typechecker.Analyzer
-import language.implicitConversions
+import scala.language.implicitConversions
 import scala.reflect.runtime.{ universe => ru }
 import scala.reflect.{ ClassTag, classTag }
 import scala.tools.reflect.StdRuntimeTags._
@@ -145,7 +145,7 @@ class IMain(initialSettings: Settings, protected val out: JPrintWriter) extends 
   private def _initSources = List(new BatchSourceFile("<init>", "class $repl_$init { }"))
   private def _initialize() = {
     try {
-      // [Eugene] todo. if this crashes, REPL will hang
+      // todo. if this crashes, REPL will hang
       new _compiler.Run() compileSources _initSources
       _initializeComplete = true
       true
@@ -262,7 +262,10 @@ class IMain(initialSettings: Settings, protected val out: JPrintWriter) extends 
   protected def newCompiler(settings: Settings, reporter: Reporter): ReplGlobal = {
     settings.outputDirs setSingleOutput virtualDirectory
     settings.exposeEmptyPackage.value = true
-    new Global(settings, reporter) with ReplGlobal
+    if (settings.Yrangepos.value)
+      new Global(settings, reporter) with ReplGlobal with interactive.RangePositions
+    else
+      new Global(settings, reporter) with ReplGlobal
   }
 
   /** Parent classloader.  Overridable. */
@@ -387,8 +390,7 @@ class IMain(initialSettings: Settings, protected val out: JPrintWriter) extends 
       newSym <- req.definedSymbols get name
       oldSym <- oldReq.definedSymbols get name.companionName
     } {
-      replwarn("warning: previously defined %s is not a companion to %s.".format(
-        stripString("" + oldSym), stripString("" + newSym)))
+      exitingTyper(replwarn(s"warning: previously defined $oldSym is not a companion to $newSym."))
       replwarn("Companions must be defined together; you may wish to use :paste mode for this.")
     }
 
@@ -1062,7 +1064,7 @@ class IMain(initialSettings: Settings, protected val out: JPrintWriter) extends 
   }
   def cleanMemberDecl(owner: Symbol, member: Name): Type = exitingTyper {
     normalizeNonPublic {
-      owner.info.nonPrivateDecl(member).tpe match {
+      owner.info.nonPrivateDecl(member).tpe_* match {
         case NullaryMethodType(tp) => tp
         case tp                    => tp
       }

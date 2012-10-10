@@ -165,17 +165,36 @@ abstract class TreeGen extends macros.TreeBuilder {
     This(sym.name.toTypeName) setSymbol sym setType sym.thisType
 
   def mkAttributedIdent(sym: Symbol): Tree =
-    Ident(sym.name) setSymbol sym setType sym.tpe
+    Ident(sym.name) setSymbol sym setType sym.tpeHK
 
   def mkAttributedSelect(qual: Tree, sym: Symbol): Tree = {
     // Tests involving the repl fail without the .isEmptyPackage condition.
     if (qual.symbol != null && (qual.symbol.isEffectiveRoot || qual.symbol.isEmptyPackage))
       mkAttributedIdent(sym)
     else {
+      // Have to recognize anytime a selection is made on a package
+      // so it can be rewritten to foo.bar.`package`.name rather than
+      // foo.bar.name if name is in the package object.
+      // TODO - factor out the common logic between this and
+      // the Typers method "isInPackageObject", used in typedIdent.
+      val qualsym = (
+        if (qual.tpe ne null) qual.tpe.typeSymbol
+        else if (qual.symbol ne null) qual.symbol
+        else NoSymbol
+      )
+      val needsPackageQualifier = (
+           (sym ne null)
+        && qualsym.isPackage
+        && !sym.isDefinedInPackage
+      )
       val pkgQualifier =
-        if (sym != null && sym.owner.isPackageObjectClass && sym.effectiveOwner == qual.tpe.typeSymbol) {
-          val obj = sym.owner.sourceModule
-          Select(qual, nme.PACKAGE) setSymbol obj setType singleType(qual.tpe, obj)
+        if (needsPackageQualifier) {
+          // The owner of a symbol which requires package qualification may be the
+          // package object iself, but it also could be any superclass of the package
+          // object.  In the latter case, we must go through the qualifier's info
+          // to obtain the right symbol.
+          val packageObject = if (sym.owner.isModuleClass) sym.owner.sourceModule else qual.tpe member nme.PACKAGE
+          Select(qual, nme.PACKAGE) setSymbol packageObject setType singleType(qual.tpe, packageObject)
         }
         else qual
 
@@ -194,7 +213,7 @@ abstract class TreeGen extends macros.TreeBuilder {
     mkTypeApply(mkAttributedSelect(target, method), targs map TypeTree)
 
   private def mkSingleTypeApply(value: Tree, tpe: Type, what: Symbol, wrapInApply: Boolean) = {
-    val tapp = mkAttributedTypeApply(value, what, List(tpe.normalize))
+    val tapp = mkAttributedTypeApply(value, what, tpe.normalize :: Nil)
     if (wrapInApply) Apply(tapp, Nil) else tapp
   }
   private def typeTestSymbol(any: Boolean) = if (any) Any_isInstanceOf else Object_isInstanceOf
@@ -271,9 +290,6 @@ abstract class TreeGen extends macros.TreeBuilder {
   // tree1 OR tree2
   def mkOr(tree1: Tree, tree2: Tree): Tree =
     Apply(Select(tree1, Boolean_or), List(tree2))
-
-  def mkBasisUniverseRef: Tree =
-    mkAttributedRef(ReflectBasis) setType singleType(ReflectBasis.owner.thisPrefix, ReflectBasis)
 
   def mkRuntimeUniverseRef: Tree = {
     assert(ReflectRuntimeUniverse != NoSymbol)

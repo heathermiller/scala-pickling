@@ -18,7 +18,7 @@ import scala.concurrent.Lock
 import scala.text._
 import symtab.Flags._
 import symtab.SymbolTable
-import language.implicitConversions
+import scala.language.implicitConversions
 
 /**
  * Tree browsers can show the AST in a graphical and interactive
@@ -509,7 +509,7 @@ abstract class TreeBrowsers {
     /** Return a textual representation of this t's symbol */
     def symbolText(t: Tree): String = {
       val prefix =
-        if (t.hasSymbol)  "[has] "
+        if (t.hasSymbolField)  "[has] "
         else if (t.isDef) "[defines] "
         else ""
 

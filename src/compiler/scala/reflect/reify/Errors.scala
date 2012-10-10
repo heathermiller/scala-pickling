@@ -27,8 +27,8 @@ trait Errors {
     throw new ReificationError(defaultErrorPosition, msg)
   }
 
-  def CannotReifyTypeTagHavingUnresolvedTypeParameters(tpe: Type) = {
-    val msg = "cannot reify TypeTag having unresolved type parameter %s".format(tpe)
+  def CannotReifyWeakType(details: Any) = {
+    val msg = "cannot create a TypeTag" + details
     throw new ReificationError(defaultErrorPosition, msg)
   }
 
@@ -70,5 +70,10 @@ trait Errors {
   def CannotReifyErroneousReifee(reifee: Any) = {
     val msg = "internal error: erroneous reifees are not supported, make sure that your reifee has typechecked successfully before passing it to the reifier"
     throw new UnexpectedReificationError(defaultErrorPosition, msg)
+  }
+
+  def CannotReifyInvalidLazyVal(tree: ValDef) = {
+    val msg = "internal error: could not reconstruct original lazy val due to missing accessor"
+    throw new UnexpectedReificationError(tree.pos, msg)
   }
 }

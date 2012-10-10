@@ -196,6 +196,9 @@ trait MemberEntity extends Entity {
   /** The identity of this member, used for linking */
   def signature: String
 
+  /** Compatibility signature, will be removed from future versions */
+  def signatureCompat: String
+
   /** Indicates whether the member is inherited by implicit conversion */
   def isImplicitlyInherited: Boolean
 
@@ -530,8 +533,8 @@ trait ImplicitConversion {
   /** The members inherited by this implicit conversion */
   def members: List[MemberEntity]
 
-  /** Is this a common implicit conversion (aka conversion that affects all classes, in Predef?) */
-  def isCommonConversion: Boolean
+  /** Is this a hidden implicit conversion (as specified in the settings) */
+  def isHiddenConversion: Boolean
 }
 
 /** Shadowing captures the information that the member is shadowed by some other members

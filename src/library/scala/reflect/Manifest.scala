@@ -38,8 +38,9 @@ import scala.collection.mutable.{ ArrayBuilder, WrappedArray }
 }}}
  *
  */
-@annotation.implicitNotFound(msg = "No Manifest available for ${T}.")
-@deprecated("Use scala.reflect.ClassTag (to capture erasures) or scala.reflect.runtime.universe.TypeTag (to capture types) or both instead", "2.10.0")
+@scala.annotation.implicitNotFound(msg = "No Manifest available for ${T}.")
+// TODO undeprecated until Scala reflection becomes non-experimental
+// @deprecated("Use scala.reflect.ClassTag (to capture erasures) or scala.reflect.runtime.universe.TypeTag (to capture types) or both instead", "2.10.0")
 trait Manifest[T] extends ClassManifest[T] with Equals {
   override def typeArguments: List[Manifest[_]] = Nil
 
@@ -60,7 +61,8 @@ trait Manifest[T] extends ClassManifest[T] with Equals {
   override def hashCode = this.erasure.##
 }
 
-@deprecated("Use type tags and manually check the corresponding class or type instead", "2.10.0")
+// TODO undeprecated until Scala reflection becomes non-experimental
+// @deprecated("Use type tags and manually check the corresponding class or type instead", "2.10.0")
 abstract class AnyValManifest[T <: AnyVal](override val toString: String) extends Manifest[T] with Equals {
   override def <:<(that: ClassManifest[_]): Boolean =
     (that eq this) || (that eq Manifest.Any) || (that eq Manifest.AnyVal)
@@ -155,28 +157,34 @@ object ManifestFactory {
     private def readResolve(): Any = Manifest.Unit
   }
 
-  val Any: Manifest[scala.Any] = new PhantomManifest[scala.Any]("Any") {
+  private val ObjectTYPE = classOf[java.lang.Object]
+  private val NothingTYPE = classOf[scala.runtime.Nothing$]
+  private val NullTYPE = classOf[scala.runtime.Null$]
+
+  val Any: Manifest[scala.Any] = new PhantomManifest[scala.Any](ObjectTYPE, "Any") {
     override def <:<(that: ClassManifest[_]): Boolean = (that eq this)
     private def readResolve(): Any = Manifest.Any
   }
 
-  val Object: Manifest[java.lang.Object] = new PhantomManifest[java.lang.Object]("Object") {
+  val Object: Manifest[java.lang.Object] = new PhantomManifest[java.lang.Object](ObjectTYPE, "Object") {
     override def <:<(that: ClassManifest[_]): Boolean = (that eq this) || (that eq Any)
     private def readResolve(): Any = Manifest.Object
   }
 
-  val AnyVal: Manifest[scala.AnyVal] = new PhantomManifest[scala.AnyVal]("AnyVal") {
+  val AnyRef: Manifest[scala.AnyRef] = Object.asInstanceOf[Manifest[scala.AnyRef]]
+
+  val AnyVal: Manifest[scala.AnyVal] = new PhantomManifest[scala.AnyVal](ObjectTYPE, "AnyVal") {
     override def <:<(that: ClassManifest[_]): Boolean = (that eq this) || (that eq Any)
     private def readResolve(): Any = Manifest.AnyVal
   }
 
-  val Null: Manifest[scala.Null] = new PhantomManifest[scala.Null]("Null") {
+  val Null: Manifest[scala.Null] = new PhantomManifest[scala.Null](NullTYPE, "Null") {
     override def <:<(that: ClassManifest[_]): Boolean =
       (that ne null) && (that ne Nothing) && !(that <:< AnyVal)
     private def readResolve(): Any = Manifest.Null
   }
 
-  val Nothing: Manifest[scala.Nothing] = new PhantomManifest[scala.Nothing]("Nothing") {
+  val Nothing: Manifest[scala.Nothing] = new PhantomManifest[scala.Nothing](NothingTYPE, "Nothing") {
     override def <:<(that: ClassManifest[_]): Boolean = (that ne null)
     private def readResolve(): Any = Manifest.Nothing
   }
@@ -211,7 +219,8 @@ object ManifestFactory {
   def classType[T](prefix: Manifest[_], clazz: Predef.Class[_], args: Manifest[_]*): Manifest[T] =
     new ClassTypeManifest[T](Some(prefix), clazz, args.toList)
 
-  private abstract class PhantomManifest[T](override val toString: String) extends ClassTypeManifest[T](None, classOf[java.lang.Object], Nil) {
+  private abstract class PhantomManifest[T](_runtimeClass: Predef.Class[_],
+                                            override val toString: String) extends ClassTypeManifest[T](None, _runtimeClass, Nil) {
     override def equals(that: Any): Boolean = this eq that.asInstanceOf[AnyRef]
     override val hashCode = System.identityHashCode(this)
   }

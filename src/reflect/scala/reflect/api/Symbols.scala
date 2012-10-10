@@ -1,47 +1,224 @@
 package scala.reflect
 package api
 
-trait Symbols extends base.Symbols { self: Universe =>
+/**
+ * Defines the type hierachy for symbols
+ *
+ * @see [[scala.reflect]] for a description on how the class hierarchy is encoded here.
+ */
+trait Symbols { self: Universe =>
 
-  override type Symbol >: Null <: SymbolApi
-  override type TypeSymbol >: Null <: Symbol with TypeSymbolApi
-  override type TermSymbol >: Null <: Symbol with TermSymbolApi
-  override type MethodSymbol >: Null <: TermSymbol with MethodSymbolApi
-  override type ModuleSymbol >: Null <: TermSymbol with ModuleSymbolApi
-  override type ClassSymbol >: Null <: TypeSymbol with ClassSymbolApi
-  override type FreeTermSymbol >: Null <: TermSymbol with FreeTermSymbolApi
-  override type FreeTypeSymbol >: Null <: TypeSymbol with FreeTypeSymbolApi
+  /** The type of symbols representing declarations */
+  type Symbol >: Null <: SymbolApi
+
+  /** A tag that preserves the identity of the `Symbol` abstract type from erasure.
+   *  Can be used for pattern matching, instance tests, serialization and likes.
+   */
+  implicit val SymbolTag: ClassTag[Symbol]
+
+  /** The type of type symbols representing type, class, and trait declarations,
+   *  as well as type parameters
+   */
+  type TypeSymbol >: Null <: Symbol with TypeSymbolApi
+
+  /** A tag that preserves the identity of the `TypeSymbol` abstract type from erasure.
+   *  Can be used for pattern matching, instance tests, serialization and likes.
+   */
+  implicit val TypeSymbolTag: ClassTag[TypeSymbol]
+
+  /** The type of term symbols representing val, var, def, and object declarations as
+   *  well as packages and value parameters.
+   */
+  type TermSymbol >: Null <: Symbol with TermSymbolApi
+
+  /** A tag that preserves the identity of the `TermSymbol` abstract type from erasure.
+   *  Can be used for pattern matching, instance tests, serialization and likes.
+   */
+  implicit val TermSymbolTag: ClassTag[TermSymbol]
+
+  /** The type of method symbols representing def declarations */
+  type MethodSymbol >: Null <: TermSymbol with MethodSymbolApi
+
+  /** A tag that preserves the identity of the `MethodSymbol` abstract type from erasure.
+   *  Can be used for pattern matching, instance tests, serialization and likes.
+   */
+  implicit val MethodSymbolTag: ClassTag[MethodSymbol]
+
+  /** The type of module symbols representing object declarations */
+  type ModuleSymbol >: Null <: TermSymbol with ModuleSymbolApi
+
+  /** A tag that preserves the identity of the `ModuleSymbol` abstract type from erasure.
+   *  Can be used for pattern matching, instance tests, serialization and likes.
+   */
+  implicit val ModuleSymbolTag: ClassTag[ModuleSymbol]
+
+  /** The type of class symbols representing class and trait definitions */
+  type ClassSymbol >: Null <: TypeSymbol with ClassSymbolApi
+
+  /** A tag that preserves the identity of the `ClassSymbol` abstract type from erasure.
+   *  Can be used for pattern matching, instance tests, serialization and likes.
+   */
+  implicit val ClassSymbolTag: ClassTag[ClassSymbol]
+
+  /** The type of free terms introduced by reification */
+  type FreeTermSymbol >: Null <: TermSymbol with FreeTermSymbolApi
+
+  /** A tag that preserves the identity of the `FreeTermSymbol` abstract type from erasure.
+   *  Can be used for pattern matching, instance tests, serialization and likes.
+   */
+  implicit val FreeTermSymbolTag: ClassTag[FreeTermSymbol]
+
+  /** The type of free types introduced by reification */
+  type FreeTypeSymbol >: Null <: TypeSymbol with FreeTypeSymbolApi
+
+  /** A tag that preserves the identity of the `FreeTypeSymbol` abstract type from erasure.
+   *  Can be used for pattern matching, instance tests, serialization and likes.
+   */
+  implicit val FreeTypeSymbolTag: ClassTag[FreeTypeSymbol]
+
+  /** A special "missing" symbol */
+  val NoSymbol: Symbol
 
   /** The API of symbols */
-  trait SymbolApi extends SymbolBase { this: Symbol =>
+  trait SymbolApi { this: Symbol =>
 
-    /** The position of this symbol
+    /** The owner of this symbol. This is the symbol
+     *  that directly contains the current symbol's definition.
+     *  The `NoSymbol` symbol does not have an owner, and calling this method
+     *  on one causes an internal error.
+     *  The owner of the Scala root class [[scala.reflect.api.Mirror.RootClass]]
+     *  and the Scala root object [[scala.reflect.api.Mirror.RootPackage]] is `NoSymbol`.
+     *  Every other symbol has a chain of owners that ends in
+     *  [[scala.reflect.api.Mirror.RootClass]].
      */
-    def pos: Position
+    def owner: Symbol
+
+    /** The type of the symbol name.
+     *  Can be either `TermName` or `TypeName` depending on whether this is a `TermSymbol` or a `TypeSymbol`.
+     *
+     *  Type name namespaces do not intersect with term name namespaces.
+     *  This fact is reflected in different types for names of `TermSymbol` and `TypeSymbol`.
+     */
+    type NameType >: Null <: Name
+
+    /** The name of the symbol as a member of the `Name` type.
+     */
+    def name: Name
+
+    /** The encoded full path name of this symbol, where outer names and inner names
+     *  are separated by periods.
+     */
+    def fullName: String
+
+    /** Does this symbol represent the definition of a type?
+     *  Note that every symbol is either a term or a type.
+     *  So for every symbol `sym` (except for `NoSymbol`),
+     *  either `sym.isTerm` is true or `sym.isType` is true.
+     */
+    def isType: Boolean = false
+
+    /** This symbol cast to a TypeSymbol.
+     *  @throws ScalaReflectionException if `isType` is false.
+     */
+    def asType: TypeSymbol = throw new ScalaReflectionException(s"$this is not a type")
+
+    /** Does this symbol represent the definition of a term?
+     *  Note that every symbol is either a term or a type.
+     *  So for every symbol `sym` (except for `NoSymbol`),
+     *  either `sym.isTerm` is true or `sym.isTerm` is true.
+     */
+    def isTerm: Boolean = false
+
+    /** This symbol cast to a TermSymbol.
+     *  @throws ScalaReflectionException if `isTerm` is false.
+     */
+    def asTerm: TermSymbol = throw new ScalaReflectionException(s"$this is not a term")
+
+    /** Does this symbol represent the definition of a method?
+     *  If yes, `isTerm` is also guaranteed to be true.
+     */
+    def isMethod: Boolean = false
+
+    /** This symbol cast to a MethodSymbol.
+     *  @throws ScalaReflectionException if `isMethod` is false.
+     */
+    def asMethod: MethodSymbol = {
+      def overloadedMsg =
+        "encapsulates multiple overloaded alternatives and cannot be treated as a method. "+
+        "Consider invoking `<offending symbol>.asTerm.alternatives` and manually picking the required method"
+      def vanillaMsg = "is not a method"
+      val msg = if (isOverloadedMethod) overloadedMsg else vanillaMsg
+      throw new ScalaReflectionException(s"$this $msg")
+    }
+
+    /** Used to provide a better error message for `asMethod` */
+    protected def isOverloadedMethod = false
+
+    /** Does this symbol represent the definition of a module (i.e. it
+     *  results from an object definition?).
+     *  If yes, `isTerm` is also guaranteed to be true.
+     */
+    def isModule: Boolean = false
+
+    /** This symbol cast to a ModuleSymbol defined by an object definition.
+     *  @throws ScalaReflectionException if `isModule` is false.
+     */
+    def asModule: ModuleSymbol = throw new ScalaReflectionException(s"$this is not a module")
+
+    /** Does this symbol represent the definition of a class or trait?
+     *  If yes, `isType` is also guaranteed to be true.
+     */
+    def isClass: Boolean = false
+
+    /** Does this symbol represent the definition of a class implicitly associated
+     *  with an object definition (module class in scala compiler parlance).
+     *  If yes, `isType` is also guaranteed to be true.
+     */
+    def isModuleClass: Boolean = false
+
+    /** This symbol cast to a ClassSymbol representing a class or trait.
+     *  @throws ScalaReflectionException if `isClass` is false.
+     */
+    def asClass: ClassSymbol = throw new ScalaReflectionException(s"$this is not a class")
+
+    /** Does this symbol represent a free term captured by reification?
+     *  If yes, `isTerm` is also guaranteed to be true.
+     */
+    def isFreeTerm: Boolean = false
+
+    /** This symbol cast to a free term symbol.
+     *  @throws ScalaReflectionException if `isFreeTerm` is false.
+     */
+    def asFreeTerm: FreeTermSymbol = throw new ScalaReflectionException(s"$this is not a free term")
+
+    /** Does this symbol represent a free type captured by reification?
+     *  If yes, `isType` is also guaranteed to be true.
+     */
+    def isFreeType: Boolean = false
+
+    /** This symbol cast to a free type symbol.
+     *  @throws ScalaReflectionException if `isFreeType` is false.
+     */
+    def asFreeType: FreeTypeSymbol = throw new ScalaReflectionException(s"$this is not a free type")
+
+    def newTermSymbol(name: TermName, pos: Position = NoPosition, flags: FlagSet = NoFlags): TermSymbol
+    def newModuleAndClassSymbol(name: Name, pos: Position = NoPosition, flags: FlagSet = NoFlags): (ModuleSymbol, ClassSymbol)
+    def newMethodSymbol(name: TermName, pos: Position = NoPosition, flags: FlagSet = NoFlags): MethodSymbol
+    def newTypeSymbol(name: TypeName, pos: Position = NoPosition, flags: FlagSet = NoFlags): TypeSymbol
+    def newClassSymbol(name: TypeName, pos: Position = NoPosition, flags: FlagSet = NoFlags): ClassSymbol
+
+    /** Source file if this symbol is created during this compilation run,
+     *  or a class file if this symbol is loaded from a *.class or *.jar.
+     *
+     *  The return type is [[scala.reflect.io.AbstractFile]], which belongs to an experimental part of Scala reflection.
+     *  It should not be used unless you know what you are doing. In subsequent releases, this API will be refined
+     *  and exposed as a part of scala.reflect.api.
+     */
+    def associatedFile: scala.reflect.io.AbstractFile
 
     /** A list of annotations attached to this Symbol.
      */
-    // [Eugene++] we cannot expose the `annotations` method because it doesn't auto-initialize a symbol (see SI-5423)
-    // there was an idea to use the `isCompilerUniverse` flag and auto-initialize symbols in `annotations` whenever this flag is false
-    // but it doesn't work, because the unpickler (that is shared between reflective universes and global universes) is very picky about initialization
-    // scala.reflect.internal.Types$TypeError: bad reference while unpickling scala.collection.immutable.Nil: type Nothing not found in scala.type not found.
-    //        at scala.reflect.internal.pickling.UnPickler$Scan.toTypeError(UnPickler.scala:836)
-    //        at scala.reflect.internal.pickling.UnPickler$Scan$LazyTypeRef.complete(UnPickler.scala:849)          // auto-initialize goes boom
-    //        at scala.reflect.internal.Symbols$Symbol.info(Symbols.scala:1140)
-    //        at scala.reflect.internal.Symbols$Symbol.initialize(Symbols.scala:1272)                              // this triggers auto-initialize
-    //        at scala.reflect.internal.Symbols$Symbol.annotations(Symbols.scala:1438)                             // unpickler first tries to get pre-existing annotations
-    //        at scala.reflect.internal.Symbols$Symbol.addAnnotation(Symbols.scala:1458)                           // unpickler tries to add the annotation being read
-    //        at scala.reflect.internal.pickling.UnPickler$Scan.readSymbolAnnotation(UnPickler.scala:489)          // unpickler detects an annotation
-    //        at scala.reflect.internal.pickling.UnPickler$Scan.run(UnPickler.scala:88)
-    //        at scala.reflect.internal.pickling.UnPickler.unpickle(UnPickler.scala:37)
-    //        at scala.reflect.runtime.JavaMirrors$JavaMirror.unpickleClass(JavaMirrors.scala:253)                 // unpickle from within a reflexive mirror
-    //    def annotations: List[AnnotationInfo]
-    def getAnnotations: List[AnnotationInfo]
-
-    /** Whether this symbol carries an annotation for which the given
-     *  symbol is its typeSymbol.
-     */
-    def hasAnnotation(sym: Symbol): Boolean
+    def annotations: List[Annotation]
 
     /** For a class: the module or case class factory with the same name in the same package.
      *  For a module: the class with the same name in the same package.
@@ -59,6 +236,9 @@ trait Symbols extends base.Symbols { self: Universe =>
      */
     def typeSignature: Type
 
+    /** Returns all symbols overriden by this symbol. */
+    def allOverriddenSymbols: List[Symbol]
+
     /******************* tests *******************/
 
     /** Does this symbol represent a synthetic (i.e. a compiler-generated) entity?
@@ -66,6 +246,11 @@ trait Symbols extends base.Symbols { self: Universe =>
      *  or mixin constructors in trait implementation classes.
      */
     def isSynthetic: Boolean
+
+    /** Does this symbol represent an implementation artifact that isn't meant for public use?
+     *  Examples of such artifacts are erasure bridges and $outer fields.
+     */
+    def isImplementationArtifact: Boolean
 
     /** Does this symbol represent a local declaration or definition?
      *
@@ -131,18 +316,6 @@ trait Symbols extends base.Symbols { self: Universe =>
      */
     def isErroneous : Boolean
 
-    /** Can this symbol be loaded by a reflective mirror?
-     *
-     *  Scalac relies on `ScalaSignature' annotation to retain symbols across compilation runs.
-     *  Such annotations (also called "pickles") are applied on top-level classes and include information
-     *  about all symbols reachable from the annotee. However, local symbols (e.g. classes or definitions local to a block)
-     *  are typically unreachable and information about them gets lost.
-     *
-     *  This method is useful for macro writers who wish to save certain ASTs to be used at runtime.
-     *  With `isLocatable' it's possible to check whether a tree can be retained as is, or it needs special treatment.
-     */
-    def isLocatable: Boolean
-
     /** Is this symbol static (i.e. with no outer instance)?
      *  Q: When exactly is a sym marked as STATIC?
      *  A: If it's a member of a toplevel object, or of an object contained in a toplevel object, or any number of levels deep.
@@ -174,6 +347,14 @@ trait Symbols extends base.Symbols { self: Universe =>
      */
     def isSpecialized: Boolean
 
+    /** Is this symbol defined by Java?
+     */
+    def isJava: Boolean
+
+    /** Does this symbol represent an implicit value, definition, class or parameter?
+     */
+    def isImplicit: Boolean
+
     /******************* helpers *******************/
 
     /** ...
@@ -192,24 +373,27 @@ trait Symbols extends base.Symbols { self: Universe =>
     /** ...
      */
     def suchThat(cond: Symbol => Boolean): Symbol
-
-    /** The string discriminator of this symbol; useful for debugging */
-    def kind: String
   }
 
   /** The API of term symbols */
-  trait TermSymbolApi extends SymbolApi with TermSymbolBase { this: TermSymbol =>
-    /** Does this symbol represent a value, i.e. not a module and not a method?
-     *  [Eugene++] I need a review of the implementation
+  trait TermSymbolApi extends SymbolApi { this: TermSymbol =>
+    /** Term symbols have their names of type `TermName`.
      */
-    def isValue: Boolean
+    final type NameType = TermName
+
+    final override def isTerm = true
+    final override def asTerm = this
+
+    /** Is this symbol introduced as `val`?
+     */
+    def isVal: Boolean
 
     /** Does this symbol denote a stable value? */
     def isStable: Boolean
 
-    /** Does this symbol represent a mutable value?
+    /** Is this symbol introduced as `var`?
      */
-    def isVariable: Boolean
+    def isVar: Boolean
 
     /** Does this symbol represent a getter or a setter?
      */
@@ -229,10 +413,6 @@ trait Symbols extends base.Symbols { self: Universe =>
      *  If yes, `isMethod` is false, and the list of the enclosed alternatives can be found out via `alternatives`.
      */
     def isOverloaded   : Boolean
-
-    /** Does this symbol represent an implicit value, definition or parameter?
-     */
-    def isImplicit: Boolean
 
     /** Does this symbol represent a lazy value?
      */
@@ -277,7 +457,41 @@ trait Symbols extends base.Symbols { self: Universe =>
   }
 
   /** The API of type symbols */
-  trait TypeSymbolApi extends SymbolApi with TypeSymbolBase { this: TypeSymbol =>
+  trait TypeSymbolApi extends SymbolApi { this: TypeSymbol =>
+    /** Type symbols have their names of type `TypeName`.
+     */
+    final type NameType = TypeName
+
+    /** The type constructor corresponding to this type symbol.
+     *  This is different from `toType` in that type parameters
+     *  are part of results of `toType`, but not of `toTypeConstructor`.
+     *
+     *  Example: Given a class declaration `class C[T] { ... } `, that generates a symbol
+     *  `C`. Then `C.toType` is the type `C[T]`, but `C.toTypeConstructor` is `C`.
+     */
+    def toTypeConstructor: Type
+
+    /** A type reference that refers to this type symbol seen
+     *  as a member of given type `site`.
+     */
+    def toTypeIn(site: Type): Type
+
+    /**  A type reference that refers to this type symbol
+      *  Note if symbol is a member of a class, one almost always is interested
+      *  in `asTypeIn` with a site type instead.
+      *
+      *  Example: Given a class declaration `class C[T] { ... } `, that generates a symbol
+      *  `C`. Then `C.toType` is the type `C[T]`.
+      *
+      *  By contrast, `C.typeSignature` would be a type signature of form
+      *  `PolyType(ClassInfoType(...))` that describes type parameters, value
+      *  parameters, parent types, and members of `C`.
+      */
+    def toType: Type
+
+    final override def isType = true
+    final override def asType = this
+
     /** Is the type parameter represented by this symbol contravariant?
      */
     def isContravariant : Boolean
@@ -308,7 +522,10 @@ trait Symbols extends base.Symbols { self: Universe =>
   }
 
   /** The API of method symbols */
-  trait MethodSymbolApi extends TermSymbolApi with MethodSymbolBase { this: MethodSymbol =>
+  trait MethodSymbolApi extends TermSymbolApi { this: MethodSymbol =>
+    final override def isMethod = true
+    final override def asMethod = this
+
     /** Does this method represent a constructor?
      *
      *  If `owner` is a class, then this is a vanilla JVM constructor.
@@ -316,16 +533,20 @@ trait Symbols extends base.Symbols { self: Universe =>
      */
     def isConstructor: Boolean
 
+    /** Does this symbol denote the primary constructor of its enclosing class? */
+    def isPrimaryConstructor: Boolean
+
     /** For a polymorphic method, its type parameters, the empty list for all other methods */
     def typeParams: List[Symbol]
 
     /** All parameter lists of the method.
+     *  The name ending with "ss" indicates that the result type is a list of lists.
      *
      *  Can be used to distinguish nullary methods and methods with empty parameter lists.
      *  For a nullary method, returns the empty list (i.e. `List()`).
      *  For a method with an empty parameter list, returns a list that contains the empty list (i.e. `List(List())`).
      */
-    def params: List[List[Symbol]]
+    def paramss: List[List[Symbol]]
 
     /** Does this method support variable length argument lists?
      */
@@ -336,11 +557,23 @@ trait Symbols extends base.Symbols { self: Universe =>
   }
 
   /** The API of module symbols */
-  trait ModuleSymbolApi extends TermSymbolApi with ModuleSymbolBase { this: ModuleSymbol =>
+  trait ModuleSymbolApi extends TermSymbolApi { this: ModuleSymbol =>
+    /** The class implicitly associated with the object definition.
+     *  One can go back from a module class to the associated module symbol
+     *  by inspecting its `selfType.termSymbol`.
+     */
+    def moduleClass: Symbol // needed for tree traversals
+    // when this becomes `moduleClass: ClassSymbol`, it will be the happiest day in my life
+
+    final override def isModule = true
+    final override def asModule = this
   }
 
   /** The API of class symbols */
-  trait ClassSymbolApi extends TypeSymbolApi with ClassSymbolBase { this: ClassSymbol =>
+  trait ClassSymbolApi extends TypeSymbolApi { this: ClassSymbol =>
+    final override def isClass = true
+    final override def asClass = this
+
     /** Does this symbol represent the definition of a primitive class?
      *  Namely, is it one of [[scala.Double]], [[scala.Float]], [[scala.Long]], [[scala.Int]], [[scala.Char]],
      *  [[scala.Short]], [[scala.Byte]], [[scala.Unit]] or [[scala.Boolean]]?
@@ -374,6 +607,22 @@ trait Symbols extends base.Symbols { self: Universe =>
      */
     def isSealed: Boolean
 
+    /** If this is a sealed class, its known direct subclasses.
+     *  Otherwise, the empty set.
+     */
+    def knownDirectSubclasses: Set[Symbol]
+
+    /** The list of all base classes of this type (including its own typeSymbol)
+     *  in reverse linearization order, starting with the class itself and ending
+     *  in class Any.
+     */
+    def baseClasses: List[Symbol]
+
+    /** The module corresponding to this module class,
+     *  or NoSymbol if this symbol is not a module class.
+     */
+    def module: Symbol
+
     /** If this symbol is a class or trait, its self type, otherwise the type
      *  of the symbol itself.
      */
@@ -387,7 +636,10 @@ trait Symbols extends base.Symbols { self: Universe =>
   }
 
   /** The API of free term symbols */
-  trait FreeTermSymbolApi extends TermSymbolApi with FreeTermSymbolBase { this: FreeTermSymbol =>
+  trait FreeTermSymbolApi extends TermSymbolApi { this: FreeTermSymbol =>
+    final override def isFreeTerm = true
+    final override def asFreeTerm = this
+
     /** The place where this symbol has been spawned */
     def origin: String
 
@@ -396,7 +648,10 @@ trait Symbols extends base.Symbols { self: Universe =>
   }
 
   /** The API of free term symbols */
-  trait FreeTypeSymbolApi extends TypeSymbolApi with FreeTypeSymbolBase { this: FreeTypeSymbol =>
+  trait FreeTypeSymbolApi extends TypeSymbolApi { this: FreeTypeSymbol =>
+    final override def isFreeType = true
+    final override def asFreeType = this
+
     /** The place where this symbol has been spawned */
     def origin: String
   }

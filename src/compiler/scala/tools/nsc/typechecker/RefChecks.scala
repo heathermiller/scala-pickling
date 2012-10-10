@@ -7,10 +7,10 @@ package scala.tools.nsc
 package typechecker
 
 import symtab.Flags._
-import collection.{ mutable, immutable }
+import scala.collection.{ mutable, immutable }
 import transform.InfoTransform
 import scala.collection.mutable.ListBuffer
-import language.postfixOps
+import scala.language.postfixOps
 
 /** <p>
  *    Post-attribution checking and transformation.
@@ -38,7 +38,7 @@ import language.postfixOps
  *
  *  @todo    Check whether we always check type parameter bounds.
  */
-abstract class RefChecks extends InfoTransform with reflect.internal.transform.RefChecks {
+abstract class RefChecks extends InfoTransform with scala.reflect.internal.transform.RefChecks {
 
   val global: Global               // need to repeat here because otherwise last mixin defines global as
                                    // SymbolTable. If we had DOT this would not be an issue
@@ -60,23 +60,8 @@ abstract class RefChecks extends InfoTransform with reflect.internal.transform.R
     super.transformInfo(sym, tp)
   }
 
-  val toJavaRepeatedParam = new TypeMap {
-    def apply(tp: Type) = tp match {
-      case TypeRef(pre, RepeatedParamClass, args) =>
-        typeRef(pre, JavaRepeatedParamClass, args)
-      case _ =>
-        mapOver(tp)
-    }
-  }
-
-  val toScalaRepeatedParam = new TypeMap {
-    def apply(tp: Type): Type = tp match {
-      case TypeRef(pre, JavaRepeatedParamClass, args) =>
-        typeRef(pre, RepeatedParamClass, args)
-      case _ =>
-        mapOver(tp)
-    }
-  }
+  val toJavaRepeatedParam  = new SubstSymMap(RepeatedParamClass -> JavaRepeatedParamClass)
+  val toScalaRepeatedParam = new SubstSymMap(JavaRepeatedParamClass -> RepeatedParamClass)
 
   def accessFlagsToString(sym: Symbol) = flagsToString(
     sym getFlag (PRIVATE | PROTECTED),
@@ -124,7 +109,11 @@ abstract class RefChecks extends InfoTransform with reflect.internal.transform.R
 
       defaultMethodNames.toList.distinct foreach { name =>
         val methods      = clazz.info.findMember(name, 0L, METHOD, false).alternatives
-        val haveDefaults = methods filter (sym => sym.hasParamWhich(_.hasDefault) && !nme.isProtectedAccessorName(sym.name))
+        def hasDefaultParam(tpe: Type): Boolean = tpe match {
+          case MethodType(params, restpe) => (params exists (_.hasDefault)) || hasDefaultParam(restpe)
+          case _ => false
+        }
+        val haveDefaults = methods filter (sym => hasDefaultParam(sym.info) && !nme.isProtectedAccessorName(sym.name))
 
         if (haveDefaults.lengthCompare(1) > 0) {
           val owners = haveDefaults map (_.owner)
@@ -152,27 +141,22 @@ abstract class RefChecks extends InfoTransform with reflect.internal.transform.R
 
 // Override checking ------------------------------------------------------------
 
-    def isJavaVarargsAncestor(clazz: Symbol) = (
-         clazz.isClass
-      && clazz.isJavaDefined
-      && (clazz.info.nonPrivateDecls exists isJavaVarArgsMethod)
-    )
-
     /** Add bridges for vararg methods that extend Java vararg methods
      */
     def addVarargBridges(clazz: Symbol): List[Tree] = {
       // This is quite expensive, so attempt to skip it completely.
       // Insist there at least be a java-defined ancestor which
       // defines a varargs method. TODO: Find a cheaper way to exclude.
-      if (clazz.thisType.baseClasses exists isJavaVarargsAncestor) {
+      if (inheritsJavaVarArgsMethod(clazz)) {
         log("Found java varargs ancestor in " + clazz.fullLocationString + ".")
         val self = clazz.thisType
         val bridges = new ListBuffer[Tree]
 
         def varargBridge(member: Symbol, bridgetpe: Type): Tree = {
-          log("Generating varargs bridge for " + member.fullLocationString + " of type " + bridgetpe)
+          log(s"Generating varargs bridge for ${member.fullLocationString} of type $bridgetpe")
 
-          val bridge = member.cloneSymbolImpl(clazz, member.flags | VBRIDGE | HIDDEN) setPos clazz.pos
+          val newFlags = (member.flags | VBRIDGE | ARTIFACT) & ~PRIVATE
+          val bridge   = member.cloneSymbolImpl(clazz, newFlags) setPos clazz.pos
           bridge.setInfo(bridgetpe.cloneInfo(bridge))
           clazz.info.decls enter bridge
 
@@ -185,25 +169,34 @@ abstract class RefChecks extends InfoTransform with reflect.internal.transform.R
           localTyper typed DefDef(bridge, body)
         }
 
-        // For all concrete non-private members that have a (Scala) repeated parameter:
-        //   compute the corresponding method type `jtpe` with a Java repeated parameter
+        // For all concrete non-private members (but: see below) that have a (Scala) repeated
+        //   parameter: compute the corresponding method type `jtpe` with a Java repeated parameter
         //   if a method with type `jtpe` exists and that method is not a varargs bridge
         //   then create a varargs bridge of type `jtpe` that forwards to the
         //   member method with the Scala vararg type.
-        for (member <- clazz.info.nonPrivateMembers) {
+        //
+        // @PP: Can't call nonPrivateMembers because we will miss refinement members,
+        //   which have been marked private. See SI-4729.
+        for (member <- nonTrivialMembers(clazz)) {
+          log(s"Considering $member for java varargs bridge in $clazz")
           if (!member.isDeferred && member.isMethod && hasRepeatedParam(member.info)) {
             val inherited = clazz.info.nonPrivateMemberAdmitting(member.name, VBRIDGE)
+
             // Delaying calling memberType as long as possible
             if (inherited ne NoSymbol) {
-              val jtpe = toJavaRepeatedParam(self.memberType(member))
+              val jtpe = toJavaRepeatedParam(self memberType member)
               // this is a bit tortuous: we look for non-private members or bridges
               // if we find a bridge everything is OK. If we find another member,
               // we need to create a bridge
-              if (inherited filter (sym => (self.memberType(sym) matches jtpe) && !(sym hasFlag VBRIDGE)) exists)
+              val inherited1 = inherited filter (sym => !(sym hasFlag VBRIDGE) && (self memberType sym matches jtpe))
+              if (inherited1.exists)
                 bridges += varargBridge(member, jtpe)
             }
           }
         }
+
+        if (bridges.size > 0)
+          log(s"Adding ${bridges.size} bridges for methods extending java varargs.")
 
         bridges.toList
       }
@@ -426,6 +419,7 @@ abstract class RefChecks extends InfoTransform with reflect.internal.transform.R
             overrideError("cannot override a macro")
           } else {
             checkOverrideTypes()
+            checkOverrideDeprecated()
             if (settings.warnNullaryOverride.value) {
               if (other.paramss.isEmpty && !member.paramss.isEmpty) {
                 unit.warning(member.pos, "non-nullary method overrides nullary method")
@@ -502,6 +496,14 @@ abstract class RefChecks extends InfoTransform with reflect.internal.transform.R
                 case _ =>
               }
             }
+          }
+        }
+
+        def checkOverrideDeprecated() {
+          if (other.hasDeprecatedOverridingAnnotation) {
+            val suffix = other.deprecatedOverridingMessage map (": " + _) getOrElse ""
+            val msg = s"overriding ${other.fullLocationString} is deprecated$suffix"
+            unit.deprecationWarning(member.pos, msg)
           }
         }
       }
@@ -892,13 +894,14 @@ abstract class RefChecks extends InfoTransform with reflect.internal.transform.R
          *  the type occurs itself at variance position given by `variance`
          */
         def validateVariance(tp: Type, variance: Int): Unit = tp match {
-          case ErrorType => ;
-          case WildcardType => ;
-          case NoType => ;
-          case NoPrefix => ;
-          case ThisType(_) => ;
-          case ConstantType(_) => ;
-          // case DeBruijnIndex(_, _) => ;
+          case ErrorType =>
+          case WildcardType =>
+          case BoundedWildcardType(bounds) =>
+            validateVariance(bounds, variance)
+          case NoType =>
+          case NoPrefix =>
+          case ThisType(_) =>
+          case ConstantType(_) =>
           case SingleType(pre, sym) =>
             validateVariance(pre, variance)
           case TypeRef(pre, sym, args) =>
@@ -937,9 +940,9 @@ abstract class RefChecks extends InfoTransform with reflect.internal.transform.R
           case TypeBounds(lo, hi) =>
             validateVariance(lo, -variance)
             validateVariance(hi, variance)
-          case MethodType(formals, result) =>
+          case mt @ MethodType(formals, result) =>
             if (inRefinement)
-              validateVariances(formals map (_.tpe), -variance)
+              validateVariances(mt.paramTypes, -variance)
             validateVariance(result, variance)
           case NullaryMethodType(result) =>
             validateVariance(result, variance)
@@ -1011,15 +1014,18 @@ abstract class RefChecks extends InfoTransform with reflect.internal.transform.R
     private def enterSyms(stats: List[Tree]) {
       var index = -1
       for (stat <- stats) {
-        index = index + 1;
+        index = index + 1
+        def enterSym(sym: Symbol) = if (sym.isLocal) {
+          currentLevel.scope.enter(sym)
+          symIndex(sym) = index
+        }
+
         stat match {
+          case DefDef(_, _, _, _, _, _) if stat.symbol.isLazy                 =>
+            enterSym(stat.symbol)
           case ClassDef(_, _, _, _) | DefDef(_, _, _, _, _, _) | ModuleDef(_, _, _) | ValDef(_, _, _, _) =>
             //assert(stat.symbol != NoSymbol, stat);//debug
-            val sym = stat.symbol.lazyAccessorOrSelf
-            if (sym.isLocal) {
-              currentLevel.scope.enter(sym)
-              symIndex(sym) = index;
-            }
+            enterSym(stat.symbol.lazyAccessorOrSelf)
           case _ =>
         }
       }
@@ -1193,6 +1199,23 @@ abstract class RefChecks extends InfoTransform with reflect.internal.transform.R
       case _ =>
     }
 
+    // SI-6276 warn for `def foo = foo` or `val bar: X = bar`, which come up more frequently than you might think.
+    def checkInfiniteLoop(valOrDef: ValOrDefDef) {
+      def callsSelf = valOrDef.rhs match {
+        case t @ (Ident(_) | Select(This(_), _)) =>
+          t hasSymbolWhich (_.accessedOrSelf == valOrDef.symbol)
+        case _ => false
+      }
+      val trivialInifiniteLoop = (
+        !valOrDef.isErroneous
+     && !valOrDef.symbol.isValueParameter
+     && valOrDef.symbol.paramss.isEmpty
+     && callsSelf
+      )
+      if (trivialInifiniteLoop)
+        unit.warning(valOrDef.rhs.pos, s"${valOrDef.symbol.fullLocationString} does nothing other than call itself recursively")
+    }
+
 // Transformation ------------------------------------------------------------
 
     /* Convert a reference to a case factory of type `tpe` to a new of the class it produces. */
@@ -1267,60 +1290,30 @@ abstract class RefChecks extends InfoTransform with reflect.internal.transform.R
       })
     }
 
-    /** Implements lazy value accessors:
-     *    - for lazy values of type Unit and all lazy fields inside traits,
-     *      the rhs is the initializer itself
-     *    - for all other lazy values z the accessor is a block of this form:
-     *      { z = <rhs>; z } where z can be an identifier or a field.
-     */
-    private def makeLazyAccessor(tree: Tree, rhs: Tree): List[Tree] = {
-      val vsym        = tree.symbol
-      assert(vsym.isTerm, vsym)
-      val hasUnitType = vsym.tpe.typeSymbol == UnitClass
-      val lazySym     = vsym.lazyAccessor
-      assert(lazySym != NoSymbol, vsym)
-
-      // for traits, this is further transformed in mixins
-      val body = (
-        if (tree.symbol.owner.isTrait || hasUnitType) rhs
-        else gen.mkAssignAndReturn(vsym, rhs)
-      )
-      val lazyDef = atPos(tree.pos)(DefDef(lazySym, body.changeOwner(vsym -> lazySym)))
-      debuglog("Created lazy accessor: " + lazyDef)
-
-      if (hasUnitType) List(typed(lazyDef))
-      else List(
-        typed(ValDef(vsym)),
-        exitingRefchecks(typed(lazyDef))
-      )
-    }
-
     def transformStat(tree: Tree, index: Int): List[Tree] = tree match {
       case t if treeInfo.isSelfConstrCall(t) =>
         assert(index == 0, index)
-        val t = transform(tree)
-        if (currentLevel.maxindex > 0) {
+        try transform(tree) :: Nil
+        finally if (currentLevel.maxindex > 0) {
           // An implementation restriction to avoid VerifyErrors and lazyvals mishaps; see SI-4717
           debuglog("refsym = " + currentLevel.refsym)
           unit.error(currentLevel.refpos, "forward reference not allowed from self constructor invocation")
         }
-        List(t)
       case ModuleDef(_, _, _) => eliminateModuleDefs(tree)
       case ValDef(_, _, _, _) =>
         val tree1 @ ValDef(_, _, _, rhs) = transform(tree) // important to do before forward reference check
-        if (tree.symbol.isLazy)
-          makeLazyAccessor(tree, rhs)
+        if (tree1.symbol.isLazy) tree1 :: Nil
         else {
           val lazySym = tree.symbol.lazyAccessorOrSelf
           if (lazySym.isLocal && index <= currentLevel.maxindex) {
             debuglog("refsym = " + currentLevel.refsym)
             unit.error(currentLevel.refpos, "forward reference extends over definition of " + lazySym)
           }
-          List(tree1)
+          tree1 :: Nil
         }
       case Import(_, _)                                                                       => Nil
       case DefDef(mods, _, _, _, _, _) if (mods hasFlag MACRO) || (tree.symbol hasFlag MACRO) => Nil
-      case _                                                                                  => List(transform(tree))
+      case _                                                                                  => transform(tree) :: Nil
     }
 
     /* Check whether argument types conform to bounds of type parameters */
@@ -1452,8 +1445,11 @@ abstract class RefChecks extends InfoTransform with reflect.internal.transform.R
     }
     private def isRepeatedParamArg(tree: Tree) = currentApplication match {
       case Apply(fn, args) =>
-        !args.isEmpty && (args.last eq tree) &&
-        fn.tpe.params.length == args.length && isRepeatedParamType(fn.tpe.params.last.tpe)
+        (    args.nonEmpty
+          && (args.last eq tree)
+          && (fn.tpe.params.length == args.length)
+          && isRepeatedParamType(fn.tpe.params.last.tpe)
+        )
       case _ =>
         false
     }
@@ -1602,12 +1598,14 @@ abstract class RefChecks extends InfoTransform with reflect.internal.transform.R
       case NullaryMethodType(restpe) if restpe.typeSymbol == UnitClass =>
         // this may be the implementation of e.g. a generic method being parameterized
         // on Unit, in which case we had better let it slide.
-        if (sym.isGetter || sym.allOverriddenSymbols.exists(over => !(over.tpe.resultType =:= sym.tpe.resultType))) ()
-        else unit.warning(sym.pos,
-          "side-effecting nullary methods are discouraged: suggest defining as `def %s()` instead".format(
-           sym.name.decode)
+        val isOk = (
+             sym.isGetter
+          || sym.allOverriddenSymbols.exists(over => !(over.tpe.resultType =:= sym.tpe.resultType))
+          || (sym.name containsName nme.DEFAULT_GETTER_STRING)
         )
-        case _ => ()
+        if (!isOk)
+          unit.warning(sym.pos, s"side-effecting nullary methods are discouraged: suggest defining as `def ${sym.name.decode}()` instead")
+      case _ => ()
     }
 
     // Verify classes extending AnyVal meet the requirements
@@ -1615,6 +1613,8 @@ abstract class RefChecks extends InfoTransform with reflect.internal.transform.R
       if ((clazz isSubClass AnyValClass) && !isPrimitiveValueClass(clazz)) {
         if (clazz.isTrait)
           unit.error(clazz.pos, "Only classes (not traits) are allowed to extend AnyVal")
+        else if ((clazz != AnyValClass) && clazz.hasFlag(ABSTRACT))
+          unit.error(clazz.pos, "`abstract' modifier cannot be used with value classes")
       }
     }
 
@@ -1635,6 +1635,7 @@ abstract class RefChecks extends InfoTransform with reflect.internal.transform.R
 
           case ValDef(_, _, _, _) | DefDef(_, _, _, _, _, _) =>
             checkDeprecatedOvers(tree)
+            checkInfiniteLoop(tree.asInstanceOf[ValOrDefDef])
             if (settings.warnNullaryUnit.value)
               checkNullaryMethodReturnType(sym)
             if (settings.warnInaccessible.value) {

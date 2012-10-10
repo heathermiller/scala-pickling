@@ -8,15 +8,11 @@
 
 package scala.concurrent.impl
 
-
-
-import java.util.concurrent.TimeUnit.NANOSECONDS
 import scala.concurrent.{ ExecutionContext, CanAwait, OnCompleteRunnable, TimeoutException, ExecutionException }
-import scala.concurrent.util.Duration
+import scala.concurrent.duration.{ Duration, Deadline, FiniteDuration, NANOSECONDS }
 import scala.annotation.tailrec
 import scala.util.control.NonFatal
 import scala.util.{ Try, Success, Failure }
-
 
 private[concurrent] trait Promise[T] extends scala.concurrent.Promise[T] with scala.concurrent.Future[T] {
   def future: this.type = this
@@ -48,7 +44,7 @@ private[concurrent] object Promise {
     case Failure(t) => resolver(t)
     case _          => source
   }
-  
+
   private def resolver[T](throwable: Throwable): Try[T] = throwable match {
     case t: scala.runtime.NonLocalReturnControl[_] => Success(t.value.asInstanceOf[T])
     case t: scala.util.control.ControlThrowable    => Failure(new ExecutionException("Boxed ControlThrowable", t))
@@ -56,38 +52,48 @@ private[concurrent] object Promise {
     case e: Error                                  => Failure(new ExecutionException("Boxed Error", e))
     case t                                         => Failure(t)
   }
-  
+
   /** Default promise implementation.
    */
   class DefaultPromise[T] extends AbstractPromise with Promise[T] { self =>
     updateState(null, Nil) // Start at "No callbacks"
-    
+
     protected final def tryAwait(atMost: Duration): Boolean = {
       @tailrec
-      def awaitUnsafe(waitTimeNanos: Long): Boolean = {
-        if (value.isEmpty && waitTimeNanos > 0) {
-          val ms = NANOSECONDS.toMillis(waitTimeNanos)
-          val ns = (waitTimeNanos % 1000000l).toInt // as per object.wait spec
-          val start = System.nanoTime()
-          try {
-            synchronized {
-              if (!isCompleted) wait(ms, ns) // previously - this was a `while`, ending up in an infinite loop
-            }
-          } catch {
-            case e: InterruptedException =>
-          }
+      def awaitUnsafe(deadline: Deadline, nextWait: FiniteDuration): Boolean = {
+        if (!isCompleted && nextWait > Duration.Zero) {
+          val ms = nextWait.toMillis
+          val ns = (nextWait.toNanos % 1000000l).toInt // as per object.wait spec
 
-          awaitUnsafe(waitTimeNanos - (System.nanoTime() - start))
+          synchronized { if (!isCompleted) wait(ms, ns) }
+
+          awaitUnsafe(deadline, deadline.timeLeft)
         } else
           isCompleted
       }
-      awaitUnsafe(if (atMost.isFinite) atMost.toNanos else Long.MaxValue)
+      @tailrec
+      def awaitUnbounded(): Boolean = {
+        if (isCompleted) true
+        else {
+          synchronized { if (!isCompleted) wait() }
+          awaitUnbounded()
+        }
+      }
+
+      import Duration.Undefined
+      atMost match {
+        case u if u eq Undefined => throw new IllegalArgumentException("cannot wait for Undefined period")
+        case Duration.Inf        => awaitUnbounded
+        case Duration.MinusInf   => isCompleted
+        case f: FiniteDuration   => if (f > Duration.Zero) awaitUnsafe(f.fromNow, f) else isCompleted
+      }
     }
 
     @throws(classOf[TimeoutException])
+    @throws(classOf[InterruptedException])
     def ready(atMost: Duration)(implicit permit: CanAwait): this.type =
       if (isCompleted || tryAwait(atMost)) this
-      else throw new TimeoutException("Futures timed out after [" + atMost.toMillis + "] milliseconds")
+      else throw new TimeoutException("Futures timed out after [" + atMost + "]")
 
     @throws(classOf[Exception])
     def result(atMost: Duration)(implicit permit: CanAwait): T =
@@ -101,7 +107,7 @@ private[concurrent] object Promise {
       case _ => None
     }
 
-    override def isCompleted(): Boolean = getState match { // Cheaper than boxing result into Option due to "def value"
+    override def isCompleted: Boolean = getState match { // Cheaper than boxing result into Option due to "def value"
       case _: Try[_] => true
       case _ => false
     }
@@ -150,7 +156,7 @@ private[concurrent] object Promise {
 
     val value = Some(resolveTry(suppliedValue))
 
-    override def isCompleted(): Boolean = true
+    override def isCompleted: Boolean = true
 
     def tryComplete(value: Try[T]): Boolean = false
 

@@ -11,7 +11,7 @@ package scala.collection
 import scala.reflect.ClassTag
 import scala.collection.generic.CanBuildFrom
 import scala.annotation.unchecked.{ uncheckedVariance => uV }
-import language.higherKinds
+import scala.language.higherKinds
 
 /** A template trait for all traversable-once objects which may be
  *  traversed in parallel.
@@ -261,11 +261,12 @@ trait GenTraversableOnce[+A] extends Any {
    *  @tparam B        the type of accumulated results
    *  @param z         the initial value for the accumulated result of the partition - this
    *                   will typically be the neutral element for the `seqop` operator (e.g.
-   *                   `Nil` for list concatenation or `0` for summation)
+   *                   `Nil` for list concatenation or `0` for summation) and may be evaluated
+   *                   more than once
    *  @param seqop     an operator used to accumulate results within a partition
    *  @param combop    an associative operator used to combine results from different partitions
    */
-  def aggregate[B](z: B)(seqop: (B, A) => B, combop: (B, B) => B): B
+  def aggregate[B](z: =>B)(seqop: (B, A) => B, combop: (B, B) => B): B
 
   /** Applies a binary operator to all elements of this $coll, going right to left.
    *  $willNotTerminateInf
@@ -507,7 +508,7 @@ trait GenTraversableOnce[+A] extends Any {
    *  $willNotTerminateInf
    *  @return a buffer containing all elements of this $coll.
    */
-  def toBuffer[A1 >: A]: collection.mutable.Buffer[A1]
+  def toBuffer[A1 >: A]: scala.collection.mutable.Buffer[A1]
 
   /** Converts this $coll to an unspecified Traversable.  Will return
    *  the same collection if this instance is already Traversable.
@@ -565,7 +566,7 @@ trait GenTraversableOnce[+A] extends Any {
   /** Converts this $coll into another by copying all elements.
    *  @tparam Col  The collection type to build.
    *  @return a new collection containing all elements of this $coll.
-   *  
+   *
    *  @usecase def to[Col[_]]: Col[A]
    *    @inheritdoc
    *    $willNotTerminateInf

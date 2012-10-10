@@ -6,13 +6,14 @@
 **                          |/                                          **
 \*                                                                      */
 
-package scala.collection
+package scala
+package collection
 
 import mutable.{ ListBuffer, ArraySeq }
 import immutable.{ List, Range }
 import generic._
 import parallel.ParSeq
-import scala.math.Ordering
+import scala.math.{ min, max, Ordering }
 
 /** A template trait for sequences of type `Seq[A]`
  *  $seqInfo
@@ -91,6 +92,8 @@ trait SeqLike[+A, +Repr] extends Any with IterableLike[A, Repr] with GenSeqLike[
     }
     i - len
   }
+
+  override /*IterableLike*/ def isEmpty: Boolean = lengthCompare(0) == 0
 
   /** The size of this $coll, equivalent to `length`.
    *
@@ -732,8 +735,8 @@ object SeqLike {
    */
   private def kmpSearch[B](S: Seq[B], m0: Int, m1: Int, W: Seq[B], n0: Int, n1: Int, forward: Boolean): Int = {
     // Check for redundant case when target has single valid element
-    @inline def clipR(x: Int, y: Int) = if (x<y) x else -1
-    @inline def clipL(x: Int, y: Int) = if (x>y) x else -1
+    def clipR(x: Int, y: Int) = if (x < y) x else -1
+    def clipL(x: Int, y: Int) = if (x > y) x else -1
 
     if (n1 == n0+1) {
       if (forward)

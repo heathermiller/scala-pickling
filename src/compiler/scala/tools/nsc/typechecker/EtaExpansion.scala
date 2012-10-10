@@ -47,7 +47,7 @@ trait EtaExpansion { self: Analyzer =>
    *    tree is already attributed
    *  </p>
    */
-  def etaExpand(unit : CompilationUnit, tree: Tree): Tree = {
+  def etaExpand(unit : CompilationUnit, tree: Tree, typer: Typer): Tree = {
     val tpe = tree.tpe
     var cnt = 0 // for NoPosition
     def freshName() = {
@@ -69,7 +69,11 @@ trait EtaExpansion { self: Analyzer =>
           val vname: Name = freshName()
           // Problem with ticket #2351 here
           defs += atPos(tree.pos) {
-            val rhs = if (byName) Function(List(), tree) else tree
+            val rhs = if (byName) {
+              val res = typer.typed(Function(List(), tree))
+              new ChangeOwnerTraverser(typer.context.owner, res.symbol) traverse tree // SI-6274
+              res
+            } else tree
             ValDef(Modifiers(SYNTHETIC), vname.toTermName, TypeTree(), rhs)
           }
           atPos(tree.pos.focus) {
@@ -114,7 +118,7 @@ trait EtaExpansion { self: Analyzer =>
             val origTpe = sym.tpe
             val isRepeated = definitions.isRepeatedParamType(origTpe)
             // SI-4176 Don't leak A* in eta-expanded function types. See t4176b.scala
-            val droppedStarTpe = if (settings.etaExpandKeepsStar.value) origTpe else dropRepeatedParamType(origTpe)
+            val droppedStarTpe = if (settings.etaExpandKeepsStar.value) origTpe else dropIllegalStarTypes(origTpe)
             val valDef = ValDef(Modifiers(SYNTHETIC | PARAM), sym.name.toTermName, TypeTree(droppedStarTpe), EmptyTree)
             (valDef, isRepeated)
         }

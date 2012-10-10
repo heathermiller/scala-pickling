@@ -9,12 +9,12 @@ package ast
 import scala.collection.mutable.ListBuffer
 import symtab.Flags._
 import symtab.SymbolTable
-import language.postfixOps
+import scala.language.postfixOps
 
 /** XXX to resolve: TreeGen only assumes global is a SymbolTable, but
  *  TreeDSL at the moment expects a Global.  Can we get by with SymbolTable?
  */
-abstract class TreeGen extends reflect.internal.TreeGen with TreeDSL {
+abstract class TreeGen extends scala.reflect.internal.TreeGen with TreeDSL {
   val global: Global
 
   import global._
@@ -22,7 +22,7 @@ abstract class TreeGen extends reflect.internal.TreeGen with TreeDSL {
 
   def mkCheckInit(tree: Tree): Tree = {
     val tpe =
-      if (tree.tpe != null || !tree.hasSymbol) tree.tpe
+      if (tree.tpe != null || !tree.hasSymbolField) tree.tpe
       else tree.symbol.tpe
 
     if (!global.phase.erasedTypes && settings.warnSelectNullable.value &&
@@ -44,7 +44,7 @@ abstract class TreeGen extends reflect.internal.TreeGen with TreeDSL {
           setInfo analyzer.ImportType(qual)
     )
     val importTree = (
-      Import(qual, List(ImportSelector(nme.WILDCARD, -1, null, -1)))
+      Import(qual, ImportSelector.wildList)
         setSymbol importSym
           setType NoType
     )
@@ -52,13 +52,16 @@ abstract class TreeGen extends reflect.internal.TreeGen with TreeDSL {
   }
 
   // wrap the given expression in a SoftReference so it can be gc-ed
-  def mkSoftRef(expr: Tree): Tree = atPos(expr.pos)(New(SoftReferenceClass.tpe, expr))
+  def mkSoftRef(expr: Tree): Tree = atPos(expr.pos) {
+    val constructor = SoftReferenceClass.info.nonPrivateMember(nme.CONSTRUCTOR).suchThat(_.paramss.flatten.size == 1)
+    NewFromConstructor(constructor, expr)
+  }
 
   // annotate the expression with @unchecked
   def mkUnchecked(expr: Tree): Tree = atPos(expr.pos) {
     // This can't be "Annotated(New(UncheckedClass), expr)" because annotations
     // are very picky about things and it crashes the compiler with "unexpected new".
-    Annotated(New(scalaDot(UncheckedClass.name), List(Nil)), expr)
+    Annotated(New(scalaDot(UncheckedClass.name), ListOfNil), expr)
   }
   // if it's a Match, mark the selector unchecked; otherwise nothing.
   def mkUncheckedMatch(tree: Tree) = tree match {
@@ -206,7 +209,7 @@ abstract class TreeGen extends reflect.internal.TreeGen with TreeDSL {
       else AppliedTypeTree(Ident(clazz), targs map TypeTree)
     ))
   }
-  def mkSuperSelect = Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR)
+  def mkSuperInitCall: Select = Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR)
 
   def wildcardStar(tree: Tree) =
     atPos(tree.pos) { Typed(tree, Ident(tpnme.WILDCARD_STAR)) }
@@ -357,8 +360,8 @@ abstract class TreeGen extends reflect.internal.TreeGen with TreeDSL {
    */
   def mkSynchronizedCheck(clazz: Symbol, cond: Tree, syncBody: List[Tree], stats: List[Tree]): Tree =
     mkSynchronizedCheck(mkAttributedThis(clazz), cond, syncBody, stats)
-    
-  def mkSynchronizedCheck(attrThis: Tree, cond: Tree, syncBody: List[Tree], stats: List[Tree]): Tree = 
+
+  def mkSynchronizedCheck(attrThis: Tree, cond: Tree, syncBody: List[Tree], stats: List[Tree]): Tree =
     Block(mkSynchronized(
       attrThis,
       If(cond, Block(syncBody: _*), EmptyTree)) ::
