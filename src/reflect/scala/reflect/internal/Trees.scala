@@ -1,5 +1,5 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2012 LAMP/EPFL
+ * Copyright 2005-2013 LAMP/EPFL
  * @author  Martin Odersky
  */
 
@@ -24,7 +24,9 @@ trait Trees extends api.Trees { self: SymbolTable =>
 
     private[this] var rawtpe: Type = _
     final def tpe = rawtpe
-    def tpe_=(t: Type) = rawtpe = t
+    @deprecated("Use setType", "2.11.0") def tpe_=(t: Type): Unit = setType(t)
+
+    def clearType(): this.type = this setType null
     def setType(tp: Type): this.type = { rawtpe = tp; this }
     def defineType(tp: Type): this.type = setType(tp)
 
@@ -37,6 +39,9 @@ trait Trees extends api.Trees { self: SymbolTable =>
     def isDef = false
 
     def isEmpty = false
+    def nonEmpty = !isEmpty
+
+    def canHaveAttrs = true
 
     /** The canonical way to test if a Tree represents a term.
      */
@@ -229,14 +234,6 @@ trait Trees extends api.Trees { self: SymbolTable =>
     override def isDef = true
   }
 
-  case object EmptyTree extends TermTree {
-    val asList = List(this)
-    super.tpe_=(NoType)
-    override def tpe_=(t: Type) =
-      if (t != NoType) throw new UnsupportedOperationException("tpe_=("+t+") inapplicable for <empty>")
-    override def isEmpty = true
-  }
-
   abstract class MemberDef extends DefTree with MemberDefApi {
     def mods: Modifiers
     def keyword: String = this match {
@@ -392,6 +389,9 @@ trait Trees extends api.Trees { self: SymbolTable =>
 
   case class TypeApply(fun: Tree, args: List[Tree])
        extends GenericApply with TypeApplyApi {
+
+    assert(fun.isTerm, fun)
+
     override def symbol: Symbol = fun.symbol
     override def symbol_=(sym: Symbol) { fun.symbol = sym }
   }
@@ -437,7 +437,11 @@ trait Trees extends api.Trees { self: SymbolTable =>
   object This extends ThisExtractor
 
   case class Select(qualifier: Tree, name: Name)
-       extends RefTree with SelectApi
+       extends RefTree with SelectApi {
+
+    // !!! assert disabled due to test case pos/annotDepMethType.scala triggering it.
+    // assert(qualifier.isTerm, qualifier)
+  }
   object Select extends SelectExtractor
 
   case class Ident(name: Name) extends RefTree with IdentContextApi {
@@ -469,7 +473,10 @@ trait Trees extends api.Trees { self: SymbolTable =>
   object SingletonTypeTree extends SingletonTypeTreeExtractor
 
   case class SelectFromTypeTree(qualifier: Tree, name: TypeName)
-       extends RefTree with TypTree with SelectFromTypeTreeApi
+       extends RefTree with TypTree with SelectFromTypeTreeApi {
+
+    assert(qualifier.isType, qualifier)
+  }
   object SelectFromTypeTree extends SelectFromTypeTreeExtractor
 
   case class CompoundTypeTree(templ: Template)
@@ -478,6 +485,9 @@ trait Trees extends api.Trees { self: SymbolTable =>
 
   case class AppliedTypeTree(tpt: Tree, args: List[Tree])
        extends TypTree with AppliedTypeTreeApi {
+
+    assert(tpt.isType, tpt)
+
     override def symbol: Symbol = tpt.symbol
     override def symbol_=(sym: Symbol) { tpt.symbol = sym }
   }
@@ -493,6 +503,10 @@ trait Trees extends api.Trees { self: SymbolTable =>
 
   case class TypeTree() extends TypTree with TypeTreeContextApi {
     private var orig: Tree = null
+    /** Was this type tree originally empty? That is, does it now contain
+      * an inferred type that must be forgotten in `resetAttrs` to
+      * enable retyping.
+      */
     private[scala] var wasEmpty: Boolean = false
 
     override def symbol = typeTreeSymbol(this) // if (tpe == null) null else tpe.typeSymbol
@@ -512,6 +526,15 @@ trait Trees extends api.Trees { self: SymbolTable =>
     override def defineType(tp: Type): this.type = {
       wasEmpty = isEmpty
       setType(tp)
+    }
+
+    override private[scala] def copyAttrs(tree: Tree) = {
+      super.copyAttrs(tree)
+      tree match {
+        case other: TypeTree => wasEmpty = other.wasEmpty // SI-6648 Critical for correct operation of `resetAttrs`.
+        case _ =>
+      }
+      this
     }
   }
   object TypeTree extends TypeTreeExtractor
@@ -584,6 +607,7 @@ trait Trees extends api.Trees { self: SymbolTable =>
         case _: ApplyToImplicitArgs => new ApplyToImplicitArgs(fun, args)
         case _: ApplyImplicitView => new ApplyImplicitView(fun, args)
         // TODO: ApplyConstructor ???
+        case self.pendingSuperCall => self.pendingSuperCall
         case _ => new Apply(fun, args)
       }).copyAttrs(tree)
     def ApplyDynamic(tree: Tree, qual: Tree, args: List[Tree]) =
@@ -802,7 +826,7 @@ trait Trees extends api.Trees { self: SymbolTable =>
     }
     def Annotated(tree: Tree, annot: Tree, arg: Tree) = tree match {
       case t @ Annotated(annot0, arg0)
-      if (annot0==annot) => t
+      if (annot0==annot && arg0==arg) => t
       case _ => treeCopy.Annotated(tree, annot, arg)
     }
     def SingletonTypeTree(tree: Tree, ref: Tree) = tree match {
@@ -847,7 +871,6 @@ trait Trees extends api.Trees { self: SymbolTable =>
   /** Is the tree Predef, scala.Predef, or _root_.scala.Predef?
    */
   def isReferenceToPredef(t: Tree) = isReferenceToScalaMember(t, nme.Predef)
-  def isReferenceToAnyVal(t: Tree) = isReferenceToScalaMember(t, tpnme.AnyVal)
 
   // --- modifiers implementation ---------------------------------------
 
@@ -905,13 +928,16 @@ trait Trees extends api.Trees { self: SymbolTable =>
     def withPosition(flag: Long, position: Position) =
       copy() setPositions positions + (flag -> position)
 
-    override def mapAnnotations(f: List[Tree] => List[Tree]): Modifiers =
-      Modifiers(flags, privateWithin, f(annotations)) setPositions positions
+    override def mapAnnotations(f: List[Tree] => List[Tree]): Modifiers = {
+      val newAnns = f(annotations)
+      if (annotations == newAnns) this
+      else Modifiers(flags, privateWithin, newAnns) setPositions positions
+    }
 
     override def toString = "Modifiers(%s, %s, %s)".format(flagString, annotations mkString ", ", positions)
   }
 
-  object Modifiers extends ModifiersCreator
+  object Modifiers extends ModifiersExtractor
 
   implicit val ModifiersTag = ClassTag[Modifiers](classOf[Modifiers])
 
@@ -946,11 +972,22 @@ trait Trees extends api.Trees { self: SymbolTable =>
 
   def ValDef(sym: Symbol): ValDef = ValDef(sym, EmptyTree)
 
-  object emptyValDef extends ValDef(Modifiers(PRIVATE), nme.WILDCARD, TypeTree(NoType), EmptyTree) {
-    override def isEmpty = true
+  trait CannotHaveAttrs extends Tree {
+    override def canHaveAttrs = false
+
+    private def unsupported(what: String, args: Any*) =
+      throw new UnsupportedOperationException(s"$what($args) inapplicable for "+self.toString)
+
     super.setPos(NoPosition)
-    override def setPos(pos: Position) = { assert(false); this }
+    override def setPos(pos: Position) = unsupported("setPos", pos)
+
+    super.setType(NoType)
+    override def tpe_=(t: Type) = if (t != NoType) unsupported("tpe_=", t)
   }
+
+  case object EmptyTree extends TermTree with CannotHaveAttrs { override def isEmpty = true; val asList = List(this) }
+  object emptyValDef extends ValDef(Modifiers(PRIVATE), nme.WILDCARD, TypeTree(NoType), EmptyTree) with CannotHaveAttrs
+  object pendingSuperCall extends Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR), List()) with CannotHaveAttrs
 
   def DefDef(sym: Symbol, mods: Modifiers, vparamss: List[List[ValDef]], rhs: Tree): DefDef =
     atPos(sym.pos) {
@@ -1018,6 +1055,9 @@ trait Trees extends api.Trees { self: SymbolTable =>
    */
   def New(tpe: Type, args: Tree*): Tree =
     ApplyConstructor(TypeTree(tpe), args.toList)
+
+  def New(tpe: Type, argss: List[List[Tree]]): Tree =
+    New(TypeTree(tpe), argss)
 
   def New(sym: Symbol, args: Tree*): Tree =
     New(sym.tpe, args: _*)
@@ -1099,7 +1139,7 @@ trait Trees extends api.Trees { self: SymbolTable =>
         traverse(annot); traverse(arg)
       case Template(parents, self, body) =>
         traverseTrees(parents)
-        if (!self.isEmpty) traverse(self)
+        if (self ne emptyValDef) traverse(self)
         traverseStats(body, tree.symbol)
       case Block(stats, expr) =>
         traverseTrees(stats); traverse(expr)
@@ -1312,7 +1352,7 @@ trait Trees extends api.Trees { self: SymbolTable =>
 
   class ChangeOwnerTraverser(val oldowner: Symbol, val newowner: Symbol) extends Traverser {
     final def change(sym: Symbol) = {
-      if (sym != NoSymbol && sym.owner == oldowner) 
+      if (sym != NoSymbol && sym.owner == oldowner)
         sym.owner = newowner
     }
     override def traverse(tree: Tree) {
@@ -1369,7 +1409,7 @@ trait Trees extends api.Trees { self: SymbolTable =>
   class ThisSubstituter(clazz: Symbol, to: => Tree) extends Transformer {
     val newtpe = to.tpe
     override def transform(tree: Tree) = {
-      if (tree.tpe ne null) tree.tpe = tree.tpe.substThis(clazz, newtpe)
+      tree modifyType (_.substThis(clazz, newtpe))
       tree match {
         case This(_) if tree.symbol == clazz => to
         case _ => super.transform(tree)
@@ -1379,8 +1419,7 @@ trait Trees extends api.Trees { self: SymbolTable =>
 
   class TypeMapTreeSubstituter(val typeMap: TypeMap) extends Traverser {
     override def traverse(tree: Tree) {
-      if (tree.tpe ne null)
-        tree.tpe = typeMap(tree.tpe)
+      tree modifyType typeMap
       if (tree.isDef)
         tree.symbol modifyInfo typeMap
 
@@ -1412,8 +1451,8 @@ trait Trees extends api.Trees { self: SymbolTable =>
           if (tree.symbol == from.head) tree setSymbol to.head
           else subst(from.tail, to.tail)
       }
+      tree modifyType symSubst
 
-      if (tree.tpe ne null) tree.tpe = symSubst(tree.tpe)
       if (tree.hasSymbolField) {
         subst(from, to)
         tree match {
@@ -1465,14 +1504,17 @@ trait Trees extends api.Trees { self: SymbolTable =>
     }
   }
 
-  private lazy val duplicator = new Transformer {
+  private lazy val duplicator = new Duplicator(focusPositions = true)
+  private class Duplicator(focusPositions: Boolean) extends Transformer {
     override val treeCopy = newStrictTreeCopier
     override def transform(t: Tree) = {
       val t1 = super.transform(t)
-      if ((t1 ne t) && t1.pos.isRange) t1 setPos t.pos.focus
+      if ((t1 ne t) && t1.pos.isRange && focusPositions) t1 setPos t.pos.focus
       t1
     }
   }
+
+  def duplicateAndKeepPositions(tree: Tree) = new Duplicator(focusPositions = false) transform tree
 
   // ------ copiers -------------------------------------------
 

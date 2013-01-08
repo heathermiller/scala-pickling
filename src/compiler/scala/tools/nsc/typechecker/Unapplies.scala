@@ -1,5 +1,5 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2012 LAMP/EPFL
+ * Copyright 2005-2013 LAMP/EPFL
  * @author  Martin Odersky
  */
 
@@ -23,7 +23,6 @@ trait Unapplies extends ast.TreeDSL
 
   private val unapplyParamName = nme.x_0
 
-
   // In the typeCompleter (templateSig) of a case class (resp it's module),
   // synthetic `copy` (reps `apply`, `unapply`) methods are added. To compute
   // their signatures, the corresponding ClassDef is needed. During naming (in
@@ -44,17 +43,6 @@ trait Unapplies extends ast.TreeDSL
         else formals
       case _ => throw new TypeError(ufn+" is not an unapply or unapplySeq")
     }
-  }
-
-  /** returns type of the unapply method returning T_0...T_n
-   *  for n == 0, boolean
-   *  for n == 1, Some[T0]
-   *  else Some[Product[Ti]]
-   */
-  def unapplyReturnTypeExpected(argsLength: Int) = argsLength match {
-    case 0 => BooleanClass.tpe
-    case 1 => optionType(WildcardType)
-    case n => optionType(productType((List fill n)(WildcardType)))
   }
 
   /** returns unapply or unapplySeq if available */
@@ -126,7 +114,7 @@ trait Unapplies extends ast.TreeDSL
     ModuleDef(
       Modifiers(cdef.mods.flags & AccessFlags | SYNTHETIC, cdef.mods.privateWithin),
       cdef.name.toTermName,
-      Template(parents, emptyValDef, NoMods, Nil, ListOfNil, body, cdef.impl.pos.focus))
+      Template(parents, emptyValDef, NoMods, Nil, body, cdef.impl.pos.focus))
   }
 
   private val caseMods = Modifiers(SYNTHETIC | CASE)

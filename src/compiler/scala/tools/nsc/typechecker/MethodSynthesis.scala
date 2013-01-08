@@ -1,12 +1,11 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2012 LAMP/EPFL
+ * Copyright 2005-2013 LAMP/EPFL
  * @author  Paul Phillips
  */
 package scala.tools.nsc
 package typechecker
 
 import symtab.Flags._
-import scala.collection.{ mutable, immutable }
 import scala.reflect.internal.util.StringOps.{ ojoin }
 import scala.reflect.ClassTag
 import scala.reflect.runtime.{ universe => ru }
@@ -30,66 +29,30 @@ trait MethodSynthesis {
       if (sym.isLazy) ValDef(sym, body)
       else DefDef(sym, body)
 
-    def applyTypeInternal(tags: List[TT[_]]): Type = {
-      val symbols = tags map compilerSymbolFromTag
-      val container :: args = symbols
-      val tparams = container.typeConstructor.typeParams
-
-      // Conservative at present - if manifests were more usable this could do a lot more.
-      // [Eugene to Paul] all right, they are now. what do you have in mind?
-      require(symbols forall (_ ne NoSymbol), "Must find all tags: " + symbols)
-      require(container.owner.isPackageClass, "Container must be a top-level class in a package: " + container)
-      require(tparams.size == args.size, "Arguments must match type constructor arity: " + tparams + ", " + args)
-
-      appliedType(container, args map (_.tpe): _*)
-    }
-
-    def companionType[T](implicit ct: CT[T]) =
-      rootMirror.getRequiredModule(ct.runtimeClass.getName).tpe
-
-    // Use these like `applyType[List, Int]` or `applyType[Map, Int, String]`
-    def applyType[CC](implicit t1: TT[CC]): Type =
-      applyTypeInternal(List(t1))
-
-    def applyType[CC[X1], X1](implicit t1: TT[CC[_]], t2: TT[X1]): Type =
-      applyTypeInternal(List(t1, t2))
-
-    def applyType[CC[X1, X2], X1, X2](implicit t1: TT[CC[_,_]], t2: TT[X1], t3: TT[X2]): Type =
-      applyTypeInternal(List(t1, t2, t3))
-
-    def applyType[CC[X1, X2, X3], X1, X2, X3](implicit t1: TT[CC[_,_,_]], t2: TT[X1], t3: TT[X2], t4: TT[X3]): Type =
-      applyTypeInternal(List(t1, t2, t3, t4))
-
-    def newMethodType[F](owner: Symbol)(implicit t: TT[F]): Type = {
-      val fnSymbol = compilerSymbolFromTag(t)
-      val formals = compilerTypeFromTag(t).typeArguments
-      assert(fnSymbol isSubClass FunctionClass(formals.size - 1), (owner, t))
-      val params  = owner newSyntheticValueParams formals
-      MethodType(params, formals.last)
-    }
-
-      /** The annotations amongst those found on the original symbol which
-       *  should be propagated to this kind of accessor.
-       */
-      def deriveAnnotations(initial: List[AnnotationInfo], category: Symbol, keepClean: Boolean): List[AnnotationInfo] = {
-        initial filter { ann =>
-          // There are no meta-annotation arguments attached to `ann`
-          if (ann.metaAnnotations.isEmpty) {
-            // A meta-annotation matching `annotKind` exists on `ann`'s definition.
-            (ann.defaultTargets contains category) ||
-            // `ann`'s definition has no meta-annotations, and `keepClean` is true.
-            (ann.defaultTargets.isEmpty && keepClean)
-          }
-          // There are meta-annotation arguments, and one of them matches `annotKind`
-          else ann.metaAnnotations exists (_ matches category)
+    /** The annotations amongst those found on the original symbol which
+     *  should be propagated to this kind of accessor.
+     */
+    def deriveAnnotations(initial: List[AnnotationInfo], category: Symbol, keepClean: Boolean): List[AnnotationInfo] = {
+      initial filter { ann =>
+        // There are no meta-annotation arguments attached to `ann`
+        if (ann.metaAnnotations.isEmpty) {
+          // A meta-annotation matching `annotKind` exists on `ann`'s definition.
+          (ann.defaultTargets contains category) ||
+          // `ann`'s definition has no meta-annotations, and `keepClean` is true.
+          (ann.defaultTargets.isEmpty && keepClean)
         }
+        // There are meta-annotation arguments, and one of them matches `annotKind`
+        else ann.metaAnnotations exists (_ matches category)
       }
-   }
+    }
+  }
   import synthesisUtil._
 
   class ClassMethodSynthesis(val clazz: Symbol, localTyper: Typer) {
     def mkThis = This(clazz) setPos clazz.pos.focus
-    def mkThisSelect(sym: Symbol) = atPos(clazz.pos.focus)(Select(mkThis, sym))
+    def mkThisSelect(sym: Symbol) = atPos(clazz.pos.focus)(
+      if (clazz.isClass) Select(This(clazz), sym) else Ident(sym)
+    )
 
     private def isOverride(name: TermName) =
       clazzMember(name).alternatives exists (sym => !sym.isDeferred && (sym.owner != clazz))
@@ -99,7 +62,7 @@ trait MethodSynthesis {
       overrideFlag | SYNTHETIC
     }
     def newMethodFlags(method: Symbol) = {
-      val overrideFlag = if (isOverride(method.name)) OVERRIDE else 0L
+      val overrideFlag = if (isOverride(method.name.toTermName)) OVERRIDE else 0L
       (method.flags | overrideFlag | SYNTHETIC) & ~DEFERRED
     }
 
@@ -107,11 +70,13 @@ trait MethodSynthesis {
       localTyper typed ValOrDefDef(method, f(method))
 
     private def createInternal(name: Name, f: Symbol => Tree, info: Type): Tree = {
-      val m = clazz.newMethod(name.toTermName, clazz.pos.focus, newMethodFlags(name))
+      val name1 = name.toTermName
+      val m = clazz.newMethod(name1, clazz.pos.focus, newMethodFlags(name1))
       finishMethod(m setInfoAndEnter info, f)
     }
     private def createInternal(name: Name, f: Symbol => Tree, infoFn: Symbol => Type): Tree = {
-      val m = clazz.newMethod(name.toTermName, clazz.pos.focus, newMethodFlags(name))
+      val name1 = name.toTermName
+      val m = clazz.newMethod(name1, clazz.pos.focus, newMethodFlags(name1))
       finishMethod(m setInfoAndEnter infoFn(m), f)
     }
     private def cloneInternal(original: Symbol, f: Symbol => Tree, name: Name): Tree = {
@@ -119,21 +84,8 @@ trait MethodSynthesis {
       finishMethod(clazz.info.decls enter m, f)
     }
 
-    private def cloneInternal(original: Symbol, f: Symbol => Tree): Tree =
-      cloneInternal(original, f, original.name)
-
     def clazzMember(name: Name)  = clazz.info nonPrivateMember name
     def typeInClazz(sym: Symbol) = clazz.thisType memberType sym
-
-    /** Function argument takes the newly created method symbol of
-     *  the same type as `name` in clazz, and returns the tree to be
-     *  added to the template.
-     */
-    def overrideMethod(name: Name)(f: Symbol => Tree): Tree =
-      overrideMethod(clazzMember(name))(f)
-
-    def overrideMethod(original: Symbol)(f: Symbol => Tree): Tree =
-      cloneInternal(original, sym => f(sym setFlag OVERRIDE))
 
     def deriveMethod(original: Symbol, nameFn: Name => Name)(f: Symbol => Tree): Tree =
       cloneInternal(original, f, nameFn(original.name))
@@ -253,8 +205,7 @@ trait MethodSynthesis {
     )
     def beanAccessors(vd: ValDef): List[DerivedFromValDef] = {
       val setter = if (vd.mods.isMutable) List(BeanSetter(vd)) else Nil
-      if (forMSIL) Nil
-      else if (vd.symbol hasAnnotation BeanPropertyAttr)
+      if (vd.symbol hasAnnotation BeanPropertyAttr)
         BeanGetter(vd) :: setter
       else if (vd.symbol hasAnnotation BooleanBeanPropertyAttr)
         BooleanBeanGetter(vd) :: setter
@@ -312,7 +263,6 @@ trait MethodSynthesis {
       // Final methods to make the rest easier to reason about.
       final def mods               = tree.mods
       final def basisSym           = tree.symbol
-      final def derivedFlags: Long = basisSym.flags & flagsMask | flagsExtra
     }
 
     trait DerivedFromClassDef extends DerivedFromMemberDef {
@@ -426,6 +376,7 @@ trait MethodSynthesis {
         // spot that brand of them. In other words it's an artifact of the implementation.
         val tpt = derivedSym.tpe.finalResultType match {
           case ExistentialType(_, _)  => TypeTree()
+          case _ if mods.isDeferred   => TypeTree()
           case tp                     => TypeTree(tp)
         }
         tpt setPos derivedSym.pos.focus
@@ -456,7 +407,7 @@ trait MethodSynthesis {
     case class LazyValGetter(tree: ValDef) extends BaseGetter(tree) {
       class ChangeOwnerAndModuleClassTraverser(oldowner: Symbol, newowner: Symbol)
         extends ChangeOwnerTraverser(oldowner, newowner) {
-        
+
         override def traverse(tree: Tree) {
           tree match {
             case _: DefTree => change(tree.symbol.moduleClass)
@@ -556,7 +507,7 @@ trait MethodSynthesis {
 
     // No Symbols available.
     private def beanAccessorsFromNames(tree: ValDef) = {
-      val ValDef(mods, name, tpt, _) = tree
+      val ValDef(mods, _, _, _) = tree
       val hasBP     = mods hasAnnotationNamed tpnme.BeanPropertyAnnot
       val hasBoolBP = mods hasAnnotationNamed tpnme.BooleanBeanPropertyAnnot
 
@@ -573,9 +524,6 @@ trait MethodSynthesis {
     }
 
     protected def enterBeans(tree: ValDef) {
-      if (forMSIL)
-        return
-
       val ValDef(mods, name, _, _) = tree
       val beans = beanAccessorsFromNames(tree)
       if (beans.nonEmpty) {

@@ -1,5 +1,5 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2012 LAMP/EPFL
+ * Copyright 2005-2013 LAMP/EPFL
  * @author Martin Odersky
  */
 
@@ -15,6 +15,7 @@ abstract class CleanUp extends Transform with ast.TreeDSL {
   import global._
   import definitions._
   import CODE._
+  import treeInfo.StripCast
 
   /** the following two members override abstract members in Transform */
   val phaseName: String = "cleanup"
@@ -45,7 +46,7 @@ abstract class CleanUp extends Transform with ast.TreeDSL {
       result
     }
     private def transformTemplate(tree: Tree) = {
-      val Template(parents, self, body) = tree
+      val Template(_, _, body) = tree
       clearStatics()
       val newBody = transformTrees(body)
       val templ   = deriveTemplate(tree)(_ => transformTrees(newStaticMembers.toList) ::: newBody)
@@ -68,12 +69,6 @@ abstract class CleanUp extends Transform with ast.TreeDSL {
       case "mono-cache" => MONO_CACHE
       case "poly-cache" => POLY_CACHE
     }
-
-    def shouldRewriteTry(tree: Try) = {
-      val sym = tree.tpe.typeSymbol
-      forMSIL && (sym != UnitClass) && (sym != NothingClass)
-    }
-
     private def typedWithPos(pos: Position)(tree: Tree) =
       localTyper.typedPos(pos)(tree)
 
@@ -119,7 +114,7 @@ abstract class CleanUp extends Transform with ast.TreeDSL {
         }
 
         def addStaticMethodToClass(forBody: (Symbol, Symbol) => Tree): Symbol = {
-          val methSym = currentClass.newMethod(mkTerm(nme.reflMethodName), ad.pos, STATIC | SYNTHETIC)
+          val methSym = currentClass.newMethod(mkTerm(nme.reflMethodName.toString), ad.pos, STATIC | SYNTHETIC)
           val params  = methSym.newSyntheticValueParams(List(ClassClass.tpe))
           methSym setInfoAndEnter MethodType(params, MethodClass.tpe)
 
@@ -542,10 +537,9 @@ abstract class CleanUp extends Transform with ast.TreeDSL {
        * constructor. */
       case Template(parents, self, body) =>
         localTyper = typer.atOwner(tree, currentClass)
-        if (forMSIL) savingStatics( transformTemplate(tree) )
-        else transformTemplate(tree)
+        transformTemplate(tree)
 
-      case Literal(c) if (c.tag == ClazzTag) && !forMSIL=>
+      case Literal(c) if c.tag == ClazzTag =>
         val tpe = c.typeValue
         typedWithPos(tree.pos) {
           if (isPrimitiveValueClass(tpe.typeSymbol)) {
@@ -558,24 +552,6 @@ abstract class CleanUp extends Transform with ast.TreeDSL {
           else tree
         }
 
-      /* MSIL requires that the stack is empty at the end of a try-block.
-       * Hence, we here rewrite all try blocks with a result != {Unit, All} such that they
-       * store their result in a local variable. The catch blocks are adjusted as well.
-       * The try tree is subsituted by a block whose result expression is read of that variable. */
-      case theTry @ Try(block, catches, finalizer) if shouldRewriteTry(theTry) =>
-        def transformTry = {
-        val tpe = theTry.tpe.widen
-        val tempVar = currentOwner.newVariable(mkTerm(nme.EXCEPTION_RESULT_PREFIX), theTry.pos).setInfo(tpe)
-        def assignBlock(rhs: Tree) = super.transform(BLOCK(Ident(tempVar) === transform(rhs)))
-
-        val newBlock    = assignBlock(block)
-        val newCatches  = for (CaseDef(pattern, guard, body) <- catches) yield
-          (CASE(super.transform(pattern)) IF (super.transform(guard))) ==> assignBlock(body)
-        val newTry      = Try(newBlock, newCatches, super.transform(finalizer))
-
-        typedWithPos(theTry.pos)(BLOCK(VAL(tempVar) === EmptyTree, newTry, Ident(tempVar)))
-        }
-        transformTry
      /*
       * This transformation should identify Scala symbol invocations in the tree and replace them
       * with references to a static member. Also, whenever a class has at least a single symbol invocation
@@ -618,14 +594,16 @@ abstract class CleanUp extends Transform with ast.TreeDSL {
         }
         transformApply
 
-      // This transform replaces Array(Predef.wrapArray(Array(...)), <tag>)
-      // with just Array(...)
-      case Apply(appMeth, List(Apply(wrapRefArrayMeth, List(array)), _))
-      if (wrapRefArrayMeth.symbol == Predef_wrapRefArray &&
-          appMeth.symbol == ArrayModule_overloadedApply.suchThat {
-            _.tpe.resultType.dealias.typeSymbol == ObjectClass
-          }) =>
-        super.transform(array)
+      // Replaces `Array(Predef.wrapArray(ArrayValue(...).$asInstanceOf[...]), <tag>)`
+      // with just `ArrayValue(...).$asInstanceOf[...]`
+      //
+      // See SI-6611; we must *only* do this for literal vararg arrays.
+      case Apply(appMeth, List(Apply(wrapRefArrayMeth, List(arg @ StripCast(ArrayValue(_, _)))), _))
+      if wrapRefArrayMeth.symbol == Predef_wrapRefArray && appMeth.symbol == ArrayModule_genericApply =>
+        super.transform(arg)
+      case Apply(appMeth, List(elem0, Apply(wrapArrayMeth, List(rest @ ArrayValue(elemtpt, _)))))
+      if wrapArrayMeth.symbol == Predef_wrapArray(elemtpt.tpe) && appMeth.symbol == ArrayModule_apply(elemtpt.tpe) =>
+        super.transform(treeCopy.ArrayValue(rest, rest.elemtpt, elem0 :: rest.elems))
 
       case _ =>
         super.transform(tree)
@@ -642,9 +620,8 @@ abstract class CleanUp extends Transform with ast.TreeDSL {
         // create a symbol for the static field
         val stfieldSym = (
           currentClass.newVariable(mkTerm("symbol$"), pos, PRIVATE | STATIC | SYNTHETIC | FINAL)
-            setInfo SymbolClass.tpe
+            setInfoAndEnter SymbolClass.tpe
         )
-        currentClass.info.decls enter stfieldSym
 
         // create field definition and initialization
         val stfieldDef  = theTyper.typedPos(pos)(VAL(stfieldSym) === rhs)

@@ -1,5 +1,5 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2012 LAMP/EPFL
+ * Copyright 2005-2013 LAMP/EPFL
  * @author  Martin Odersky
  */
 // $Id$
@@ -52,14 +52,14 @@ trait ScalaSettings extends AbsScalaSettings
 
   val jvmargs  = PrefixSetting("-J<flag>", "-J", "Pass <flag> directly to the runtime system.")
   val defines  = PrefixSetting("-Dproperty=value", "-D", "Pass -Dproperty=value directly to the runtime system.")
-  val toolcp   = PathSetting("-toolcp", "Add to the runner classpath.", "")
+  /*val toolcp =*/ PathSetting("-toolcp", "Add to the runner classpath.", "")
   val nobootcp = BooleanSetting("-nobootcp", "Do not use the boot classpath for the scala jars.")
 
   /**
    *  Standard settings
    */
   // argfiles is only for the help message
-  val argfiles      = BooleanSetting    ("@<file>", "A text file containing compiler arguments (options and source files)")
+  /*val argfiles = */ BooleanSetting    ("@<file>", "A text file containing compiler arguments (options and source files)")
   val classpath     = PathSetting       ("-classpath", "Specify where to find user class files.", defaultClasspath) withAbbreviation "-cp"
   val d             = OutputSetting     (outputDirs, ".")
   val nospecialization = BooleanSetting    ("-no-specialization", "Ignore @specialize annotations.")
@@ -69,11 +69,8 @@ trait ScalaSettings extends AbsScalaSettings
    * -X "Advanced" settings
    */
   val Xhelp         = BooleanSetting    ("-X", "Print a synopsis of advanced options.")
-  val assemname     = StringSetting     ("-Xassem-name", "file", "(Requires -target:msil) Name of the output assembly.", "").dependsOn(target, "msil")
-  val assemrefs     = StringSetting     ("-Xassem-path", "path", "(Requires -target:msil) List of assemblies referenced by the program.", ".").dependsOn(target, "msil")
-  val assemextdirs  = StringSetting     ("-Xassem-extdirs", "dirs", "(Requires -target:msil) List of directories containing assemblies.  default:lib", Defaults.scalaLibDir.path).dependsOn(target, "msil")
-  val sourcedir     = StringSetting     ("-Xsourcedir", "directory", "(Requires -target:msil) Mirror source folder structure in output directory.", ".").dependsOn(target, "msil")
   val checkInit     = BooleanSetting    ("-Xcheckinit", "Wrap field accessors to throw an exception on uninitialized access.")
+  val developer     = BooleanSetting    ("-Xdev", "Indicates user is a developer - issue warnings about anything which seems amiss")
   val noassertions  = BooleanSetting    ("-Xdisable-assertions", "Generate no assertions or assumptions.")
   val elidebelow    = IntSetting        ("-Xelide-below", "Calls to @elidable methods are omitted if method priority is lower than argument",
                                                 elidable.MINIMUM, None, elidable.byName get _)
@@ -107,14 +104,12 @@ trait ScalaSettings extends AbsScalaSettings
   val showPhases    = BooleanSetting    ("-Xshow-phases", "Print a synopsis of compiler phases.")
   val sourceReader  = StringSetting     ("-Xsource-reader", "classname", "Specify a custom method for reading source files.", "")
 
-  val XoldPatmat    = BooleanSetting    ("-Xoldpatmat", "Use the pre-2.10 pattern matcher. Otherwise, the 'virtualizing' pattern matcher is used in 2.10.")
   val XnoPatmatAnalysis = BooleanSetting ("-Xno-patmat-analysis", "Don't perform exhaustivity/unreachability analysis. Also, ignore @switch annotation.")
   val XfullLubs     = BooleanSetting    ("-Xfull-lubs", "Retains pre 2.10 behavior of less aggressive truncation of least upper bounds.")
 
   /** Compatibility stubs for options whose value name did
    *  not previously match the option name.
    */
-  def XO = optimise
   def debuginfo = g
   def dependenciesFile = dependencyfile
   def nowarnings = nowarn
@@ -170,6 +165,7 @@ trait ScalaSettings extends AbsScalaSettings
   val Ybuilderdebug   = ChoiceSetting     ("-Ybuilder-debug", "manager", "Compile using the specified build manager.", List("none", "refined", "simple"), "none")
   val Yreifycopypaste = BooleanSetting    ("-Yreify-copypaste", "Dump the reified trees in copypasteable representation.")
   val Yreplsync       = BooleanSetting    ("-Yrepl-sync", "Do not use asynchronous code for repl startup")
+  val Yreploutdir     = StringSetting     ("-Yrepl-outdir", "path", "Write repl-generated classfiles to given output directory (use \"\" to generate a temporary dir)" , "")
   val Ynotnull        = BooleanSetting    ("-Ynotnull", "Enable (experimental and incomplete) scala.NotNull.")
   val YmethodInfer    = BooleanSetting    ("-Yinfer-argument-types", "Infer types for arguments of overriden methods.")
   val etaExpandKeepsStar = BooleanSetting ("-Yeta-expand-keeps-star", "Eta-expand varargs methods to T* rather than Seq[T].  This is a temporary option to ease transition.")
@@ -179,12 +175,9 @@ trait ScalaSettings extends AbsScalaSettings
 
   val exposeEmptyPackage = BooleanSetting("-Yexpose-empty-package", "Internal only: expose the empty package.").internalOnly()
 
-  def stop = stopAfter
-
   /** Area-specific debug output.
    */
   val Ybuildmanagerdebug      = BooleanSetting("-Ybuild-manager-debug", "Generate debug information for the Refined Build Manager compiler.")
-  val Ycompletion             = BooleanSetting("-Ycompletion-debug", "Trace all tab completion activity.")
   val Ydocdebug               = BooleanSetting("-Ydoc-debug", "Trace all scaladoc activity.")
   val Yidedebug               = BooleanSetting("-Yide-debug", "Generate, validate and output trees using the interactive compiler.")
   val Yinferdebug             = BooleanSetting("-Yinfer-debug", "Trace type inference and implicit search.")

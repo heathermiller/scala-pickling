@@ -7,7 +7,7 @@ import scala.reflect.internal.settings.MutableSettings
  *  This should be refined, so that settings are settable via command
  *  line options or properties.
  */
-class Settings extends MutableSettings {
+private[reflect] class Settings extends MutableSettings {
 
   trait Setting extends SettingValue { }
 
@@ -32,7 +32,6 @@ class Settings extends MutableSettings {
   val Xexperimental     = new BooleanSetting(false)
   val XfullLubs         = new BooleanSetting(false)
   val XnoPatmatAnalysis = new BooleanSetting(false)
-  val XoldPatmat        = new BooleanSetting(false)
   val Xprintpos         = new BooleanSetting(false)
   val Ynotnull          = new BooleanSetting(false)
   val Yshowsymkinds     = new BooleanSetting(false)

@@ -3,15 +3,10 @@ package typechecker
 
 import symtab.Flags._
 import scala.tools.nsc.util._
-import scala.tools.nsc.util.ClassPath._
 import scala.reflect.runtime.ReflectionUtils
 import scala.collection.mutable.ListBuffer
-import scala.compat.Platform.EOL
 import scala.reflect.internal.util.Statistics
 import scala.reflect.macros.util._
-import java.lang.{Class => jClass}
-import java.lang.reflect.{Array => jArray, Method => jMethod}
-import scala.reflect.internal.util.Collections._
 import scala.util.control.ControlThrowable
 import scala.reflect.macros.runtime.AbortMacroException
 
@@ -122,16 +117,9 @@ trait Macros extends scala.tools.reflect.FastTrack with Traces {
       }
 
     def pickle(macroImplRef: Tree): Tree = {
-      val macroImpl = macroImplRef.symbol
+      val MacroImplReference(owner, macroImpl, targs) = macroImplRef
       val paramss = macroImpl.paramss
 
-      // this logic relies on the assumptions that were valid for the old macro prototype
-      // namely that macro implementations can only be defined in top-level classes and modules
-      // with the new prototype that materialized in a SIP, macros need to be statically accessible, which is different
-      // for example, a macro def could be defined in a trait that is implemented by an object
-      // there are some more clever cases when seemingly non-static method ends up being statically accessible
-      // however, the code below doesn't account for these guys, because it'd take a look of time to get it right
-      // for now I leave it as a todo and move along to more the important stuff
       // todo. refactor when fixing SI-5498
       def className: String = {
         def loop(sym: Symbol): String = sym match {
@@ -143,7 +131,7 @@ trait Macros extends scala.tools.reflect.FastTrack with Traces {
             loop(sym.owner) + separator + sym.javaSimpleName.toString
         }
 
-        loop(macroImpl.owner.enclClass)
+        loop(owner)
       }
 
       def signature: List[Int] = {
@@ -164,7 +152,7 @@ trait Macros extends scala.tools.reflect.FastTrack with Traces {
       // I just named it "macro", because it's macro-related, but I could as well name it "foobar"
       val nucleus = Ident(newTermName("macro"))
       val wrapped = Apply(nucleus, payload map { case (k, v) => Assign(pickleAtom(k), pickleAtom(v)) })
-      val pickle = gen.mkTypeApply(wrapped, treeInfo.typeArguments(macroImplRef.duplicate))
+      val pickle = gen.mkTypeApply(wrapped, targs map (_.duplicate))
 
       // assign NoType to all freshly created AST nodes
       // otherwise pickler will choke on tree.tpe being null
@@ -329,7 +317,7 @@ trait Macros extends scala.tools.reflect.FastTrack with Traces {
       def sigma(tpe: Type): Type = SigmaTypeMap(tpe)
 
       def makeParam(name: Name, pos: Position, tpe: Type, flags: Long) =
-        macroDef.newValueParameter(name, pos, flags) setInfo tpe
+        macroDef.newValueParameter(name.toTermName, pos, flags) setInfo tpe
       def implType(isType: Boolean, origTpe: Type): Type = {
         def tsym = if (isType) WeakTagClass else ExprClass
         def targ = origTpe.typeArgs.headOption getOrElse NoType
@@ -482,9 +470,6 @@ trait Macros extends scala.tools.reflect.FastTrack with Traces {
    *  Is also capable of detecting REPL and reusing its classloader.
    */
   lazy val macroClassloader: ClassLoader = {
-    if (global.forMSIL)
-      throw new UnsupportedOperationException("Scala reflection not available on this platform")
-
     val classpath = global.classPath.asURLs
     macroLogVerbose("macro classloader: initializing from -cp: %s".format(classpath))
     val loader = ScalaClassLoader.fromURLs(classpath, self.getClass.getClassLoader)
@@ -561,6 +546,7 @@ trait Macros extends scala.tools.reflect.FastTrack with Traces {
   /** Calculate the arguments to pass to a macro implementation when expanding the provided tree.
    */
   case class MacroArgs(c: MacroContext, others: List[Any])
+
   private def macroArgs(typer: Typer, expandee: Tree): MacroArgs = {
     val macroDef   = expandee.symbol
     val prefixTree = expandee.collect{ case Select(qual, name) => qual }.headOption.getOrElse(EmptyTree)
@@ -589,9 +575,11 @@ trait Macros extends scala.tools.reflect.FastTrack with Traces {
 
     val preparedArgss: List[List[Any]] =
       if (fastTrack contains macroDef) {
-        if (fastTrack(macroDef) validate context) argss
+        // Take a dry run of the fast track implementation
+        if (fastTrack(macroDef) validate expandee) argss
         else typer.TyperErrorGen.MacroPartialApplicationError(expandee)
-      } else {
+      }
+      else {
         // if paramss have typetag context bounds, add an arglist to argss if necessary and instantiate the corresponding evidences
         // consider the following example:
         //
@@ -706,9 +694,11 @@ trait Macros extends scala.tools.reflect.FastTrack with Traces {
 
             var expectedTpe = expandee.tpe
             if (isNullaryInvocation(expandee)) expectedTpe = expectedTpe.finalResultType
-            var typechecked = typecheck("macro def return type", expanded, expectedTpe)
-            typechecked = typecheck("expected type", typechecked, pt)
-            typechecked
+            // also see http://groups.google.com/group/scala-internals/browse_thread/thread/492560d941b315cc
+            val expanded0 = duplicateAndKeepPositions(expanded)
+            val expanded1 = typecheck("macro def return type", expanded0, expectedTpe)
+            val expanded2 = typecheck("expected type", expanded1, pt)
+            expanded2
           } finally {
             popMacroContext()
           }
@@ -725,16 +715,15 @@ trait Macros extends scala.tools.reflect.FastTrack with Traces {
   /** Does the same as `macroExpand`, but without typechecking the expansion
    *  Meant for internal use within the macro infrastructure, don't use it elsewhere.
    */
-  private def macroExpand1(typer: Typer, expandee: Tree): MacroExpansionResult =
+  private def macroExpand1(typer: Typer, expandee: Tree): MacroExpansionResult = {
     // verbose printing might cause recursive macro expansions, so I'm shutting it down here
     withInfoLevel(nodePrinters.InfoLevel.Quiet) {
       if (expandee.symbol.isErroneous || (expandee exists (_.isErroneous))) {
         val reason = if (expandee.symbol.isErroneous) "not found or incompatible macro implementation" else "erroneous arguments"
         macroTraceVerbose("cancelled macro expansion because of %s: ".format(reason))(expandee)
-        return Cancel(typer.infer.setError(expandee))
+        Cancel(typer.infer.setError(expandee))
       }
-
-      try {
+      else try {
         val runtime = macroRuntime(expandee.symbol)
         if (runtime != null) macroExpandWithRuntime(typer, expandee, runtime)
         else macroExpandWithoutRuntime(typer, expandee)
@@ -742,6 +731,7 @@ trait Macros extends scala.tools.reflect.FastTrack with Traces {
         case typer.TyperErrorGen.MacroExpansionException => Failure(expandee)
       }
     }
+  }
 
   /** Expands a macro when a runtime (i.e. the macro implementation) can be successfully loaded
    *  Meant for internal use within the macro infrastructure, don't use it elsewhere.

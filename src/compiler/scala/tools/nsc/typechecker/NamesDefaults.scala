@@ -1,5 +1,5 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2012 LAMP/EPFL
+ * Copyright 2005-2013 LAMP/EPFL
  * @author  Martin Odersky
  */
 
@@ -8,7 +8,6 @@ package typechecker
 
 import symtab.Flags._
 import scala.collection.mutable
-import scala.ref.WeakReference
 import scala.reflect.ClassTag
 
 /**
@@ -41,8 +40,6 @@ trait NamesDefaults { self: Analyzer =>
     vargss:     List[List[Tree]],
     blockTyper: Typer
   ) { }
-
-  val noApplyInfo = NamedApplyInfo(None, Nil, Nil, null)
 
   def nameOf(arg: Tree) = arg match {
     case AssignOrNamedArg(Ident(name), rhs) => Some(name)
@@ -171,7 +168,7 @@ trait NamesDefaults { self: Analyzer =>
         qual changeOwner (blockTyper.context.owner -> sym)
 
         val newQual = atPos(qual.pos.focus)(blockTyper.typedQualifier(Ident(sym.name)))
-        var baseFunTransformed = atPos(baseFun.pos.makeTransparent) {
+        val baseFunTransformed = atPos(baseFun.pos.makeTransparent) {
           // setSymbol below is important because the 'selected' function might be overloaded. by
           // assigning the correct method symbol, typedSelect will just assign the type. the reason
           // to still call 'typed' is to correctly infer singleton types, SI-5259.
@@ -319,7 +316,7 @@ trait NamesDefaults { self: Analyzer =>
           assert(isNamedApplyBlock(transformedFun), transformedFun)
           val NamedApplyInfo(qual, targs, vargss, blockTyper) =
             context.namedApplyBlockInfo.get._2
-          val existingBlock @ Block(stats, funOnly) = transformedFun
+          val Block(stats, funOnly) = transformedFun
 
           // type the application without names; put the arguments in definition-site order
           val typedApp = doTypedApply(tree, funOnly, reorderArgs(namelessArgs, argPos), mode, pt)
@@ -397,7 +394,7 @@ trait NamesDefaults { self: Analyzer =>
           // TODO #3649 can create spurious errors when companion object is gone (because it becomes unlinked from scope)
           if (defGetter == NoSymbol) None // prevent crash in erroneous trees, #3649
           else {
-            var default1 = qual match {
+            var default1: Tree = qual match {
               case Some(q) => gen.mkAttributedSelect(q.duplicate, defGetter)
               case None    => gen.mkAttributedRef(defGetter)
 

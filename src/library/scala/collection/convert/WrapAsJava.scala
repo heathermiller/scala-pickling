@@ -1,6 +1,6 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2006-2011, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2006-2013, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://www.scala-lang.org/           **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
@@ -10,10 +10,11 @@ package scala.collection
 package convert
 
 import java.{ lang => jl, util => ju }, java.util.{ concurrent => juc }
-import Wrappers._
 import scala.language.implicitConversions
 
 trait WrapAsJava {
+  import Wrappers._
+
   /**
    * Implicitly converts a Scala Iterator to a Java Iterator.
    * The returned Java Iterator is backed by the provided Scala

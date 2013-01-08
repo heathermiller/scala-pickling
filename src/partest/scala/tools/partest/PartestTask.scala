@@ -1,6 +1,6 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala Parallel Testing               **
-**    / __/ __// _ | / /  / _ |    (c) 2007-2011, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2007-2013, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
@@ -182,7 +182,6 @@ class PartestTask extends Task with CompilationPathProperty {
   private var javaccmd: Option[File] = None
   private var showDiff: Boolean = false
   private var showLog: Boolean = false
-  private var runFailed: Boolean = false
   private var posFiles: Option[FileSet] = None
   private var negFiles: Option[FileSet] = None
   private var runFiles: Option[FileSet] = None
@@ -325,16 +324,6 @@ class PartestTask extends Task with CompilationPathProperty {
       }
     } getOrElse sys.error("Provided classpath does not contain a Scala actors.")
 
-    val scalaActorsMigration = {
-      (classpath.list map { fs => new File(fs) }) find { f =>
-        f.getName match {
-          case "scala-actors-migration.jar" => true
-          case "actors-migration" if (f.getParentFile.getName == "classes") => true
-          case _ => false
-        }
-      }
-    } getOrElse sys.error("Provided classpath does not contain a Scala actors.")
-
     def scalacArgsFlat: Option[Seq[String]] = scalacArgs map (_ flatMap { a =>
       val parts = a.getParts
       if(parts eq null) Seq[String]() else parts.toSeq
@@ -355,14 +344,12 @@ class PartestTask extends Task with CompilationPathProperty {
 
     antFileManager.showDiff = showDiff
     antFileManager.showLog = showLog
-    antFileManager.failed = runFailed
     antFileManager.CLASSPATH = ClassPath.join(classpath.list: _*)
     antFileManager.LATEST_LIB = scalaLibrary.getAbsolutePath
     antFileManager.LATEST_REFLECT = scalaReflect.getAbsolutePath
     antFileManager.LATEST_COMP = scalaCompiler.getAbsolutePath
     antFileManager.LATEST_PARTEST = scalaPartest.getAbsolutePath
     antFileManager.LATEST_ACTORS = scalaActors.getAbsolutePath
-    antFileManager.LATEST_ACTORS_MIGRATION = scalaActorsMigration.getAbsolutePath
 
     javacmd foreach (x => antFileManager.JAVACMD = x.getAbsolutePath)
     javaccmd foreach (x => antFileManager.JAVAC_CMD = x.getAbsolutePath)

@@ -1,12 +1,11 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2012 LAMP/EPFL
+ * Copyright 2005-2013 LAMP/EPFL
  * @author  Martin Odersky
  */
 
 package scala.tools.nsc
 package typechecker
 
-import scala.tools.nsc.symtab.Flags._
 import scala.collection.mutable
 import mutable.ListBuffer
 import util.returning
@@ -143,13 +142,6 @@ abstract class TreeCheckers extends Analyzer {
     currentRun.units foreach (x => wrap(x)(check(x)))
   }
 
-  def printingTypings[T](body: => T): T = {
-    val saved = global.printTypings
-    global.printTypings = true
-    val result = body
-    global.printTypings = saved
-    result
-  }
   def runWithUnit[T](unit: CompilationUnit)(body: => Unit): Unit = {
     val unit0 = currentUnit
     currentRun.currentUnit = unit
@@ -186,10 +178,6 @@ abstract class TreeCheckers extends Analyzer {
       errorFn(t1.pos, "trees differ\n old: " + treestr(t1) + "\n new: " + treestr(t2))
     private def typesDiffer(tree: Tree, tp1: Type, tp2: Type) =
       errorFn(tree.pos, "types differ\n old: " + tp1 + "\n new: " + tp2 + "\n tree: " + tree)
-    private def ownersDiffer(tree: Tree, shouldBe: Symbol) = {
-      val sym = tree.symbol
-      errorFn(tree.pos, sym + " has wrong owner: " + ownerstr(sym.owner) + ", should be: " + ownerstr(shouldBe))
-    }
 
     /** XXX Disabled reporting of position errors until there is less noise. */
     private def noPos(t: Tree) =
@@ -204,11 +192,8 @@ abstract class TreeCheckers extends Analyzer {
     override def typed(tree: Tree, mode: Int, pt: Type): Tree = returning(tree) {
       case EmptyTree | TypeTree() => ()
       case _ if tree.tpe != null  =>
-        tpeOfTree.getOrElseUpdate(tree, {
-          val saved = tree.tpe
-          tree.tpe = null
-          saved
-        })
+        tpeOfTree.getOrElseUpdate(tree, try tree.tpe finally tree.clearType())
+
         wrap(tree)(super.typed(tree, mode, pt) match {
           case _: Literal     => ()
           case x if x ne tree => treesDiffer(tree, x)
@@ -280,11 +265,9 @@ abstract class TreeCheckers extends Analyzer {
               if (sym.owner != currentOwner) {
                 val expected = currentOwner.ownerChain find (x => cond(x)) getOrElse { fail("DefTree can't find owner: ") ; NoSymbol }
                 if (sym.owner != expected)
-                  fail("""|
-                          | currentOwner chain: %s
-                          |       symbol chain: %s""".stripMargin.format(
-                            currentOwner.ownerChain take 3 mkString " -> ",
-                            sym.ownerChain mkString " -> ")
+                  fail(sm"""|
+                            | currentOwner chain: ${currentOwner.ownerChain take 3 mkString " -> "}
+                            |       symbol chain: ${sym.ownerChain mkString " -> "}"""
                       )
               }
           }
@@ -302,7 +285,7 @@ abstract class TreeCheckers extends Analyzer {
               if (oldtpe =:= tree.tpe) ()
               else typesDiffer(tree, oldtpe, tree.tpe)
 
-              tree.tpe = oldtpe
+              tree setType oldtpe
               super.traverse(tree)
             }
         }

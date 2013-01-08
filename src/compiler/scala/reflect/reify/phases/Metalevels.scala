@@ -1,11 +1,12 @@
 package scala.reflect.reify
 package phases
 
+import scala.collection.{ mutable }
+
 trait Metalevels {
   self: Reifier =>
 
   import global._
-  import definitions._
 
   /**
    *  Makes sense of cross-stage bindings.
@@ -102,7 +103,7 @@ trait Metalevels {
    */
   val metalevels = new Transformer {
     var insideSplice = false
-    var inlineableBindings = scala.collection.mutable.Map[TermName, Tree]()
+    val inlineableBindings = mutable.Map[TermName, Tree]()
 
     def withinSplice[T](op: => T) = {
       val old = insideSplice

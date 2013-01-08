@@ -1,17 +1,13 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2012 LAMP/EPFL
+ * Copyright 2005-2013 LAMP/EPFL
  * @author  Paul Phillips
  */
 
 package scala.tools.nsc
 package typechecker
 
-import scala.collection.{ mutable, immutable }
-import scala.collection.mutable.ListBuffer
-import scala.util.control.ControlThrowable
-import symtab.Flags._
-import scala.annotation.tailrec
 import Checkability._
+import scala.language.postfixOps
 
 /** On pattern matcher checkability:
  *
@@ -134,7 +130,7 @@ trait Checkable {
       else if (P3) RuntimeCheckable
       else if (uncheckableType == NoType) {
         // Avoid warning (except ourselves) if we can't pinpoint the uncheckable type
-        debugwarn("Checkability checker says 'Uncheckable', but uncheckable type cannot be found:\n" + summaryString)
+        debuglog("Checkability checker says 'Uncheckable', but uncheckable type cannot be found:\n" + summaryString)
         CheckabilityError
       }
       else Uncheckable
@@ -154,6 +150,7 @@ trait Checkable {
     def neverSubClass = isNeverSubClass(Xsym, Psym)
     def neverMatches  = result == StaticallyFalse
     def isUncheckable = result == Uncheckable
+    def isCheckable   = !isUncheckable
     def uncheckableMessage = uncheckableType match {
       case NoType                                   => "something"
       case tp @ RefinedType(_, _)                   => "refinement " + tp
@@ -165,41 +162,43 @@ trait Checkable {
   /** X, P, [P1], etc. are all explained at the top of the file.
    */
   private object CheckabilityChecker {
-    /** A knowable class is one which is either effectively final
-     *  itself, or sealed with only knowable children.
-     */
-    def isKnowable(sym: Symbol): Boolean = /*logResult(s"isKnowable($sym)")*/(
-         sym.initialize.isEffectivelyFinal  // pesky .initialize requirement, or we receive lies about isSealed
-      || sym.isSealed && (sym.children forall isKnowable)
-    )
-    def knownSubclasses(sym: Symbol): List[Symbol] = /*logResult(s"knownSubclasses($sym)")*/(sym :: {
-      if (sym.isSealed) sym.children.toList flatMap knownSubclasses
-      else Nil
-    })
-    def excludable(s1: Symbol, s2: Symbol) = /*logResult(s"excludable($s1, $s2)")*/(
-         isKnowable(s1)
-      && !(s2 isSubClass s1)
-      && knownSubclasses(s1).forall(child => !(child isSubClass s2))
-    )
-
-    /** Given classes A and B, can it be shown that nothing which is
-     *  an A will ever be a subclass of something which is a B? This
-     *  entails not only showing that !(A isSubClass B) but that the
-     *  same is true of all their subclasses.  Restated for symmetry:
-     *  the same value cannot be a member of both A and B.
-     *
-     *   1) A must not be a subclass of B, nor B of A (the trivial check)
-     *   2) One of A or B must be completely knowable (see isKnowable)
-     *   3) Assuming A is knowable, the proposition is true if
-     *      !(A' isSubClass B) for all A', where A' is a subclass of A.
-     *
-     *  Due to symmetry, the last condition applies as well in reverse.
-     */
-    def isNeverSubClass(sym1: Symbol, sym2: Symbol) = /*logResult(s"isNeverSubClass($sym1, $sym2)")*/(
+    /** Are these symbols classes with no subclass relationship? */
+    def areUnrelatedClasses(sym1: Symbol, sym2: Symbol) = (
          sym1.isClass
       && sym2.isClass
-      && (excludable(sym1, sym2) || excludable(sym2, sym1))
+      && !(sym1 isSubClass sym2)
+      && !(sym2 isSubClass sym1)
     )
+    /** Are all children of these symbols pairwise irreconcilable? */
+    def allChildrenAreIrreconcilable(sym1: Symbol, sym2: Symbol) = (
+      sym1.children.toList forall (c1 =>
+        sym2.children.toList forall (c2 =>
+          areIrreconcilableAsParents(c1, c2)
+        )
+      )
+    )
+    /** Is it impossible for the given symbols to be parents in the same class?
+     *  This means given A and B, can there be an instance of A with B? This is the
+     *  case if neither A nor B is a subclass of the other, and one of the following
+     *  additional conditions holds:
+     *   - either A or B is effectively final
+     *   - neither A nor B is a trait (i.e. both are actual classes, not eligible for mixin)
+     *   - both A and B are sealed, and every possible pairing of their children is irreconcilable
+     *
+     *  TODO: the last two conditions of the last possibility (that the symbols are not of
+     *  classes being compiled in the current run) are because this currently runs too early,
+     *  and .children returns Nil for sealed classes because their children will not be
+     *  populated until typer.  It was too difficult to move things around for the moment,
+     *  so I will consult with moors about the optimal time to be doing this.
+     */
+    def areIrreconcilableAsParents(sym1: Symbol, sym2: Symbol): Boolean = areUnrelatedClasses(sym1, sym2) && (
+         sym1.initialize.isEffectivelyFinal // initialization important
+      || sym2.initialize.isEffectivelyFinal
+      || !sym1.isTrait && !sym2.isTrait
+      || sym1.isSealed && sym2.isSealed && allChildrenAreIrreconcilable(sym1, sym2) && !currentRun.compiles(sym1) && !currentRun.compiles(sym2)
+    )
+    def isNeverSubClass(sym1: Symbol, sym2: Symbol) = areIrreconcilableAsParents(sym1, sym2)
+
     private def isNeverSubArgs(tps1: List[Type], tps2: List[Type], tparams: List[Symbol]): Boolean = /*logResult(s"isNeverSubArgs($tps1, $tps2, $tparams)")*/ {
       def isNeverSubArg(t1: Type, t2: Type, variance: Int) = {
         if (variance > 0) isNeverSubType(t2, t1)
@@ -210,10 +209,7 @@ trait Checkable {
     }
     private def isNeverSameType(tp1: Type, tp2: Type): Boolean = (tp1, tp2) match {
       case (TypeRef(_, sym1, args1), TypeRef(_, sym2, args2)) =>
-        (    isNeverSubClass(sym1, sym2)
-          || isNeverSubClass(sym2, sym1)
-          || ((sym1 == sym2) && isNeverSubArgs(args1, args2, sym1.typeParams))
-        )
+        isNeverSubClass(sym1, sym2) || ((sym1 == sym2) && isNeverSubArgs(args1, args2, sym1.typeParams))
       case _ =>
         false
     }
@@ -232,6 +228,17 @@ trait Checkable {
 
   trait InferCheckable {
     self: Inferencer =>
+
+    def isUncheckable(P0: Type) = !isCheckable(P0)
+
+    def isCheckable(P0: Type): Boolean = (
+      uncheckedOk(P0) || (P0.widen match {
+        case TypeRef(_, NothingClass | NullClass | AnyValClass, _) => false
+        case RefinedType(_, decls) if !decls.isEmpty               => false
+        case p                                                     =>
+          new CheckabilityChecker(AnyClass.tpe, p) isCheckable
+      })
+    )
 
     /** TODO: much better error positions.
      *  Kind of stuck right now because they just pass us the one tree.

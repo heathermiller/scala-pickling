@@ -1,6 +1,6 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2011, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2013, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
@@ -21,7 +21,7 @@ import scala.util.regexp.WordExp
 abstract class WordBerrySethi extends BaseBerrySethi {
   override val lang: WordExp
 
-  import lang.{ Alt, Eps, Letter, Meta, RegExp, Sequ, Star, _labelT }
+  import lang.{ Alt, Eps, Letter, RegExp, Sequ, Star, _labelT }
 
   protected var labels: mutable.HashSet[_labelT]                   = _
   // don't let this fool you, only labelAt is a real, surjective mapping
@@ -140,7 +140,6 @@ abstract class WordBerrySethi extends BaseBerrySethi {
 
         val delta1      = immutable.Map(deltaq.zipWithIndex map (_.swap): _*)
         val finalsArr   = (0 until pos map (k => finals.getOrElse(k, 0))).toArray  // 0 == not final
-        val initialsArr = initials.toArray
 
         val deltaArr: Array[mutable.Map[_labelT, immutable.BitSet]] =
           (0 until pos map { x =>
@@ -152,7 +151,6 @@ abstract class WordBerrySethi extends BaseBerrySethi {
         new NondetWordAutom[_labelT] {
           val nstates  = pos
           val labels   = WordBerrySethi.this.labels.toList
-          val initials = initialsArr
           val finals   = finalsArr
           val delta    = deltaArr
           val default  = defaultArr

@@ -1,11 +1,12 @@
 /* NSC -- new scala compiler
- * Copyright 2005-2012 LAMP/EPFL
+ * Copyright 2005-2013 LAMP/EPFL
  * @author  Martin Odersky
  */
 
 package scala.reflect
 package internal
 
+import scala.annotation.elidable
 import scala.collection.{ mutable, immutable }
 import util._
 
@@ -53,13 +54,16 @@ abstract class SymbolTable extends macros.Universe
   @deprecated("Give us a reason", "2.10.0")
   def abort(): Nothing = abort("unknown error")
 
+  @deprecated("Use devWarning if this is really a warning; otherwise use log", "2.11.0")
+  def debugwarn(msg: => String): Unit = devWarning(msg)
+
   /** Override with final implementation for inlining. */
   def debuglog(msg:  => String): Unit = if (settings.debug.value) log(msg)
-  def debugwarn(msg: => String): Unit = if (settings.debug.value) Console.err.println(msg)
+  def devWarning(msg: => String): Unit = if (settings.debug.value) Console.err.println(msg)
   def throwableAsString(t: Throwable): String = "" + t
 
   /** Prints a stack trace if -Ydebug or equivalent was given, otherwise does nothing. */
-  def debugStack(t: Throwable): Unit  = debugwarn(throwableAsString(t))
+  def debugStack(t: Throwable): Unit  = devWarning(throwableAsString(t))
 
   /** Overridden when we know more about what was happening during a failure. */
   def supplementErrorMessage(msg: String): String = msg
@@ -108,11 +112,10 @@ abstract class SymbolTable extends macros.Universe
     val global: SymbolTable.this.type = SymbolTable.this
   } with util.TraceSymbolActivity
 
-  /** Are we compiling for Java SE? */
-  // def forJVM: Boolean
-
-  /** Are we compiling for .NET? */
-  def forMSIL: Boolean = false
+  /** Check that the executing thread is the compiler thread. No-op here,
+   *  overridden in interactive.Global. */
+  @elidable(elidable.WARNING)
+  def assertCorrectThread() {}
 
   /** A last effort if symbol in a select <owner>.<name> is not found.
    *  This is overridden by the reflection compiler to make up a package
@@ -176,9 +179,6 @@ abstract class SymbolTable extends macros.Universe
 
   /** The phase identifier of the given period. */
   final def phaseId(period: Period): Phase#Id = period & 0xFF
-
-  /** The period at the start of run that includes `period`. */
-  final def startRun(period: Period): Period = period & 0xFFFFFF00
 
   /** The current period. */
   final def currentPeriod: Period = {
@@ -292,7 +292,6 @@ abstract class SymbolTable extends macros.Universe
 
   object perRunCaches {
     import java.lang.ref.WeakReference
-    import scala.runtime.ScalaRunTime.stringOf
     import scala.collection.generic.Clearable
 
     // Weak references so the garbage collector will take care of
@@ -339,6 +338,11 @@ abstract class SymbolTable extends macros.Universe
   @inline final def atPhase[T](ph: Phase)(op: => T): T = enteringPhase(ph)(op)
   @deprecated("Use enteringPhaseNotLaterThan", "2.10.0")
   @inline final def atPhaseNotLaterThan[T](target: Phase)(op: => T): T = enteringPhaseNotLaterThan(target)(op)
+
+  /**
+   * Adds the `sm` String interpolator to a [[scala.StringContext]].
+   */
+  implicit val StringContextStripMarginOps: StringContext => StringContextStripMarginOps = util.StringContextStripMarginOps
 }
 
 object SymbolTableStats {

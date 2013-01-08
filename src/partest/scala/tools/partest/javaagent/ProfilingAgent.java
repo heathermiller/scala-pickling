@@ -1,5 +1,5 @@
 /* NEST (New Scala Test)
- * Copyright 2007-2012 LAMP/EPFL
+ * Copyright 2007-2013 LAMP/EPFL
  * @author Grzegorz Kossakowski
  */
 
@@ -20,6 +20,6 @@ public class ProfilingAgent {
 	  // and the test-case itself won't be loaded yet. We rely here on the fact that ASMTransformer does
 	  // not depend on Scala library. In case our assumptions are wrong we can always insert call to
 	  // inst.retransformClasses.
-		inst.addTransformer(new ASMTransformer(), true);
+	  inst.addTransformer(new ASMTransformer(), false);
 	}
 }

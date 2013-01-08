@@ -1,6 +1,6 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2011, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2013, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
@@ -128,10 +128,8 @@ trait TraversableOnce[+A] extends Any with GenTraversableOnce[A] {
    *  @example    `Seq("a", 1, 5L).collectFirst({ case x: Int => x*10 }) = Some(10)`
    */
   def collectFirst[B](pf: PartialFunction[A, B]): Option[B] = {
-    for (x <- self.toIterator) { // make sure to use an iterator or `seq`
-      if (pf isDefinedAt x)
-        return Some(pf(x))
-    }
+    // make sure to use an iterator or `seq`
+    self.toIterator.foreach(pf.runWith(b => return Some(b)))
     None
   }
 

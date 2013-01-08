@@ -17,14 +17,11 @@ import internal.ClassfileConstants._
 import internal.pickling.UnPickler
 import scala.collection.mutable.{ HashMap, ListBuffer }
 import internal.Flags._
-//import scala.tools.nsc.util.ScalaClassLoader
-//import scala.tools.nsc.util.ScalaClassLoader._
 import ReflectionUtils.{staticSingletonInstance, innerSingletonInstance}
 import scala.language.existentials
 import scala.runtime.{ScalaRunTime, BoxesRunTime}
-import scala.reflect.internal.util.Collections._
 
-trait JavaMirrors extends internal.SymbolTable with api.JavaUniverse { thisUniverse: SymbolTable =>
+private[reflect] trait JavaMirrors extends internal.SymbolTable with api.JavaUniverse { thisUniverse: SymbolTable =>
 
   private lazy val mirrors = new WeakHashMap[ClassLoader, WeakReference[JavaMirror]]()
 
@@ -129,11 +126,10 @@ trait JavaMirrors extends internal.SymbolTable with api.JavaUniverse { thisUnive
     private def ErrorStaticModule(sym: Symbol) = throw new ScalaReflectionException(s"$sym is a static module, use reflectModule on a RuntimeMirror to obtain its ModuleMirror")
     private def ErrorNotMember(sym: Symbol, owner: Symbol) = throw new ScalaReflectionException(s"expected a member of $owner, you provided ${sym.kindString} ${sym.fullName}")
     private def ErrorNotField(sym: Symbol) = throw new ScalaReflectionException(s"expected a field or an accessor method symbol, you provided $sym")
-    private def ErrorNonExistentField(sym: Symbol) = throw new ScalaReflectionException(s"""
-      |Scala field ${sym.name} isn't represented as a Java field, neither it has a Java accessor method
-      |note that private parameters of class constructors don't get mapped onto fields and/or accessors,
-      |unless they are used outside of their declaring constructors.
-    """.trim.stripMargin)
+    private def ErrorNonExistentField(sym: Symbol) = throw new ScalaReflectionException(
+      sm"""Scala field ${sym.name} isn't represented as a Java field, neither it has a Java accessor method
+          |note that private parameters of class constructors don't get mapped onto fields and/or accessors,
+          |unless they are used outside of their declaring constructors.""")
     private def ErrorSetImmutableField(sym: Symbol) = throw new ScalaReflectionException(s"cannot set an immutable field ${sym.name}")
     private def ErrorNotConstructor(sym: Symbol, owner: Symbol) = throw new ScalaReflectionException(s"expected a constructor of $owner, you provided $sym")
     private def ErrorFree(member: Symbol, freeType: Symbol) = throw new ScalaReflectionException(s"cannot reflect ${member.kindString} ${member.name}, because it's a member of a weak type ${freeType.name}")
@@ -286,6 +282,7 @@ trait JavaMirrors extends internal.SymbolTable with api.JavaUniverse { thisUnive
         if (!symbol.isMutable) ErrorSetImmutableField(symbol)
         jfield.set(receiver, value)
       }
+      def bind(newReceiver: Any) = new JavaFieldMirror(newReceiver, symbol)
       override def toString = s"field mirror for ${symbol.fullName} (bound to $receiver)"
     }
 
@@ -333,7 +330,16 @@ trait JavaMirrors extends internal.SymbolTable with api.JavaUniverse { thisUnive
     private def mkJavaMethodMirror[T: ClassTag](receiver: T, symbol: MethodSymbol): JavaMethodMirror = {
       if (isBytecodelessMethod(symbol)) new JavaBytecodelessMethodMirror(receiver, symbol)
       else if (symbol.paramss.flatten exists (p => isByNameParamType(p.info))) new JavaByNameMethodMirror(receiver, symbol)
-      else new JavaVanillaMethodMirror(receiver, symbol)
+      else {
+        symbol.paramss.flatten.length match {
+          case 0 => new JavaVanillaMethodMirror0(receiver, symbol)
+          case 1 => new JavaVanillaMethodMirror1(receiver, symbol)
+          case 2 => new JavaVanillaMethodMirror2(receiver, symbol)
+          case 3 => new JavaVanillaMethodMirror3(receiver, symbol)
+          case 4 => new JavaVanillaMethodMirror4(receiver, symbol)
+          case _ => new JavaVanillaMethodMirror(receiver, symbol)
+        }
+      }
     }
 
     private abstract class JavaMethodMirror(val symbol: MethodSymbol)
@@ -344,8 +350,10 @@ trait JavaMirrors extends internal.SymbolTable with api.JavaUniverse { thisUnive
         jmeth
       }
 
+      def jinvokeraw(jmeth: jMethod, receiver: Any, args: Seq[Any]) = jmeth.invoke(receiver, args.asInstanceOf[Seq[AnyRef]]: _*)
+
       def jinvoke(jmeth: jMethod, receiver: Any, args: Seq[Any]): Any = {
-        val result = jmeth.invoke(receiver, args.asInstanceOf[Seq[AnyRef]]: _*)
+        val result = jinvokeraw(jmeth, receiver, args)
         if (jmeth.getReturnType == java.lang.Void.TYPE) ()
         else result
       }
@@ -355,11 +363,43 @@ trait JavaMirrors extends internal.SymbolTable with api.JavaUniverse { thisUnive
 
     private class JavaVanillaMethodMirror(val receiver: Any, symbol: MethodSymbol)
             extends JavaMethodMirror(symbol) {
+      def bind(newReceiver: Any) = new JavaVanillaMethodMirror(newReceiver, symbol)
       def apply(args: Any*): Any = jinvoke(jmeth, receiver, args)
+    }
+
+    private class JavaVanillaMethodMirror0(receiver: Any, symbol: MethodSymbol)
+            extends JavaVanillaMethodMirror(receiver, symbol) {
+      override def bind(newReceiver: Any) = new JavaVanillaMethodMirror0(newReceiver, symbol)
+      override def jinvokeraw(jmeth: jMethod, receiver: Any, args: Seq[Any]) = jmeth.invoke(receiver)
+    }
+
+    private class JavaVanillaMethodMirror1(receiver: Any, symbol: MethodSymbol)
+            extends JavaVanillaMethodMirror(receiver, symbol) {
+      override def bind(newReceiver: Any) = new JavaVanillaMethodMirror1(newReceiver, symbol)
+      override def jinvokeraw(jmeth: jMethod, receiver: Any, args: Seq[Any]) = jmeth.invoke(receiver, args(0).asInstanceOf[AnyRef])
+    }
+
+    private class JavaVanillaMethodMirror2(receiver: Any, symbol: MethodSymbol)
+            extends JavaVanillaMethodMirror(receiver, symbol) {
+      override def bind(newReceiver: Any) = new JavaVanillaMethodMirror2(newReceiver, symbol)
+      override def jinvokeraw(jmeth: jMethod, receiver: Any, args: Seq[Any]) = jmeth.invoke(receiver, args(0).asInstanceOf[AnyRef], args(1).asInstanceOf[AnyRef])
+    }
+
+    private class JavaVanillaMethodMirror3(receiver: Any, symbol: MethodSymbol)
+            extends JavaVanillaMethodMirror(receiver, symbol) {
+      override def bind(newReceiver: Any) = new JavaVanillaMethodMirror3(newReceiver, symbol)
+      override def jinvokeraw(jmeth: jMethod, receiver: Any, args: Seq[Any]) = jmeth.invoke(receiver, args(0).asInstanceOf[AnyRef], args(1).asInstanceOf[AnyRef], args(2).asInstanceOf[AnyRef])
+    }
+
+    private class JavaVanillaMethodMirror4(receiver: Any, symbol: MethodSymbol)
+            extends JavaVanillaMethodMirror(receiver, symbol) {
+      override def bind(newReceiver: Any) = new JavaVanillaMethodMirror4(newReceiver, symbol)
+      override def jinvokeraw(jmeth: jMethod, receiver: Any, args: Seq[Any]) = jmeth.invoke(receiver, args(0).asInstanceOf[AnyRef], args(1).asInstanceOf[AnyRef], args(2).asInstanceOf[AnyRef], args(3).asInstanceOf[AnyRef])
     }
 
     private class JavaByNameMethodMirror(val receiver: Any, symbol: MethodSymbol)
             extends JavaMethodMirror(symbol) {
+      def bind(newReceiver: Any) = new JavaByNameMethodMirror(newReceiver, symbol)
       def apply(args: Any*): Any = {
         val transformed = map2(args.toList, symbol.paramss.flatten)((arg, param) => if (isByNameParamType(param.info)) () => arg else arg)
         jinvoke(jmeth, receiver, transformed)
@@ -368,6 +408,7 @@ trait JavaMirrors extends internal.SymbolTable with api.JavaUniverse { thisUnive
 
     private class JavaBytecodelessMethodMirror[T: ClassTag](val receiver: T, symbol: MethodSymbol)
             extends JavaMethodMirror(symbol) {
+       def bind(newReceiver: Any) = new JavaBytecodelessMethodMirror(newReceiver.asInstanceOf[T], symbol)
        def apply(args: Any*): Any = {
         // checking type conformance is too much of a hassle, so we don't do it here
         // actually it's not even necessary, because we manually dispatch arguments below
@@ -379,7 +420,7 @@ trait JavaMirrors extends internal.SymbolTable with api.JavaUniverse { thisUnive
         val varargMatch = args.length >= params.length - 1 && isVarArgsList(params)
         if (!perfectMatch && !varargMatch) {
           val n_arguments = if (isVarArgsList(params)) s"${params.length - 1} or more" else s"${params.length}"
-          var s_arguments = if (params.length == 1 && !isVarArgsList(params)) "argument" else "arguments"
+          val s_arguments = if (params.length == 1 && !isVarArgsList(params)) "argument" else "arguments"
           throw new ScalaReflectionException(s"${showMethodSig(symbol)} takes $n_arguments $s_arguments")
         }
 
@@ -417,13 +458,14 @@ trait JavaMirrors extends internal.SymbolTable with api.JavaUniverse { thisUnive
           case sym if sym.owner.isPrimitiveValueClass => invokePrimitiveMethod
           case sym if sym == Predef_classOf           => fail("Predef.classOf is a compile-time function")
           case sym if sym.isTermMacro                 => fail(s"${symbol.fullName} is a macro, i.e. a compile-time function")
-          case _                                      => assert(false, this)
+          case _                                      => abort(s"unsupported symbol $symbol when invoking $this")
         }
       }
     }
 
     private class JavaConstructorMirror(val outer: AnyRef, val symbol: MethodSymbol)
             extends MethodMirror {
+      def bind(newReceiver: Any) = new JavaConstructorMirror(newReceiver.asInstanceOf[AnyRef], symbol)
       override val receiver = outer
       lazy val jconstr = {
         val jconstr = constructorToJava(symbol)
@@ -446,8 +488,7 @@ trait JavaMirrors extends internal.SymbolTable with api.JavaUniverse { thisUnive
             extends TemplateMirror {
       def outer: AnyRef
       def erasure: ClassSymbol
-      lazy val runtimeClass = classToJava(erasure)
-      lazy val signature = typeToScala(runtimeClass)
+      lazy val signature = typeToScala(classToJava(erasure))
     }
 
     private class JavaClassMirror(val outer: AnyRef, val symbol: ClassSymbol)
@@ -457,10 +498,6 @@ trait JavaMirrors extends internal.SymbolTable with api.JavaUniverse { thisUnive
       def reflectConstructor(constructor: MethodSymbol) = {
         checkConstructorOf(constructor, symbol)
         new JavaConstructorMirror(outer, constructor)
-      }
-      def companion: Option[ModuleMirror] = symbol.companionModule match {
-       case module: ModuleSymbol => Some(new JavaModuleMirror(outer, module))
-       case _ => None
       }
       override def toString = s"class mirror for ${symbol.fullName} (bound to $outer)"
     }
@@ -474,11 +511,7 @@ trait JavaMirrors extends internal.SymbolTable with api.JavaUniverse { thisUnive
           staticSingletonInstance(classLoader, symbol.fullName)
         else
           if (outer == null) staticSingletonInstance(classToJava(symbol.moduleClass.asClass))
-          else innerSingletonInstance(outer, symbol.name)
-      }
-      def companion: Option[ClassMirror] = symbol.companionClass match {
-        case cls: ClassSymbol => Some(new JavaClassMirror(outer, cls))
-        case _ => None
+          else innerSingletonInstance(outer, symbol.name.toString)
       }
       override def toString = s"module mirror for ${symbol.fullName} (bound to $outer)"
     }
@@ -505,13 +538,10 @@ trait JavaMirrors extends internal.SymbolTable with api.JavaUniverse { thisUnive
       Class.forName(path, true, classLoader)
 
     /** Does `path` correspond to a Java class with that fully qualified name in the current class loader? */
-    def tryJavaClass(path: String): Option[jClass[_]] =
-      try {
-        Some(javaClass(path))
-      } catch {
-        case (_: ClassNotFoundException) | (_: NoClassDefFoundError) | (_: IncompatibleClassChangeError) =>
-          None
-      }
+    def tryJavaClass(path: String): Option[jClass[_]] = (
+      try Some(javaClass(path))
+      catch { case ex @ (_: LinkageError | _: ClassNotFoundException) => None } // TODO - log
+    )
 
     /** The mirror that corresponds to the classloader that original defined the given Java class */
     def mirrorDefining(jclazz: jClass[_]): JavaMirror = {
@@ -550,8 +580,8 @@ trait JavaMirrors extends internal.SymbolTable with api.JavaUniverse { thisUnive
           val result = anns find (_.annotationType == annotClass)
           if (result.isEmpty && (anns exists (_.annotationType.getName == name)))
             throw new ClassNotFoundException(
-              s"""Mirror classloader mismatch: $jclazz (loaded by ${ReflectionUtils.show(jclazz.getClassLoader)})
-              |is unrelated to the mirror's classloader: (${ReflectionUtils.show(classLoader)})""".stripMargin)
+              sm"""Mirror classloader mismatch: $jclazz (loaded by ${ReflectionUtils.show(jclazz.getClassLoader)})
+                  |is unrelated to the mirror's classloader: (${ReflectionUtils.show(classLoader)})""")
           result
         }
       def loadBytes[T: ClassTag](name: String): Option[T] =
@@ -584,7 +614,7 @@ trait JavaMirrors extends internal.SymbolTable with api.JavaUniverse { thisUnive
               case None =>
                 // class does not have a Scala signature; it's a Java class
                 info("translating reflection info for Java " + jclazz) //debug
-                initClassModule(clazz, module, new FromJavaClassCompleter(clazz, module, jclazz))
+                initClassAndModule(clazz, module, new FromJavaClassCompleter(clazz, module, jclazz))
             }
         }
       } catch {
@@ -686,9 +716,9 @@ trait JavaMirrors extends internal.SymbolTable with api.JavaUniverse { thisUnive
         def enter(sym: Symbol, mods: Int) =
           (if (jModifier.isStatic(mods)) module.moduleClass else clazz).info.decls enter sym
 
-        for (jinner <- jclazz.getDeclaredClasses) {
-          enter(jclassAsScala(jinner, clazz), jinner.getModifiers)
-        }
+        for (jinner <- jclazz.getDeclaredClasses)
+          jclassAsScala(jinner) // inner class is entered as a side-effect
+                                // no need to call enter explicitly
 
         pendingLoadActions = { () =>
 
@@ -848,20 +878,6 @@ trait JavaMirrors extends internal.SymbolTable with api.JavaUniverse { thisUnive
     }
 
     /**
-     * The Scala field corresponding to given Java field.
-     *  @param  jfield  The Java field
-     *  @return A Scala field object that corresponds to `jfield`.
-     *  // ??? should we return the getter instead?
-     */
-    def fieldToScala(jfield: jField): TermSymbol =
-      toScala(fieldCache, jfield)(_ fieldToScala1 _)
-
-    private def fieldToScala1(jfield: jField): TermSymbol = {
-      val owner = followStatic(classToScala(jfield.getDeclaringClass), jfield.getModifiers)
-      (lookup(owner, jfield.getName) suchThat (!_.isMethod) orElse jfieldAsScala(jfield)).asTerm
-    }
-
-    /**
      * The Scala package corresponding to given Java package
      */
     def packageToScala(jpkg: jPackage): ModuleSymbol = packageCache.toScala(jpkg) {
@@ -964,8 +980,8 @@ trait JavaMirrors extends internal.SymbolTable with api.JavaUniverse { thisUnive
             javaTypeToValueClass(jclazz) orElse lookupClass
 
         assert (cls.isType,
-          s"""${if (cls == NoSymbol) "not a type: symbol" else "no symbol could be"}
-             | loaded from $jclazz in $owner with name $simpleName and classloader $classLoader""".stripMargin)
+          sm"""${if (cls == NoSymbol) "not a type: symbol" else "no symbol could be"}
+              | loaded from $jclazz in $owner with name $simpleName and classloader $classLoader""")
 
         cls.asClass
       }
@@ -1046,14 +1062,15 @@ trait JavaMirrors extends internal.SymbolTable with api.JavaUniverse { thisUnive
      *  @param jclazz  The Java class
      *  @return A Scala class symbol that wraps all reflection info of `jclazz`
      */
-    private def jclassAsScala(jclazz: jClass[_]): Symbol = jclassAsScala(jclazz, sOwner(jclazz))
+    private def jclassAsScala(jclazz: jClass[_]): ClassSymbol =
+      toScala(classCache, jclazz)(_ jclassAsScala1 _)
 
-    private def jclassAsScala(jclazz: jClass[_], owner: Symbol): ClassSymbol = {
+    private def jclassAsScala1(jclazz: jClass[_]): ClassSymbol = {
+      val owner = sOwner(jclazz)
       val name = scalaSimpleName(jclazz)
       val completer = (clazz: Symbol, module: Symbol) => new FromJavaClassCompleter(clazz, module, jclazz)
-      val (clazz, module) = createClassModule(owner, name, completer)
-      classCache enter (jclazz, clazz)
-      clazz
+
+      initAndEnterClassAndModule(owner, name, completer)._1
     }
 
     /**
@@ -1123,13 +1140,6 @@ trait JavaMirrors extends internal.SymbolTable with api.JavaUniverse { thisUnive
     }
 
 // -------------------- Scala to Java  -----------------------------------
-
-    /** Optionally, the Java package corresponding to a given Scala package, or None if no such Java package exists.
-     *  @param   pkg The Scala package
-     */
-    def packageToJavaOption(pkg: ModuleSymbol): Option[jPackage] = packageCache.toJavaOption(pkg) {
-      Option(jPackage.getPackage(pkg.fullName.toString))
-    }
 
     /** The Java class corresponding to given Scala class.
      *  Note: This only works for
@@ -1279,6 +1289,6 @@ trait JavaMirrors extends internal.SymbolTable with api.JavaUniverse { thisUnive
   }
 }
 
-class ReflectError(msg: String) extends java.lang.Error(msg)
+private[reflect] class ReflectError(msg: String) extends java.lang.Error(msg)
 
-class HasJavaClass[J](val getClazz: J => java.lang.Class[_])
+private[reflect] class HasJavaClass[J](val getClazz: J => java.lang.Class[_])

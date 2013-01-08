@@ -1,11 +1,11 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2012 LAMP/EPFL
+ * Copyright 2005-2013 LAMP/EPFL
  * @author  Martin Odersky
  */
 
 package scala.tools.nsc
 
-import java.io.{ BufferedOutputStream, FileOutputStream, PrintStream }
+import java.io.PrintStream
 import scala.tools.nsc.reporters.{Reporter, ConsoleReporter}
 import scala.reflect.internal.util.FakePos //Position
 import scala.tools.util.SocketServer
@@ -28,8 +28,6 @@ class StandardCompileServer extends SocketServer {
   var reporter: ConsoleReporter = _
   var shutdown = false
   var verbose = false
-
-  val versionMsg = "Fast " + Properties.versionMsg
 
   val MaxCharge = 0.8
 
@@ -57,9 +55,6 @@ class StandardCompileServer extends SocketServer {
     runtime.gc()
     (totalMemory - freeMemory).toDouble / maxMemory.toDouble > MaxCharge
   }
-
-  protected def newOfflineCompilerCommand(arguments: List[String], settings: FscSettings): OfflineCompilerCommand =
-    new OfflineCompilerCommand(arguments, settings)
 
   /** Problematically, Settings are only considered equal if every setting
    *  is exactly equal.  In fsc this immediately breaks down because the randomly
@@ -93,7 +88,7 @@ class StandardCompileServer extends SocketServer {
     val args        = input.split("\0", -1).toList
     val newSettings = new FscSettings(fscError)
     this.verbose    = newSettings.verbose.value
-    val command     = newOfflineCompilerCommand(args, newSettings)
+    val command     = new OfflineCompilerCommand(args, newSettings)
 
     info("Settings after normalizing paths: " + newSettings)
     printMemoryStats()

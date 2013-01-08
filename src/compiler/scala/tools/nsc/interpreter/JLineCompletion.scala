@@ -1,13 +1,11 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2012 LAMP/EPFL
+ * Copyright 2005-2013 LAMP/EPFL
  * @author Paul Phillips
  */
 
 package scala.tools.nsc
 package interpreter
 
-import scala.tools.jline._
-import scala.tools.jline.console.completer._
 import Completion._
 import scala.collection.mutable.ListBuffer
 import scala.reflect.internal.util.StringOps.longestCommonPrefix
@@ -30,9 +28,6 @@ class JLineCompletion(val intp: IMain) extends Completion with CompletionOutput 
     if (isModule) getModuleIfDefined(name)
     else getModuleIfDefined(name)
   )
-  def getType(name: String, isModule: Boolean) = getSymbol(name, isModule).tpe
-  def typeOf(name: String)                     = getType(name, false)
-  def moduleOf(name: String)                   = getType(name, true)
 
   trait CompilerCompletion {
     def tp: Type
@@ -49,7 +44,6 @@ class JLineCompletion(val intp: IMain) extends Completion with CompletionOutput 
 
     def tos(sym: Symbol): String = sym.decodedName
     def memberNamed(s: String) = exitingTyper(effectiveTp member newTermName(s))
-    def hasMethod(s: String) = memberNamed(s).isMethod
 
     // XXX we'd like to say "filterNot (_.isDeprecated)" but this causes the
     // compiler to crash for reasons not yet known.
@@ -281,10 +275,6 @@ class JLineCompletion(val intp: IMain) extends Completion with CompletionOutput 
     if (parsed.isEmpty) xs map ("." + _) else xs
   }
 
-  // generic interface for querying (e.g. interpreter loop, testing)
-  def completions(buf: String): List[String] =
-    topLevelFor(Parsed.dotted(buf + ".", buf.length + 1))
-
   def completer(): ScalaCompleter = new JLineTabCompletion
 
   /** This gets a little bit hairy.  It's no small feat delegating everything
@@ -326,8 +316,7 @@ class JLineCompletion(val intp: IMain) extends Completion with CompletionOutput 
         Some(Candidates(newCursor, winners))
       }
 
-      def mkDotted      = Parsed.dotted(buf, cursor) withVerbosity verbosity
-      def mkUndelimited = Parsed.undelimited(buf, cursor) withVerbosity verbosity
+      def mkDotted = Parsed.dotted(buf, cursor) withVerbosity verbosity
 
       // a single dot is special cased to completion on the previous result
       def lastResultCompletion =

@@ -48,13 +48,13 @@ trait Reshape {
           val Template(parents, self, body) = impl
           var body1 = trimAccessors(classDef, reshapeLazyVals(body))
           body1 = trimSyntheticCaseClassMembers(classDef, body1)
-          var impl1 = Template(parents, self, body1).copyAttrs(impl)
+          val impl1 = Template(parents, self, body1).copyAttrs(impl)
           ClassDef(mods, name, params, impl1).copyAttrs(classDef)
         case moduledef @ ModuleDef(mods, name, impl) =>
           val Template(parents, self, body) = impl
           var body1 = trimAccessors(moduledef, reshapeLazyVals(body))
           body1 = trimSyntheticCaseClassMembers(moduledef, body1)
-          var impl1 = Template(parents, self, body1).copyAttrs(impl)
+          val impl1 = Template(parents, self, body1).copyAttrs(impl)
           ModuleDef(mods, name, impl1).copyAttrs(moduledef)
         case template @ Template(parents, self, body) =>
           val discardedParents = parents collect { case tt: TypeTree => tt } filter isDiscarded
@@ -116,7 +116,6 @@ trait Reshape {
 
     private def toPreTyperModifiers(mods: Modifiers, sym: Symbol) = {
       if (!sym.annotations.isEmpty) {
-        val Modifiers(flags, privateWithin, annotations) = mods
         val postTyper = sym.annotations filter (_.original != EmptyTree)
         if (reifyDebug && !postTyper.isEmpty) println("reify symbol annotations for: " + sym)
         if (reifyDebug && !postTyper.isEmpty) println("originals are: " + sym.annotations)
@@ -252,10 +251,10 @@ trait Reshape {
       val DefDef(mods0, name0, _, _, tpt0, rhs0) = ddef
       val name1 = nme.dropLocalSuffix(name0)
       val Modifiers(flags0, privateWithin0, annotations0) = mods0
-      var flags1 = (flags0 & GetterFlags) & ~(STABLE | ACCESSOR | METHOD)
+      val flags1 = (flags0 & GetterFlags) & ~(STABLE | ACCESSOR | METHOD)
       val mods1 = Modifiers(flags1, privateWithin0, annotations0) setPositions mods0.positions
       val mods2 = toPreTyperModifiers(mods1, ddef.symbol)
-      ValDef(mods2, name1, tpt0, extractRhs(rhs0))
+      ValDef(mods2, name1.toTermName, tpt0, extractRhs(rhs0))
     }
 
     private def trimAccessors(deff: Tree, stats: List[Tree]): List[Tree] = {
@@ -267,7 +266,7 @@ trait Reshape {
 
         def detectBeanAccessors(prefix: String): Unit = {
           if (defdef.name.startsWith(prefix)) {
-            var name = defdef.name.toString.substring(prefix.length)
+            val name = defdef.name.toString.substring(prefix.length)
             def uncapitalize(s: String) = if (s.length == 0) "" else { val chars = s.toCharArray; chars(0) = chars(0).toLower; new String(chars) }
             def findValDef(name: String) = (symdefs.values collect { case vdef: ValDef if nme.dropLocalSuffix(vdef.name).toString == name => vdef }).headOption
             val valdef = findValDef(name).orElse(findValDef(uncapitalize(name))).orNull
@@ -279,11 +278,11 @@ trait Reshape {
         detectBeanAccessors("is")
       });
 
-      var stats1 = stats flatMap {
+      val stats1 = stats flatMap {
         case vdef @ ValDef(mods, name, tpt, rhs) if !mods.isLazy =>
           val mods1 = if (accessors.contains(vdef)) {
             val ddef = accessors(vdef)(0) // any accessor will do
-            val Modifiers(flags, privateWithin, annotations) = mods
+            val Modifiers(flags, _, annotations) = mods
             var flags1 = flags & ~LOCAL
             if (!ddef.symbol.isPrivate) flags1 = flags1 & ~PRIVATE
             val privateWithin1 = ddef.mods.privateWithin
@@ -294,7 +293,7 @@ trait Reshape {
           }
           val mods2 = toPreTyperModifiers(mods1, vdef.symbol)
           val name1 = nme.dropLocalSuffix(name)
-          val vdef1 = ValDef(mods2, name1, tpt, rhs)
+          val vdef1 = ValDef(mods2, name1.toTermName, tpt, rhs)
           if (reifyDebug) println("resetting visibility of field: %s => %s".format(vdef, vdef1))
           Some(vdef1) // no copyAttrs here, because new ValDef and old symbols are now out of sync
         case ddef: DefDef if !ddef.mods.isLazy =>
@@ -326,7 +325,8 @@ trait Reshape {
             case Some(ddef) =>
               toPreTyperLazyVal(ddef)
             case None       =>
-              CannotReifyInvalidLazyVal(vdef)
+              if (reifyDebug) println("couldn't find corresponding lazy val accessor")
+              vdef
           }
           if (reifyDebug) println(s"reconstructed lazy val is $vdef1")
           vdef1::Nil

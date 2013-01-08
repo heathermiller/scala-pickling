@@ -1,6 +1,6 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2003-2011, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2003-2013, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
@@ -849,7 +849,6 @@ self: ParIterableLike[T, Repr, Sequential] =>
     override def seq = self.seq.view
     def splitter = self.splitter
     def size = splitter.remaining
-    override def isEmpty = size == 0
   }
 
   override def toArray[U >: T: ClassTag]: Array[U] = {

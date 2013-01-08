@@ -1,6 +1,6 @@
 /*                     __                                               *\
 **     ________ ___   / /  ___     Scala API                            **
-**    / __/ __// _ | / /  / _ |    (c) 2006-2011, LAMP/EPFL             **
+**    / __/ __// _ | / /  / _ |    (c) 2006-2013, LAMP/EPFL             **
 **  __\ \/ /__/ __ |/ /__/ __ |    http://scala-lang.org/               **
 ** /____/\___/_/ |_/____/_/ | |                                         **
 **                          |/                                          **
@@ -22,12 +22,6 @@ object BigInt {
   private val maxCached = 1024
   private val cache = new Array[BigInt](maxCached - minCached + 1)
   private val minusOne = BigInteger.valueOf(-1)
-
-  @deprecated("Use Long.MinValue", "2.9.0")
-  val MinLong = BigInt(Long.MinValue)
-
-  @deprecated("Use Long.MaxValue", "2.9.0")
-  val MaxLong = BigInt(Long.MaxValue)
 
   /** Constructs a `BigInt` whose value is equal to that of the
    *  specified integer value.

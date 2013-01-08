@@ -1,5 +1,5 @@
 /* NSC -- new Scala compiler
- * Copyright 2007-2012 LAMP/EPFL
+ * Copyright 2007-2013 LAMP/EPFL
  * @author  David Bernard, Manohar Jonnalagedda
  */
 
@@ -8,9 +8,7 @@ package doc
 
 import scala.util.control.ControlThrowable
 import reporters.Reporter
-import scala.reflect.internal.util.{ NoPosition, BatchSourceFile}
-import io.{ File, Directory }
-import DocParser.Parsed
+import scala.reflect.internal.util.BatchSourceFile
 
 /** A documentation processor controls the process of generating Scala
   * documentation, which is as follows.
@@ -39,9 +37,6 @@ class DocFactory(val reporter: Reporter, val settings: doc.Settings) { processor
       phasesSet += analyzer.namerFactory
       phasesSet += analyzer.packageObjects
       phasesSet += analyzer.typerFactory
-      phasesSet += superAccessors
-      phasesSet += pickler
-      phasesSet += refChecks
     }
     override def forScaladoc = true
   }
@@ -83,10 +78,10 @@ class DocFactory(val reporter: Reporter, val settings: doc.Settings) { processor
         with model.ModelFactoryImplicitSupport
         with model.ModelFactoryTypeSupport
         with model.diagram.DiagramFactory
-        with model.comment.CommentFactory
+        with model.CommentFactory
         with model.TreeFactory
         with model.MemberLookup {
-          override def templateShouldDocument(sym: compiler.Symbol, inTpl: TemplateImpl) =
+          override def templateShouldDocument(sym: compiler.Symbol, inTpl: DocTemplateImpl) =
             extraTemplatesToDocument(sym) || super.templateShouldDocument(sym, inTpl)
         }
     )

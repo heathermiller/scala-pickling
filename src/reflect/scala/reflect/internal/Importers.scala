@@ -316,7 +316,6 @@ trait Importers extends api.Importers { self: SymbolTable =>
     def importName(name: from.Name): Name =
       if (name.isTypeName) newTypeName(name.toString) else newTermName(name.toString)
     def importTypeName(name: from.TypeName): TypeName = importName(name).toTypeName
-    def importTermName(name: from.TermName): TermName = importName(name).toTermName
 
     def importModifiers(mods: from.Modifiers): Modifiers =
       new Modifiers(mods.flags, importName(mods.privateWithin), mods.annotations map importTree)
@@ -334,6 +333,8 @@ trait Importers extends api.Importers { self: SymbolTable =>
           new ModuleDef(importModifiers(mods), importName(name).toTermName, importTemplate(impl))
         case from.emptyValDef =>
           emptyValDef
+        case from.pendingSuperCall =>
+          pendingSuperCall
         case from.ValDef(mods, name, tpt, rhs) =>
           new ValDef(importModifiers(mods), importName(name).toTermName, importTree(tpt), importTree(rhs))
         case from.DefDef(mods, name, tparams, vparamss, tpt, rhs) =>
@@ -438,7 +439,7 @@ trait Importers extends api.Importers { self: SymbolTable =>
               if (tt.original != null) mytt.setOriginal(importTree(tt.original))
             case _ =>
               if (mytree.hasSymbolField) mytree.symbol = importSymbol(tree.symbol)
-              mytree.tpe = importType(tree.tpe)
+              mytree setType importType(tree.tpe)
           }
         }
       })

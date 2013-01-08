@@ -1,5 +1,5 @@
 /* NSC -- new Scala compiler
- * Copyright 2005-2012 LAMP/EPFL
+ * Copyright 2005-2013 LAMP/EPFL
  * @author Martin Odersky
  */
 
@@ -437,19 +437,19 @@ abstract class Erasure extends AddInterfaces
         noclash = false
         unit.error(
           if (member.owner == root) member.pos else root.pos,
-          s"""bridge generated for member ${fulldef(member)}
-             |which overrides ${fulldef(other)}
-             |clashes with definition of $what;
-             |both have erased type ${exitingPostErasure(bridge.tpe)}""".stripMargin)
+          sm"""bridge generated for member ${fulldef(member)}
+              |which overrides ${fulldef(other)}
+              |clashes with definition of $what;
+              |both have erased type ${exitingPostErasure(bridge.tpe)}""")
       }
       for (bc <- root.baseClasses) {
         if (settings.debug.value)
           exitingPostErasure(println(
-            s"""check bridge overrides in $bc
-            ${bc.info.nonPrivateDecl(bridge.name)}
-            ${site.memberType(bridge)}
-            ${site.memberType(bc.info.nonPrivateDecl(bridge.name) orElse IntClass)}
-            ${(bridge.matchingSymbol(bc, site))}""".stripMargin))
+            sm"""check bridge overrides in $bc
+                |${bc.info.nonPrivateDecl(bridge.name)}
+                |${site.memberType(bridge)}
+                |${site.memberType(bc.info.nonPrivateDecl(bridge.name) orElse IntClass)}
+                |${(bridge.matchingSymbol(bc, site))}"""))
 
         def overriddenBy(sym: Symbol) =
           sym.matchingSymbol(bc, site).alternatives filter (sym => !sym.isBridge)
@@ -469,7 +469,7 @@ abstract class Erasure extends AddInterfaces
     }
 
     def checkPair(member: Symbol, other: Symbol) {
-      val otpe = erasure(root)(other.tpe)
+      val otpe = specialErasure(root)(other.tpe)
       val bridgeNeeded = exitingErasure (
         !(other.tpe =:= member.tpe) &&
         !(deconstMap(other.tpe) =:= deconstMap(member.tpe)) &&
@@ -488,7 +488,7 @@ abstract class Erasure extends AddInterfaces
       debuglog("generating bridge from %s (%s): %s to %s: %s".format(
         other, flagsToString(newFlags),
         otpe + other.locationString, member,
-        erasure(root)(member.tpe) + member.locationString)
+        specialErasure(root)(member.tpe) + member.locationString)
       )
 
       // the parameter symbols need to have the new owner
@@ -522,7 +522,7 @@ abstract class Erasure extends AddInterfaces
           && !exitingErasure((member.tpe <:< other.tpe))) // no static guarantees (TODO: is the subtype test ever true?)
 
         import CODE._
-        val _false    = FALSE_typed
+        val _false    = FALSE
         val pt        = member.tpe.resultType
         lazy val zero =
           if      (_false.tpe <:< pt)    _false
@@ -693,7 +693,7 @@ abstract class Erasure extends AddInterfaces
         adaptToType(unbox(tree, pt), pt)
       else if (isPrimitiveValueType(tree.tpe) && !isPrimitiveValueType(pt)) {
         adaptToType(box(tree, pt.toString), pt)
-      } else if (tree.tpe.isInstanceOf[MethodType] && tree.tpe.params.isEmpty) {
+      } else if (isMethodTypeWithEmptyParams(tree.tpe)) {
         // [H] this assert fails when trying to typecheck tree !(SomeClass.this.bitmap) for single lazy val
         //assert(tree.symbol.isStable, "adapt "+tree+":"+tree.tpe+" to "+pt)
         adaptToType(Apply(tree, List()) setPos tree.pos setType tree.tpe.resultType, pt)
@@ -724,15 +724,7 @@ abstract class Erasure extends AddInterfaces
         case Apply(TypeApply(sel @ Select(qual, name), List(targ)), List())
         if tree.symbol == Any_asInstanceOf =>
           val qual1 = typedQualifier(qual, NOmode, ObjectClass.tpe) // need to have an expected type, see #3037
-          val qualClass = qual1.tpe.typeSymbol
-/*
-          val targClass = targ.tpe.typeSymbol
 
-          if (isNumericValueClass(qualClass) && isNumericValueClass(targClass))
-            // convert numeric type casts
-            atPos(tree.pos)(Apply(Select(qual1, "to" + targClass.name), List()))
-          else
-*/
           if (isPrimitiveValueType(targ.tpe) || isErasedValueType(targ.tpe)) {
             val noNullCheckNeeded = targ.tpe match {
               case ErasedValueType(tref) =>
@@ -744,7 +736,6 @@ abstract class Erasure extends AddInterfaces
             }
             if (noNullCheckNeeded) unbox(qual1, targ.tpe)
             else {
-              def nullConst = Literal(Constant(null)) setType NullClass.tpe
               val untyped =
 //                util.trace("new asinstanceof test") {
                   gen.evalOnce(qual1, context.owner, context.unit) { qual =>
@@ -783,16 +774,21 @@ abstract class Erasure extends AddInterfaces
             else if (!isPrimitiveValueType(qual1.tpe) && isPrimitiveValueMember(tree.symbol))
               qual1 = unbox(qual1, tree.symbol.owner.tpe)
 
-            if (isPrimitiveValueMember(tree.symbol) && !isPrimitiveValueType(qual1.tpe))
+            def selectFrom(qual: Tree) = treeCopy.Select(tree, qual, name)
+
+            if (isPrimitiveValueMember(tree.symbol) && !isPrimitiveValueType(qual1.tpe)) {
               tree.symbol = NoSymbol
-            else if (qual1.tpe.isInstanceOf[MethodType] && qual1.tpe.params.isEmpty) {
+              selectFrom(qual1)
+            } else if (isMethodTypeWithEmptyParams(qual1.tpe)) {
               assert(qual1.symbol.isStable, qual1.symbol);
-              qual1 = Apply(qual1, List()) setPos qual1.pos setType qual1.tpe.resultType
+              val applied = Apply(qual1, List()) setPos qual1.pos setType qual1.tpe.resultType
+              adaptMember(selectFrom(applied))
             } else if (!(qual1.isInstanceOf[Super] || (qual1.tpe.typeSymbol isSubClass tree.symbol.owner))) {
               assert(tree.symbol.owner != ArrayClass)
-              qual1 = cast(qual1, tree.symbol.owner.tpe)
+              selectFrom(cast(qual1, tree.symbol.owner.tpe))
+            } else {
+              selectFrom(qual1)
             }
-            treeCopy.Select(tree, qual1, name)
           }
         case SelectFromArray(qual, name, erasure) =>
           var qual1 = typedQualifier(qual)
@@ -861,14 +857,18 @@ abstract class Erasure extends AddInterfaces
               alt => alt == first || !(first.tpe looselyMatches alt.tpe)
             }
             if (tree.symbol ne sym1) {
-              tree1.symbol = sym1
-              tree1.tpe = sym1.tpe
+              tree1 setSymbol sym1 setType sym1.tpe
             }
           }
           tree1
         case _ =>
           tree1
       }
+    }
+
+    private def isMethodTypeWithEmptyParams(tpe: Type) = tpe match {
+      case MethodType(Nil, _) => true
+      case _                  => false
     }
   }
 
@@ -1042,17 +1042,17 @@ abstract class Erasure extends AddInterfaces
                     Apply(Select(qual, cmpOp), List(gen.mkAttributedQualifier(targ.tpe)))
                   }
                 case RefinedType(parents, decls) if (parents.length >= 2) =>
-                  // Optimization: don't generate isInstanceOf tests if the static type
-                  // conforms, because it always succeeds.  (Or at least it had better.)
-                  // At this writing the pattern matcher generates some instance tests
-                  // involving intersections where at least one parent is statically known true.
-                  // That needs fixing, but filtering the parents here adds an additional
-                  // level of robustness (in addition to the short term fix.)
-                  val parentTests = parents filterNot (qual.tpe <:< _)
+                  gen.evalOnce(qual, currentOwner, unit) { q =>
+                    // Optimization: don't generate isInstanceOf tests if the static type
+                    // conforms, because it always succeeds.  (Or at least it had better.)
+                    // At this writing the pattern matcher generates some instance tests
+                    // involving intersections where at least one parent is statically known true.
+                    // That needs fixing, but filtering the parents here adds an additional
+                    // level of robustness (in addition to the short term fix.)
+                    val parentTests = parents filterNot (qual.tpe <:< _)
 
-                  if (parentTests.isEmpty) Literal(Constant(true))
-                  else gen.evalOnce(qual, currentOwner, unit) { q =>
-                    atPos(tree.pos) {
+                    if (parentTests.isEmpty) Literal(Constant(true))
+                    else atPos(tree.pos) {
                       parentTests map mkIsInstanceOf(q) reduceRight gen.mkAnd
                     }
                   }
@@ -1120,6 +1120,8 @@ abstract class Erasure extends AddInterfaces
               } else {
                 // store exact array erasure in map to be retrieved later when we might
                 // need to do the cast in adaptMember
+                // Note: No specialErasure needed here because we simply cast, on
+                // elimination of SelectFromArray, no boxing or unboxing is done there.
                 treeCopy.Apply(
                   tree,
                   SelectFromArray(qual, name, erasure(tree.symbol)(qual.tpe)).copyAttrs(fn),
@@ -1257,13 +1259,12 @@ abstract class Erasure extends AddInterfaces
               tree1 setType specialScalaErasure(tree1.tpe)
             case ArrayValue(elemtpt, trees) =>
               treeCopy.ArrayValue(
-                tree1, elemtpt setType specialScalaErasure.applyInArray(elemtpt.tpe), trees map transform) setType null
+                tree1, elemtpt setType specialScalaErasure.applyInArray(elemtpt.tpe), trees map transform).clearType()
             case DefDef(_, _, _, _, tpt, _) =>
-              val result = super.transform(tree1) setType null
-              tpt.tpe = specialErasure(tree1.symbol)(tree1.symbol.tpe).resultType
-              result
+              try super.transform(tree1).clearType()
+              finally tpt setType specialErasure(tree1.symbol)(tree1.symbol.tpe).resultType
             case _ =>
-              super.transform(tree1) setType null
+              super.transform(tree1).clearType()
           }
         }
       }
