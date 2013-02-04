@@ -289,9 +289,6 @@ class BigInt(val bigInteger: BigInteger) extends ScalaNumber with ScalaNumericCo
    */
   def signum: Int = this.bigInteger.signum()
 
-  @deprecated("Use ~bigInt (the unary_~ method) instead", "2.10.0")
-  def ~ : BigInt = ~this
-
   /** Returns the bitwise complement of this BigInt
    */
   def unary_~ : BigInt = new BigInt(this.bigInteger.not())
@@ -358,7 +355,7 @@ class BigInt(val bigInteger: BigInteger) extends ScalaNumber with ScalaNumericCo
   def charValue   = intValue.toChar
 
   /** Converts this BigInt to an <tt>int</tt>.
-   *  If the BigInt is too big to fit in a int, only the low-order 32 bits
+   *  If the BigInt is too big to fit in an int, only the low-order 32 bits
    *  are returned. Note that this conversion can lose information about the
    *  overall magnitude of the BigInt value as well as return a result with
    *  the opposite sign.

@@ -948,7 +948,7 @@ class Global(settings: Settings, _reporter: Reporter, projectName: String = "") 
     for (sym <- ownerTpe.members)
       addTypeMember(sym, pre, sym.owner != ownerTpe.typeSymbol, NoSymbol)
     members.allMembers #:: {
-      //print("\nadd pimped")
+      //print("\nadd enrichment")
       val applicableViews: List[SearchResult] =
         if (ownerTpe.isErroneous) List()
         else new ImplicitSearch(
@@ -1030,15 +1030,6 @@ class Global(settings: Settings, _reporter: Reporter, projectName: String = "") 
   }
 
   // ---------------- Helper classes ---------------------------
-
-  /** A transformer that replaces tree `from` with tree `to` in a given tree */
-  class TreeReplacer(from: Tree, to: Tree) extends Transformer {
-    override def transform(t: Tree): Tree = {
-      if (t == from) to
-      else if ((t.pos includes from.pos) || t.pos.isTransparent) super.transform(t)
-      else t
-    }
-  }
 
   /** The typer run */
   class TyperRun extends Run {

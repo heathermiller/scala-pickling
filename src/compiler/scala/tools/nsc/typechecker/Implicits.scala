@@ -347,7 +347,7 @@ trait Implicits {
      *  if one or both are intersection types with a pair of overlapping parent types.
      */
     private def dominates(dtor: Type, dted: Type): Boolean = {
-      def core(tp: Type): Type = tp.normalize match {
+      def core(tp: Type): Type = tp.dealiasWiden match {
         case RefinedType(parents, defs) => intersectionType(parents map core, tp.typeSymbol.owner)
         case AnnotatedType(annots, tp, selfsym) => core(tp)
         case ExistentialType(tparams, result) => core(result).subst(tparams, tparams map (t => core(t.info.bounds.hi)))
@@ -362,11 +362,11 @@ trait Implicits {
         deriveTypeWithWildcards(syms.distinct)(tp)
       }
       def sum(xs: List[Int]) = (0 /: xs)(_ + _)
-      def complexity(tp: Type): Int = tp.normalize match {
+      def complexity(tp: Type): Int = tp.dealiasWiden match {
         case NoPrefix =>
           0
         case SingleType(pre, sym) =>
-          if (sym.isPackage) 0 else complexity(tp.normalize.widen)
+          if (sym.isPackage) 0 else complexity(tp.dealiasWiden)
         case TypeRef(pre, sym, args) =>
           complexity(pre) + sum(args map complexity) + 1
         case RefinedType(parents, _) =>
@@ -668,7 +668,11 @@ trait Implicits {
             // duplicating the code here, but this is probably a
             // hotspot (and you can't just call typed, need to force
             // re-typecheck)
-            val checked = itree2 match {
+            //
+            // This is just called for the side effect of error detection,
+            // see SI-6966 to see what goes wrong if we use the result of this
+            // as the SearchResult.
+            itree2 match {
               case TypeApply(fun, args)           => typedTypeApply(itree2, EXPRmode, fun, args)
               case Apply(TypeApply(fun, args), _) => typedTypeApply(itree2, EXPRmode, fun, args) // t2421c
               case t                              => t
@@ -677,7 +681,7 @@ trait Implicits {
             if (context.hasErrors)
               fail("typing TypeApply reported errors for the implicit tree: " + context.errBuffer.head.errMsg)
             else {
-              val result = new SearchResult(checked, subst)
+              val result = new SearchResult(itree2, subst)
               if (Statistics.canEnable) Statistics.incCounter(foundImplicits)
               printInference("[success] found %s for pt %s".format(result, ptInstantiated))
               result
@@ -948,7 +952,7 @@ trait Implicits {
           infoMap get sym match {
             case Some(infos1) =>
               if (infos1.nonEmpty && !(pre =:= infos1.head.pre.prefix)) {
-                println("amb prefix: "+pre+"#"+sym+" "+infos1.head.pre.prefix+"#"+sym)
+                log(s"Ignoring implicit members of $pre#$sym as it is also visible via another prefix: ${infos1.head.pre.prefix}")
                 infoMap(sym) = List() // ambiguous prefix - ignore implicit members
               }
             case None =>

@@ -386,8 +386,8 @@ class IMain(initialSettings: Settings, protected val out: JPrintWriter) extends 
     // be what people want so I'm waiting until I can do it better.
     exitingTyper {
       req.defines filterNot (s => req.defines contains s.companionSymbol) foreach { newSym =>
-        val companion = newSym.name.companionName
-        replScope lookup companion andAlso { oldSym =>
+        val oldSym = replScope lookup newSym.name.companionName
+        if (Seq(oldSym, newSym).permutations exists { case Seq(s1, s2) => s1.isClass && s2.isModule }) {
           replwarn(s"warning: previously defined $oldSym is not a companion to $newSym.")
           replwarn("Companions must be defined together; you may wish to use :paste mode for this.")
         }
@@ -521,8 +521,8 @@ class IMain(initialSettings: Settings, protected val out: JPrintWriter) extends 
     Right(buildRequest(line, trees))
   }
 
-  // normalize non-public types so we don't see protected aliases like Self
-  def normalizeNonPublic(tp: Type) = tp match {
+  // dealias non-public types so we don't see protected aliases like Self
+  def dealiasNonPublic(tp: Type) = tp match {
     case TypeRef(_, sym, _) if sym.isAliasType && !sym.isPublic => tp.dealias
     case _                                                      => tp
   }
@@ -953,7 +953,7 @@ class IMain(initialSettings: Settings, protected val out: JPrintWriter) extends 
    */
   def tryTwice(op: => Symbol): Symbol = exitingTyper(op) orElse exitingFlatten(op)
 
-  def symbolOfIdent(id: String): Symbol  = symbolOfTerm(id) orElse symbolOfType(id)
+  def symbolOfIdent(id: String): Symbol  = symbolOfType(id) orElse symbolOfTerm(id)
   def symbolOfType(id: String): Symbol   = tryTwice(replScope lookup (id: TypeName))
   def symbolOfTerm(id: String): Symbol   = tryTwice(replScope lookup (id: TermName))
   def symbolOfName(id: Name): Symbol     = replScope lookup id
@@ -980,7 +980,7 @@ class IMain(initialSettings: Settings, protected val out: JPrintWriter) extends 
 
   def cleanTypeAfterTyper(sym: => Symbol): Type = {
     exitingTyper(
-      normalizeNonPublic(
+      dealiasNonPublic(
         dropNullaryMethod(
           sym.tpe_*
         )

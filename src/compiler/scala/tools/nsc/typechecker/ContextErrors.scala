@@ -153,7 +153,7 @@ trait ContextErrors {
         // members present, then display along with the expected members. This is done here because
         // this is the last point where we still have access to the original tree, rather than just
         // the found/req types.
-        val foundType: Type = req.normalize match {
+        val foundType: Type = req.dealiasWiden match {
           case RefinedType(parents, decls) if !decls.isEmpty && found.typeSymbol.isAnonOrRefinementClass =>
             val retyped    = typed (tree.duplicate.clearType())
             val foundDecls = retyped.tpe.decls filter (sym => !sym.isConstructor && !sym.isSynthetic)
@@ -562,11 +562,13 @@ trait ContextErrors {
 
       //adapt
       def MissingArgsForMethodTpeError(tree: Tree, meth: Symbol) = {
-        issueNormalTypeError(tree,
-          "missing arguments for " + meth.fullLocationString + (
+        val message =
+          if (meth.isMacro) MacroPartialApplicationErrorMessage
+          else "missing arguments for " + meth.fullLocationString + (
             if (meth.isConstructor) ""
             else ";\nfollow this method with `_' if you want to treat it as a partially applied function"
-          ))
+          )
+        issueNormalTypeError(tree, message)
         setError(tree)
       }
 
@@ -670,6 +672,14 @@ trait ContextErrors {
         setError(tree)
       }
 
+      def MacroTooManyArgumentListsError(expandee: Tree, fun: Symbol) = {
+        NormalTypeError(expandee, "too many argument lists for " + fun)
+      }
+
+      def MacroInvalidExpansionError(expandee: Tree, role: String, allowedExpansions: String) = {
+        issueNormalTypeError(expandee, s"macro in $role role can only expand into $allowedExpansions")
+      }
+
       // same reason as for MacroBodyTypecheckException
       case object MacroExpansionException extends Exception with scala.util.control.ControlThrowable
 
@@ -681,10 +691,11 @@ trait ContextErrors {
         throw MacroExpansionException
       }
 
+      def MacroPartialApplicationErrorMessage = "macros cannot be partially applied"
       def MacroPartialApplicationError(expandee: Tree) = {
         // macroExpansionError won't work => swallows positions, hence needed to do issueTypeError
         // kinda contradictory to the comment in `macroExpansionError`, but this is how it works
-        issueNormalTypeError(expandee, "macros cannot be partially applied")
+        issueNormalTypeError(expandee, MacroPartialApplicationErrorMessage)
         setError(expandee)
         throw MacroExpansionException
       }
@@ -725,7 +736,7 @@ trait ContextErrors {
           } catch {
             // the code above tries various tricks to detect the relevant portion of the stack trace
             // if these tricks fail, just fall back to uninformative, but better than nothing, getMessage
-            case NonFatal(ex) =>
+            case NonFatal(ex) => // currently giving a spurious warning, see SI-6994
               macroLogVerbose("got an exception when processing a macro generated exception\n" +
                               "offender = " + stackTraceString(realex) + "\n" +
                               "error = " + stackTraceString(ex))
@@ -750,18 +761,25 @@ trait ContextErrors {
         macroExpansionError(expandee, template(sym.name.nameKind).format(sym.name + " " + sym.origin, forgotten))
       }
 
-      def MacroExpansionIsNotExprError(expandee: Tree, expanded: Any) =
+      def MacroExpansionHasInvalidTypeError(expandee: Tree, expanded: Any) = {
+        val expected = "expr"
+        val isPathMismatch = expanded != null && expanded.isInstanceOf[scala.reflect.api.Exprs#Expr[_]]
         macroExpansionError(expandee,
-          "macro must return a compiler-specific expr; returned value is " + (
+          s"macro must return a compiler-specific $expected; returned value is " + (
             if (expanded == null) "null"
-            else if (expanded.isInstanceOf[Expr[_]]) " Expr, but it doesn't belong to this compiler's universe"
+            else if (isPathMismatch) s" $expected, but it doesn't belong to this compiler"
             else " of " + expanded.getClass
         ))
+      }
 
-      def MacroImplementationNotFoundError(expandee: Tree) =
-        macroExpansionError(expandee,
+      def MacroImplementationNotFoundError(expandee: Tree) = {
+        val message =
           "macro implementation not found: " + expandee.symbol.name + " " +
-          "(the most common reason for that is that you cannot use macro implementations in the same compilation run that defines them)")
+          "(the most common reason for that is that you cannot use macro implementations in the same compilation run that defines them)" +
+          (if (forScaladoc) ". When generating scaladocs for multiple projects at once, consider using -Ymacro-no-expand to disable macro expansions altogether."
+           else "")
+        macroExpansionError(expandee, message)
+      }
     }
   }
 
@@ -1034,8 +1052,8 @@ trait ContextErrors {
         val s1 = if (prevSym.isModule) "case class companion " else ""
         val s2 = if (prevSym.isSynthetic) "(compiler-generated) " + s1 else ""
         val s3 = if (prevSym.isCase) "case class " + prevSym.name else "" + prevSym
-        val where = if (currentSym.owner.isPackageClass != prevSym.owner.isPackageClass) {
-                      val inOrOut = if (prevSym.owner.isPackageClass) "outside of" else "in"
+        val where = if (currentSym.isTopLevel != prevSym.isTopLevel) {
+                      val inOrOut = if (prevSym.isTopLevel) "outside of" else "in"
                       " %s package object %s".format(inOrOut, ""+prevSym.effectiveOwner.name)
                     } else ""
 

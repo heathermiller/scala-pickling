@@ -319,7 +319,7 @@ private[reflect] trait JavaMirrors extends internal.SymbolTable with api.JavaUni
     lazy val bytecodefulObjectMethods = Set[Symbol](Object_clone, Object_equals, Object_finalize, Object_hashCode, Object_toString,
                                         Object_notify, Object_notifyAll) ++ ObjectClass.info.member(nme.wait_).asTerm.alternatives.map(_.asMethod)
     private def isBytecodelessMethod(meth: MethodSymbol): Boolean = {
-      if (isGetClass(meth) || isStringConcat(meth) || meth.owner.isPrimitiveValueClass || meth == Predef_classOf || meth.isTermMacro) return true
+      if (isGetClass(meth) || isStringConcat(meth) || meth.owner.isPrimitiveValueClass || meth == Predef_classOf || meth.isMacro) return true
       bytecodelessMethodOwners(meth.owner) && !bytecodefulObjectMethods(meth)
     }
 
@@ -457,7 +457,7 @@ private[reflect] trait JavaMirrors extends internal.SymbolTable with api.JavaUni
           case sym if isStringConcat(sym)             => receiver.toString + objArg0
           case sym if sym.owner.isPrimitiveValueClass => invokePrimitiveMethod
           case sym if sym == Predef_classOf           => fail("Predef.classOf is a compile-time function")
-          case sym if sym.isTermMacro                 => fail(s"${symbol.fullName} is a macro, i.e. a compile-time function")
+          case sym if sym.isMacro                     => fail(s"${symbol.fullName} is a macro, i.e. a compile-time function")
           case _                                      => abort(s"unsupported symbol $symbol when invoking $this")
         }
       }
@@ -507,7 +507,7 @@ private[reflect] trait JavaMirrors extends internal.SymbolTable with api.JavaUni
       def erasure = symbol.moduleClass.asClass
       def isStatic = true
       def instance = {
-        if (symbol.owner.isPackageClass)
+        if (symbol.isTopLevel)
           staticSingletonInstance(classLoader, symbol.fullName)
         else
           if (outer == null) staticSingletonInstance(classToJava(symbol.moduleClass.asClass))
@@ -1156,11 +1156,11 @@ private[reflect] trait JavaMirrors extends internal.SymbolTable with api.JavaUni
         valueClassToJavaType(clazz)
       else if (clazz == ArrayClass)
         noClass
-      else if (clazz.owner.isPackageClass)
+      else if (clazz.isTopLevel)
         javaClass(clazz.javaClassName)
       else if (clazz.owner.isClass) {
         val childOfClass = !clazz.owner.isModuleClass
-        val childOfTopLevel = clazz.owner.owner.isPackageClass
+        val childOfTopLevel = clazz.owner.isTopLevel
         val childOfTopLevelObject = clazz.owner.isModuleClass && childOfTopLevel
 
         // suggested in https://issues.scala-lang.org/browse/SI-4023?focusedCommentId=54759#comment-54759

@@ -10,6 +10,7 @@ import scala.reflect.internal.ClassfileConstants._
 import scala.collection.{ mutable, immutable }
 import symtab._
 import Flags._
+import scala.reflect.internal.Mode._
 
 abstract class Erasure extends AddInterfaces
                           with scala.reflect.internal.transform.Erasure
@@ -49,7 +50,7 @@ abstract class Erasure extends AddInterfaces
             if (sym == ArrayClass) args foreach traverse
             else if (sym.isTypeParameterOrSkolem || sym.isExistentiallyBound || !args.isEmpty) result = true
             else if (sym.isClass) traverse(rebindInnerClass(pre, sym)) // #2585
-            else if (!sym.owner.isPackageClass) traverse(pre)
+            else if (!sym.isTopLevel) traverse(pre)
           case PolyType(_, _) | ExistentialType(_, _) =>
             result = true
           case RefinedType(parents, _) =>
@@ -100,7 +101,7 @@ abstract class Erasure extends AddInterfaces
    *  unboxing some primitive types and further simplifications as they are done in jsig.
    */
   val prepareSigMap = new TypeMap {
-    def squashBoxed(tp: Type): Type = tp.normalize match {
+    def squashBoxed(tp: Type): Type = tp.dealiasWiden match {
       case t @ RefinedType(parents, decls) =>
         val parents1 = parents mapConserve squashBoxed
         if (parents1 eq parents) tp
@@ -113,7 +114,7 @@ abstract class Erasure extends AddInterfaces
         if (boxedClass contains t.typeSymbol) ObjectClass.tpe
         else tp
     }
-    def apply(tp: Type): Type = tp.normalize match {
+    def apply(tp: Type): Type = tp.dealiasWiden match {
       case tp1 @ TypeBounds(lo, hi) =>
         val lo1 = squashBoxed(apply(lo))
         val hi1 = squashBoxed(apply(hi))
@@ -144,7 +145,7 @@ abstract class Erasure extends AddInterfaces
         }
       case tp1 @ MethodType(params, restpe) =>
         val params1 = mapOver(params)
-        val restpe1 = if (restpe.normalize.typeSymbol == UnitClass) UnitClass.tpe else apply(restpe)
+        val restpe1 = if (restpe.typeSymbol == UnitClass) UnitClass.tpe else apply(restpe)
         if ((params1 eq params) && (restpe1 eq restpe)) tp1
         else MethodType(params1, restpe1)
       case tp1 @ RefinedType(parents, decls) =>
@@ -162,8 +163,8 @@ abstract class Erasure extends AddInterfaces
     }
   }
 
-  private def hiBounds(bounds: TypeBounds): List[Type] = bounds.hi.normalize match {
-    case RefinedType(parents, _) => parents map (_.normalize)
+  private def hiBounds(bounds: TypeBounds): List[Type] = bounds.hi.dealiasWiden match {
+    case RefinedType(parents, _) => parents map (_.dealiasWiden)
     case tp                      => tp :: Nil
   }
 
@@ -340,12 +341,17 @@ abstract class Erasure extends AddInterfaces
       case _                               => tp.deconst
     }
   }
-  // Methods on Any/Object which we rewrite here while we still know what
-  // is a primitive and what arrived boxed.
-  private lazy val interceptedMethods = Set[Symbol](Any_##, Object_##, Any_getClass, AnyVal_getClass) ++ (
-    // Each value class has its own getClass for ultra-precise class object typing.
+
+  // Each primitive value class has its own getClass for ultra-precise class object typing.
+  private lazy val primitiveGetClassMethods = Set[Symbol](Any_getClass, AnyVal_getClass) ++ (
     ScalaValueClasses map (_.tpe member nme.getClass_)
   )
+
+  // ## requires a little translation
+  private lazy val poundPoundMethods = Set[Symbol](Any_##, Object_##)
+  // Methods on Any/Object which we rewrite here while we still know what
+  // is a primitive and what arrived boxed.
+  private lazy val interceptedMethods = poundPoundMethods ++ primitiveGetClassMethods
 
 // -------- erasure on trees ------------------------------------------
 
@@ -801,12 +807,12 @@ abstract class Erasure extends AddInterfaces
 
     /** A replacement for the standard typer's adapt method.
      */
-    override protected def adapt(tree: Tree, mode: Int, pt: Type, original: Tree = EmptyTree): Tree =
+    override protected def adapt(tree: Tree, mode: Mode, pt: Type, original: Tree = EmptyTree): Tree =
       adaptToType(tree, pt)
 
     /** A replacement for the standard typer's `typed1` method.
      */
-    override def typed1(tree: Tree, mode: Int, pt: Type): Tree = {
+    override def typed1(tree: Tree, mode: Mode, pt: Type): Tree = {
       val tree1 = try {
         tree match {
           case InjectDerivedValue(arg) =>
@@ -1129,7 +1135,7 @@ abstract class Erasure extends AddInterfaces
               }
             }
             else if (args.isEmpty && interceptedMethods(fn.symbol)) {
-              if (fn.symbol == Any_## || fn.symbol == Object_##) {
+              if (poundPoundMethods.contains(fn.symbol)) {
                 // This is unattractive, but without it we crash here on ().## because after
                 // erasure the ScalaRunTime.hash overload goes from Unit => Int to BoxedUnit => Int.
                 // This must be because some earlier transformation is being skipped on ##, but so
@@ -1156,9 +1162,18 @@ abstract class Erasure extends AddInterfaces
               } else if (isPrimitiveValueClass(qual.tpe.typeSymbol)) {
                 // Rewrite 5.getClass to ScalaRunTime.anyValClass(5)
                 global.typer.typed(gen.mkRuntimeCall(nme.anyValClass, List(qual, typer.resolveClassTag(tree.pos, qual.tpe.widen))))
-              } else if (fn.symbol == AnyVal_getClass) {
+              } else if (primitiveGetClassMethods.contains(fn.symbol)) {
+                // if we got here then we're trying to send a primitive getClass method to either
+                // a) an Any, in which cage Object_getClass works because Any erases to object. Or
+                //
+                // b) a non-primitive, e.g. because the qualifier's type is a refinement type where one parent
+                //    of the refinement is a primitive and another is AnyRef. In that case
+                //    we get a primitive form of _getClass trying to target a boxed value
+                //    so we need replace that method name with Object_getClass to get correct behavior.
+                //    See SI-5568.
                 tree setSymbol Object_getClass
               } else {
+                debugwarn(s"The symbol '${fn.symbol}' was interecepted but didn't match any cases, that means the intercepted methods set doesn't match the code")
                 tree
               }
             } else qual match {

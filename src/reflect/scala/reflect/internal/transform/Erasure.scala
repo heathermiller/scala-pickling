@@ -16,7 +16,7 @@ trait Erasure {
     /** Is `tp` an unbounded generic type (i.e. which could be instantiated
      *  with primitive as well as class types)?.
      */
-    private def genericCore(tp: Type): Type = tp.normalize match {
+    private def genericCore(tp: Type): Type = tp.dealiasWiden match {
       /* A Java Array<T> is erased to Array[Object] (T can only be a reference type), where as a Scala Array[T] is
        * erased to Object. However, there is only symbol for the Array class. So to make the distinction between
        * a Java and a Scala array, we check if the owner of T comes from a Java class.
@@ -36,7 +36,7 @@ trait Erasure {
      *  then Some((N, T)) where N is the number of Array constructors enclosing `T`,
      *  otherwise None. Existentials on any level are ignored.
      */
-    def unapply(tp: Type): Option[(Int, Type)] = tp.normalize match {
+    def unapply(tp: Type): Option[(Int, Type)] = tp.dealiasWiden match {
       case TypeRef(_, ArrayClass, List(arg)) =>
         genericCore(arg) match {
           case NoType =>
@@ -101,7 +101,7 @@ trait Erasure {
   def valueClassIsParametric(clazz: Symbol): Boolean = {
     assert(!phase.erasedTypes)
     clazz.typeParams contains
-      clazz.derivedValueClassUnbox.tpe.resultType.normalize.typeSymbol
+      clazz.derivedValueClassUnbox.tpe.resultType.typeSymbol
   }
 
   abstract class ErasureMap extends TypeMap {
@@ -214,9 +214,6 @@ trait Erasure {
         specialConstructorErasure(clazz, restpe)
       case ExistentialType(tparams, restpe) =>
         specialConstructorErasure(clazz, restpe)
-      case RefinedType(parents, decls) =>
-        specialConstructorErasure(
-          clazz, specialScalaErasure.mergeParents(parents))
       case mt @ MethodType(params, restpe) =>
         MethodType(
           cloneSymbolsAndModify(params, specialScalaErasure),
@@ -225,15 +222,7 @@ trait Erasure {
         typeRef(pre, clazz, List())
       case tp =>
         if (!(clazz == ArrayClass || tp.isError))
-          // See SI-6556. It seems in some cases the result constructor
-          // type of an anonymous class is a different version of the class.
-          // This has nothing to do with value classes per se.
-          // We simply used a less discriminating transform before, that
-          // did not look at the cases in detail.
-          // It seems there is a deeper problem here, which needs
-          // following up to. But we will not risk regressions
-          // in 2.10 because of it.
-          devWarning(s"unexpected constructor erasure $tp for $clazz")
+          assert(clazz == ArrayClass || tp.isError, s"!!! unexpected constructor erasure $tp for $clazz")
         specialScalaErasure(tp)
     }
   }

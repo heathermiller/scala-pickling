@@ -401,7 +401,6 @@ trait Definitions extends api.StandardDefinitions {
     lazy val RemoteExceptionClass  = requiredClass[java.rmi.RemoteException]
 
     lazy val ByNameParamClass       = specialPolyClass(tpnme.BYNAME_PARAM_CLASS_NAME, COVARIANT)(_ => AnyClass.tpe)
-    lazy val EqualsPatternClass     = specialPolyClass(tpnme.EQUALS_PATTERN_NAME, 0L)(_ => AnyClass.tpe)
     lazy val JavaRepeatedParamClass = specialPolyClass(tpnme.JAVA_REPEATED_PARAM_CLASS_NAME, COVARIANT)(tparam => arrayType(tparam.tpe))
     lazy val RepeatedParamClass     = specialPolyClass(tpnme.REPEATED_PARAM_CLASS_NAME, COVARIANT)(tparam => seqType(tparam.tpe))
 
@@ -627,7 +626,7 @@ trait Definitions extends api.StandardDefinitions {
         len <= MaxTupleArity && sym == TupleClass(len)
       case _ => false
     }
-    def isTupleType(tp: Type) = isTupleTypeDirect(tp.normalize)
+    def isTupleType(tp: Type) = isTupleTypeDirect(tp.dealiasWiden)
 
     lazy val ProductRootClass: ClassSymbol = requiredClass[scala.Product]
       def Product_productArity          = getMemberMethod(ProductRootClass, nme.productArity)
@@ -649,8 +648,8 @@ trait Definitions extends api.StandardDefinitions {
       case _                         => tp
     }
 
-    def unapplyUnwrap(tpe:Type) = tpe.finalResultType.normalize match {
-      case RefinedType(p :: _, _) => p.normalize
+    def unapplyUnwrap(tpe:Type) = tpe.finalResultType.dealiasWiden match {
+      case RefinedType(p :: _, _) => p.dealiasWiden
       case tp                     => tp
     }
 
@@ -658,7 +657,7 @@ trait Definitions extends api.StandardDefinitions {
       if (isFunctionType(tp)) abstractFunctionType(tp.typeArgs.init, tp.typeArgs.last)
       else NoType
 
-    def isFunctionType(tp: Type): Boolean = tp.normalize match {
+    def isFunctionType(tp: Type): Boolean = tp.dealiasWiden match {
       case TypeRef(_, sym, args) if args.nonEmpty =>
         val arity = args.length - 1   // -1 is the return type
         arity <= MaxFunctionArity && sym == FunctionClass(arity)
@@ -715,7 +714,10 @@ trait Definitions extends api.StandardDefinitions {
      *    C[E1, ..., En] forSome { E1 >: LB1 <: UB1 ... en >: LBn <: UBn }.
      */
     def classExistentialType(clazz: Symbol): Type =
-      newExistentialType(clazz.typeParams, clazz.tpe_*)
+      existentialAbstraction(clazz.typeParams, clazz.tpe_*)
+
+    def unsafeClassExistentialType(clazz: Symbol): Type =
+      existentialAbstraction(clazz.unsafeTypeParams, clazz.tpe_*)
 
     // members of class scala.Any
     lazy val Any_==       = enterNewMethod(AnyClass, nme.EQ, anyparam, booltype, FINAL)
@@ -877,7 +879,6 @@ trait Definitions extends api.StandardDefinitions {
 
     lazy val BeanPropertyAttr           = requiredClass[scala.beans.BeanProperty]
     lazy val BooleanBeanPropertyAttr    = requiredClass[scala.beans.BooleanBeanProperty]
-    lazy val CloneableAttr              = requiredClass[scala.annotation.cloneable]
     lazy val CompileTimeOnlyAttr        = getClassIfDefined("scala.reflect.macros.compileTimeOnly")
     lazy val DeprecatedAttr             = requiredClass[scala.deprecated]
     lazy val DeprecatedNameAttr         = requiredClass[scala.deprecatedName]
@@ -902,6 +903,7 @@ trait Definitions extends api.StandardDefinitions {
     lazy val GetterTargetClass          = requiredClass[meta.getter]
     lazy val ParamTargetClass           = requiredClass[meta.param]
     lazy val SetterTargetClass          = requiredClass[meta.setter]
+    lazy val ObjectTargetClass          = requiredClass[meta.companionObject]
     lazy val ClassTargetClass           = requiredClass[meta.companionClass]
     lazy val MethodTargetClass          = requiredClass[meta.companionMethod]    // TODO: module, moduleClass? package, packageObject?
     lazy val LanguageFeatureAnnot       = requiredClass[meta.languageFeature]
@@ -921,11 +923,21 @@ trait Definitions extends api.StandardDefinitions {
       // Trying to allow for deprecated locations
       sym.isAliasType && isMetaAnnotation(sym.info.typeSymbol)
     )
-    lazy val metaAnnotations = Set[Symbol](
-      FieldTargetClass, ParamTargetClass,
-      GetterTargetClass, SetterTargetClass,
-      BeanGetterTargetClass, BeanSetterTargetClass
-    )
+    lazy val metaAnnotations: Set[Symbol] = getPackage("scala.annotation.meta").info.members filter (_ isSubClass StaticAnnotationClass) toSet
+
+    // According to the scala.annotation.meta package object:
+    // * By default, annotations on (`val`-, `var`- or plain) constructor parameters
+    // * end up on the parameter, not on any other entity. Annotations on fields
+    // * by default only end up on the field.
+    def defaultAnnotationTarget(t: Tree): Symbol = t match {
+      case ClassDef(_, _, _, _)                                  => ClassTargetClass
+      case ModuleDef(_, _, _)                                    => ObjectTargetClass
+      case vd @ ValDef(_, _, _, _) if vd.symbol.isParamAccessor  => ParamTargetClass
+      case vd @ ValDef(_, _, _, _) if vd.symbol.isValueParameter => ParamTargetClass
+      case ValDef(_, _, _, _)                                    => FieldTargetClass
+      case DefDef(_, _, _, _, _, _)                              => MethodTargetClass
+      case _                                                     => GetterTargetClass
+    }
 
     lazy val AnnotationDefaultAttr: ClassSymbol = {
       val attr = enterNewClass(RuntimePackageClass, tpnme.AnnotationDefaultATTR, List(AnnotationClass.tpe))
@@ -1060,8 +1072,7 @@ trait Definitions extends api.StandardDefinitions {
       AnyValClass,
       NullClass,
       NothingClass,
-      SingletonClass,
-      EqualsPatternClass
+      SingletonClass
     )
     /** Lists core methods that don't have underlying bytecode, but are synthesized on-the-fly in every reflection universe */
     lazy val syntheticCoreMethods = List(
@@ -1131,10 +1142,10 @@ trait Definitions extends api.StandardDefinitions {
       }
       def flatNameString(sym: Symbol, separator: Char): String =
         if (sym == NoSymbol) ""   // be more resistant to error conditions, e.g. neg/t3222.scala
-        else if (sym.owner.isPackageClass) sym.javaClassName
+        else if (sym.isTopLevel) sym.javaClassName
         else flatNameString(sym.owner, separator) + nme.NAME_JOIN_STRING + sym.simpleName
       def signature1(etp: Type): String = {
-        if (etp.typeSymbol == ArrayClass) "[" + signature1(erasure(etp.normalize.typeArgs.head))
+        if (etp.typeSymbol == ArrayClass) "[" + signature1(erasure(etp.dealiasWiden.typeArgs.head))
         else if (isPrimitiveValueClass(etp.typeSymbol)) abbrvTag(etp.typeSymbol).toString()
         else "L" + flatNameString(etp.typeSymbol, '/') + ";"
       }

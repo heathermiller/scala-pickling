@@ -29,8 +29,8 @@ abstract class ClassfileParser {
   protected var in: AbstractFileReader = _  // the class file reader
   protected var clazz: Symbol = _           // the class symbol containing dynamic members
   protected var staticModule: Symbol = _    // the module symbol containing static members
-  protected var instanceScope: Scope = _     // the scope of all instance definitions
-  protected var staticScope: Scope = _       // the scope of all static definitions
+  protected var instanceScope: Scope = _    // the scope of all instance definitions
+  protected var staticScope: Scope = _      // the scope of all static definitions
   protected var pool: ConstantPool = _      // the classfile's constant pool
   protected var isScala: Boolean = _        // does class file describe a scala class?
   protected var isScalaAnnot: Boolean = _   // does class file describe a scala class with its pickled info in an annotation?
@@ -739,15 +739,9 @@ abstract class ClassfileParser {
               // isMonomorphicType is false if the info is incomplete, as it usually is here
               // so have to check unsafeTypeParams.isEmpty before worrying about raw type case below,
               // or we'll create a boatload of needless existentials.
-              else if (classSym.isMonomorphicType || classSym.unsafeTypeParams.isEmpty) {
-                tp
-              }
-              else {
-                // raw type - existentially quantify all type parameters
-                val eparams = typeParamsToExistentials(classSym, classSym.unsafeTypeParams)
-                val t       = typeRef(pre, classSym, eparams.map(_.tpeHK))
-                logResult(s"raw type from $classSym")(newExistentialType(eparams, t))
-              }
+              else if (classSym.isMonomorphicType || classSym.unsafeTypeParams.isEmpty) tp
+              // raw type - existentially quantify all type parameters
+              else logResult(s"raw type from $classSym")(definitions.unsafeClassExistentialType(classSym))
             case tp =>
               assert(sig.charAt(index) != '<', tp)
               tp
@@ -1044,7 +1038,13 @@ abstract class ClassfileParser {
       val nClasses = in.nextChar
       for (n <- 0 until nClasses) {
         val cls = pool.getClassSymbol(in.nextChar.toInt)
-        sym.addAnnotation(definitions.ThrowsClass, Literal(Constant(cls.tpe)))
+        val tp = if (cls.isMonomorphicType) cls.tpe else {
+          debuglog(s"Encountered polymorphic exception `${cls.fullName}` while parsing class file.")
+          // in case we encounter polymorphic exception the best we can do is to convert that type to
+          // monomorphic one by introducing existientals, see SI-7009 for details
+          typer.packSymbols(cls.typeParams, cls.tpe)
+        }
+        sym.addAnnotation(appliedType(definitions.ThrowsClass, tp), Literal(Constant(tp)))
       }
     }
 

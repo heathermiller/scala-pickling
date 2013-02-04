@@ -424,7 +424,7 @@ abstract class SpecializeTypes extends InfoTransform with TypingTransformers {
   def specializedTypeVars(tpe: Type): immutable.Set[Symbol] = tpe match {
     case TypeRef(pre, sym, args) =>
       if (sym.isAliasType)
-        specializedTypeVars(tpe.normalize)
+        specializedTypeVars(tpe.dealiasWiden)
       else if (sym.isTypeParameter && sym.isSpecialized || (sym.isTypeSkolem && sym.deSkolemize.isSpecialized))
         Set(sym)
       else if (sym == ArrayClass)
@@ -1365,7 +1365,7 @@ abstract class SpecializeTypes extends InfoTransform with TypingTransformers {
               debuglog("obtained env: " + e)
               e.keySet == env.keySet
             } catch {
-              case _ =>
+              case _: Throwable =>
                 debuglog("Could not unify.")
                 false
             }

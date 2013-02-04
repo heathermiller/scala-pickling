@@ -65,6 +65,9 @@ abstract class TreeInfo {
       false
   }
 
+  // TODO SI-5304 tighten this up so we don't elide side effect in module loads
+  def isQualifierSafeToElide(tree: Tree): Boolean = isExprSafeToInline(tree)
+
   /** Is tree an expression which can be inlined without affecting program semantics?
    *
    *  Note that this is not called "isExprPure" since purity (lack of side-effects)
@@ -250,22 +253,24 @@ abstract class TreeInfo {
    * in the position `for { <tree> <- expr }` based only
    * on information at the `parser` phase? To qualify, there
    * may be no subtree that will be interpreted as a
-   * Stable Identifier Pattern.
+   * Stable Identifier Pattern, nor any type tests, even
+   * on TupleN. See SI-6968.
    *
    * For instance:
    *
    * {{{
-   * foo @ (bar, (baz, quux))
+   * (foo @ (bar @ _)) = 0
    * }}}
    *
-   * is a variable pattern; if the structure matches,
-   * then the remainder is inevitable.
+   * is a not a variable pattern; if only binds names.
    *
    * The following are not variable patterns.
    *
    * {{{
-   *   foo @ (bar, (`baz`, quux)) // back quoted ident, not at top level
-   *   foo @ (bar, Quux)          // UpperCase ident, not at top level
+   *   `bar`
+   *   Bar
+   *   (a, b)
+   *   _: T
    * }}}
    *
    * If the pattern is a simple identifier, it is always
@@ -294,10 +299,6 @@ abstract class TreeInfo {
       tree match {
         case Bind(name, pat)  => isVarPatternDeep0(pat)
         case Ident(name)      => isVarPattern(tree)
-        case Apply(sel, args) =>
-          (    isReferenceToScalaMember(sel, TupleClass(args.size).name.toTermName)
-            && (args forall isVarPatternDeep0)
-            )
         case _                => false
       }
     }
@@ -368,6 +369,14 @@ abstract class TreeInfo {
     case TypeTree()                                                 => definitions.isByNameParamType(tpt.tpe)
     case AppliedTypeTree(Select(_, tpnme.BYNAME_PARAM_CLASS_NAME), _) => true
     case _                                                          => false
+  }
+
+  /** Translates an Assign(_, _) node to AssignOrNamedArg(_, _) if
+   *  the lhs is a simple ident. Otherwise returns unchanged.
+   */
+  def assignmentToMaybeNamedArg(tree: Tree) = tree match {
+    case t @ Assign(id: Ident, rhs) => atPos(t.pos)(AssignOrNamedArg(id, rhs))
+    case t                          => t
   }
 
   /** Is name a left-associative operator? */
@@ -467,7 +476,7 @@ abstract class TreeInfo {
 
       tp match {
         case TypeRef(pre, sym, args) =>
-          args.isEmpty && (sym.owner.isPackageClass || isSimple(pre))
+          args.isEmpty && (sym.isTopLevel || isSimple(pre))
         case NoPrefix =>
           true
         case _ =>
@@ -605,6 +614,12 @@ abstract class TreeInfo {
       }
       loop(tree)
     }
+
+    override def toString = {
+      val tstr = if (targs.isEmpty) "" else targs.mkString("[", ", ", "]")
+      val astr = argss map (args => args.mkString("(", ", ", ")")) mkString ""
+      s"$core$tstr$astr"
+    }
   }
 
   /** Returns a wrapper that knows how to destructure and analyze applications.
@@ -735,4 +750,15 @@ abstract class TreeInfo {
       case tree: RefTree => true
       case _ => false
     })
+
+  def isMacroApplication(tree: Tree): Boolean =
+    !tree.isDef && tree.symbol != null && tree.symbol.isMacro && !tree.symbol.isErroneous
+
+  def isMacroApplicationOrBlock(tree: Tree): Boolean = tree match {
+    case Block(_, expr) => isMacroApplicationOrBlock(expr)
+    case tree => isMacroApplication(tree)
+  }
+
+  def isNonTrivialMacroApplication(tree: Tree): Boolean =
+    isMacroApplication(tree) && dissectApplied(tree).core != tree
 }

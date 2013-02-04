@@ -9,6 +9,7 @@ package transform
 import symtab._
 import Flags.{ CASE => _, _ }
 import scala.collection.mutable.ListBuffer
+import scala.tools.nsc.settings.ScalaVersion
 
 /** This class ...
  *
@@ -104,7 +105,7 @@ abstract class ExplicitOuter extends InfoTransform
    *  <ol>
    *    <li>
    *      Add an outer parameter to the formal parameters of a constructor
-   *      in a inner non-trait class;
+   *      in an inner non-trait class;
    *    </li>
    *    <li>
    *      Add a protected $outer field to an inner class which is
