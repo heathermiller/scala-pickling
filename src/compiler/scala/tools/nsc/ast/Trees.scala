@@ -115,8 +115,7 @@ trait Trees extends scala.reflect.internal.Trees { self: Global =>
 
     val constrs = {
       if (constrMods hasFlag TRAIT) {
-        if (body forall treeInfo.isInterfaceMember) List()
-        else List(
+        List(
           atPos(wrappingPos(superPos, lvdefs)) (
             DefDef(NoMods, nme.MIXIN_CONSTRUCTOR, List(), ListOfNil, TypeTree(), Block(lvdefs, Literal(Constant())))))
       } else {
