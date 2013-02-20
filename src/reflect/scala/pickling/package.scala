@@ -33,10 +33,10 @@ package object pickling {
     val irs = new IRs[c.type](c)
     import irs._
 
-    val tt = weakTypeTag[T]
-    val tpe = tt.tpe
+    val tpe = weakTypeTag[T].tpe
+
     try {
-      val pickleFormatTree: Tree = c.inferImplicitValue(typeOf[PickleFormat]) match {
+      val pickleFormatTree = c.inferImplicitValue(typeOf[PickleFormat]) match {
         case EmptyTree => c.abort(c.enclosingPosition, "Couldn't find implicit PickleFormat")
         case tree => tree
       }
@@ -44,23 +44,11 @@ package object pickling {
       // get instance of PickleFormat
       val pickleFormat = c.eval(c.Expr[PickleFormat](c.resetAllAttrs(pickleFormatTree)))
 
-      // get all declared fields (and not accessor methods)
-      val fields = tpe.declarations.filter(!_.isMethod)
-
-      // this is unneeded now, but it's useful for debugging
-      //--from here
-      val implicitPicklers = fields.map{ field =>
-        c.inferImplicitValue(
-          typeRef(NoPrefix, typeOf[Pickler[_]].typeSymbol, List(field.typeSignatureIn(tpe)))
-        )
-      }
-      debug("Implicit values found per field: " + implicitPicklers)
-      //--to here
-
       // build IR
       debug("The tpe just before IR creation is: " + tpe)
       val oir = compose(ObjectIR(tpe, null, List()))
-      val fieldIR2Pickler = oir.fields.map(field =>
+
+      val fieldIR2Pickler = members(oir).map(field =>
         // infer implicit pickler, if not found, try to generate pickler for field
         c.inferImplicitValue(
           typeRef(NoPrefix, typeOf[Pickler[_]].typeSymbol, List(field.tpe))
@@ -72,46 +60,45 @@ package object pickling {
             field -> tree
         }
       ).toMap
+      debug("fieldIR2Pickler map: " + fieldIR2Pickler.toString)
 
-      val chunked: (List[Any], List[FieldIR]) = pickleFormat.genObjectTemplate(irs)(flatten(oir))
-      val chunks = chunked._1
-      val holes  = chunked._2
+      val (chunks: List[Any], holes: List[FieldIR]) = pickleFormat.genObjectTemplate(irs)(flatten(oir))
       debug("chunks: "+chunks.mkString("]["))
       debug("chunks.size:" + chunks.size)
       debug("holes.size:" + holes.size)
 
       // fill in holes
-      def genFieldAccess(fir: FieldIR): c.Tree = {
-        // obj.fieldName
+      def genFieldAccess(fir: FieldIR): Tree = {
         debug("selecting member [" + fir.name + "]")
         fieldIR2Pickler.get(fir) match {
           case None =>
-            Select(Select(Select(Ident("obj"), fir.name), "pickle"), "value")
+            Select(Select(Select(Ident("obj"), fir.name), "pickle"), "value") // this is supposed to trigger implicit search and rexpansion
           case Some(picklerTree) =>
             Select(Apply(Select(picklerTree, "pickle"), List(Select(Ident("obj"), fir.name))), "value")
-            //Select(Ident("obj"), ir.name)
         }
       }
 
-      def genChunkLiteral(chunk: Any): c.Tree =
+      def genChunkLiteral(chunk: Any): Tree =
         Literal(Constant(chunk))
 
       // assemble the pickle from the template
       val cs = chunks.init.zipWithIndex
-      val pickleChunks: List[c.Tree] = for (c <- cs) yield {
+      val pickleChunks: List[Tree] = for (c <- cs) yield {
         Apply(Select(pickleFormatTree, "concatChunked"), List(genChunkLiteral(c._1), genFieldAccess(holes(c._2))))
       }
-      val concatAllTree = (pickleChunks :+ genChunkLiteral(chunks.last)) reduceLeft { (left: c.Tree, right: c.Tree) =>
+      val concatAllTree = (pickleChunks :+ genChunkLiteral(chunks.last)) reduceLeft { (left: Tree, right: Tree) =>
         Apply(Select(pickleFormatTree, "concatChunked"), List(left, right))
       }
 
-      val castAndAssignTree: c.Tree =
+      val castAndAssignTree =
         ValDef(Modifiers(), "obj", TypeTree(tpe),
           TypeApply(Select(Ident("raw"), "asInstanceOf"), List(TypeTree(tpe)))
         )
 
+      debug("Reifying pickler for tpe: " + tpe)
+
       // pass the assembled pickle into the generated runtime code
-      reify {
+      val picklerExpr = reify {
         new Pickler[T] {
           def pickle(raw: Any): Pickle = {
             c.Expr[Unit](castAndAssignTree).splice //akin to: val obj = raw.asInstanceOf[<tpe>]
@@ -123,6 +110,9 @@ package object pickling {
           }
         }
       }
+
+      debug("The Expr that resulted from reify: " + picklerExpr)
+      picklerExpr
 
     } catch {
       case t: Throwable => t.printStackTrace(); throw t

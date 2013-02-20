@@ -25,7 +25,7 @@ class IRs[C <: Context with Singleton](val ctx: C) {
   def freshName(suffix: String) = "$$expose$private$" + suffix
 
   /* Side-effecting: generates public accessor methods for private fields */
-  def fields(tp: Type): Q =
+  def declarations(tp: Type): Q =
     (tp.declarations
        .filter(sym => !sym.isMethod && sym.isTerm && (sym.asTerm.isVar || sym.asTerm.isParamAccessor)) // separate issue: minimal versus verbose PickleFormat . i.e. someone might want all concrete inherited fields in their pickle
        .map { field =>
@@ -51,7 +51,7 @@ class IRs[C <: Context with Singleton](val ctx: C) {
   val f3 = (c: C) =>
     c.tpe.baseClasses
          .map(_.typeSignature)
-         .map(tp => ObjectIR(tp, null, fields(tp)))
+         .map(tp => ObjectIR(tp, null, declarations(tp)))
 
   val compose =
     composition(f1, f2, f3)
@@ -59,4 +59,8 @@ class IRs[C <: Context with Singleton](val ctx: C) {
   val flatten: C => C = (c: C) =>
     if (c.parent != null) ObjectIR(c.tpe, c.parent, f1(c.fields, flatten(c.parent).fields))
     else c
+
+  val members: C => Q = (c: C) =>
+    if (c.parent != null) f1(members(c.parent), c.fields)
+    else c.fields
 }
