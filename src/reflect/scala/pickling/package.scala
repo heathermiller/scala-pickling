@@ -28,6 +28,24 @@ package object pickling {
 
   implicit def genPickler[T]: Pickler[T] = macro genPicklerImpl[T]
 
+  /*  This is terribly ugly, and I'd rather not have it, but it exists to get around a strange
+   *  bug related to inferring the same implicit value more than once with inferImplicitValue.
+   *
+   *  However, this could still be useful, as it could probably help in some way in the future
+   *  when dealing with recursive types.
+   */
+  class InferredInfo[C <: Context with Singleton](val ctx: C) {
+    var alreadyInferredImplicits = List[(ctx.Type, ctx.Tree)]()
+  }
+
+  var ii: AnyRef = null
+
+  def getOrInitInferredInfo[C <: Context with Singleton](ctx: C) = {
+    if (ii == null)
+      ii = new InferredInfo[ctx.type](ctx)
+    ii.asInstanceOf[InferredInfo[ctx.type]]
+  }
+
   def genPicklerImpl[T: c.WeakTypeTag](c: Context): c.Expr[Pickler[T]] = {
     import c.universe._
     val irs = new IRs[c.type](c)
@@ -48,18 +66,30 @@ package object pickling {
       debug("The tpe just before IR creation is: " + tpe)
       val oir = compose(ObjectIR(tpe, null, List()))
 
-      val fieldIR2Pickler = members(oir).map(field =>
+      debug("oir is: " + oir)
+      debug("members(oir) is: " + members(oir))
+
+      val localInferredInfo = getOrInitInferredInfo[c.type](c)
+
+      val fieldIR2Pickler = members(oir).map { field =>
         // infer implicit pickler, if not found, try to generate pickler for field
-        c.inferImplicitValue(
-          typeRef(NoPrefix, typeOf[Pickler[_]].typeSymbol, List(field.tpe))
-        ) match {
-          case EmptyTree =>
-            // EmptyTree essentially means that no pickler could be generated, so abort with error msg
-            c.abort(c.enclosingPosition, "Couldn't generate implicit Pickler[" + field.tpe + "]")
-          case tree =>
-            field -> tree
+        if (!localInferredInfo.alreadyInferredImplicits.exists(p => p._1 =:= field.tpe)) {
+          debug("field.tpe before calling inferImplicitValue is: " + field.tpe)
+          c.inferImplicitValue(
+            typeRef(NoPrefix, typeOf[Pickler[_]].typeSymbol, List(field.tpe))
+          ) match {
+            case EmptyTree =>
+              // EmptyTree essentially means that no pickler could be generated, so abort with error msg
+              c.abort(c.enclosingPosition, "Couldn't generate implicit Pickler[" + field.tpe + "]")
+            case tree =>
+              localInferredInfo.alreadyInferredImplicits = (field.tpe -> tree) :: localInferredInfo.alreadyInferredImplicits
+              field -> tree
+          }
+        } else {
+          val Some((_, tree)) = localInferredInfo.alreadyInferredImplicits.find(p => p._1 =:= field.tpe)
+          field -> tree
         }
-      ).toMap
+      }.toMap
       debug("fieldIR2Pickler map: " + fieldIR2Pickler.toString)
 
       val (chunks: List[Any], holes: List[FieldIR]) = pickleFormat.genObjectTemplate(irs)(flatten(oir))
