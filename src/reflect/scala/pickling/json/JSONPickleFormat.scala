@@ -12,88 +12,33 @@ package object json {
   import scala.reflect.api.Universe
   import ir._
 
-  // each pickle formatter needs to provide hard-coded picklers for
-  // all of the primitive types. this is because there are many ways
-  // to pickle an Int, for example, we can't guess what the right way
-  // is as a framework.
-
-  implicit val intPickler: Pickler[Int]         = new Pickler[Int]     { def pickle(x: Any) = new Pickle { val value: Any = x }}
-  implicit val longPickler: Pickler[Long]       = new Pickler[Long]    { def pickle(x: Any) = new Pickle { val value: Any = x }}
-  implicit val shortPickler: Pickler[Short]     = new Pickler[Short]   { def pickle(x: Any) = new Pickle { val value: Any = x }}
-  implicit val doublePickler: Pickler[Double]   = new Pickler[Double]  { def pickle(x: Any) = new Pickle { val value: Any = x }}
-  implicit val floatPickler: Pickler[Float]     = new Pickler[Float]   { def pickle(x: Any) = new Pickle { val value: Any = x }}
-  implicit val booleanPickler: Pickler[Boolean] = new Pickler[Boolean] { def pickle(x: Any) = new Pickle { val value: Any = x }}
-  implicit val bytePickler: Pickler[Byte]       = new Pickler[Byte]    { def pickle(x: Any) = new Pickle { val value: Any = x }}
-  implicit val charPickler: Pickler[Char]       = new Pickler[Char]    { def pickle(x: Any) = new Pickle { val value: Any = "\"" + x.toString + "\""}}
-  implicit val stringPickler: Pickler[String]   = new Pickler[String]  { def pickle(x: Any) = new Pickle { val value: Any = "\"" + x.toString + "\""}}
-
   implicit val pickleFormat = new JSONPickleFormat
 
   class JSONPickleFormat extends PickleFormat {
-
-    def genTypeTemplate(u: Universe)(tpe: u.Type): Any = tpe.typeSymbol.name.toString
-
-    def pairUp[T](l: List[T]): List[(T, T)] = l match {
-      case fst :: snd :: rest => (fst, snd) :: pairUp(rest)
-      case List() => List()
-    }
-
-    // maybe later we could make c an implicit parameter
-    def genObjectTemplate[U <: Universe with Singleton](irs: IRs[U])(ir: irs.ObjectIR): (List[Any], List[irs.FieldIR]) = {
-      import irs._
-      type Chunked = (List[Any], List[FieldIR])
-
-      debug("genObjectTemplate on "+ ir.tpe.typeSymbol.name)
-      debug("fields: " + ir.fields)
-
-      if (ir.fields.isEmpty) {
-        val objectChunk = "{\n  \"tpe\": \"" + genTypeTemplate(irs.uni)(ir.tpe) + "\"\n}"
-        (List(objectChunk), List())
-      } else {
-        // each element in this list is a pair (List[Any], List[FieldIR]) for each field
-        // example for one element: (List("name: ", "\n"), List(FieldIR("name")))
-        val fieldTemplates: List[Chunked] = ir.fields.map(genFieldTemplate(irs)(_)).map {
-          case (List(beginning, end), holes) => (List(",\n" + beginning, end), holes)
+    def pickle[U <: Universe with Singleton](irs: IRs[U])(ir: irs.ObjectIR, holes: List[irs.uni.Expr[Pickle]]): irs.uni.Expr[Pickle] = {
+      import irs.uni._
+      def genJsonAssembler() = {
+        // TODO: using `obj` to refer to the value being pickled. needs a more robust approach
+        val objTos = Expr[String](Select(Ident(TermName("obj")), TermName("toString")))
+        val tpe = ir.tpe.typeSymbol.asType.toType
+        if (tpe =:= typeOf[Char] || tpe =:= typeOf[String]) reify("\"" + objTos.splice + "\"") // TODO: escape
+        else if (tpe.typeSymbol.asClass.isPrimitive) objTos // TODO: unit?
+        else {
+          def pickleTpe(tpe: Type): Expr[String] = {
+            def loop(tpe: Type): String = tpe match {
+              case TypeRef(_, sym, Nil) => s"${sym.fullName}"
+              case TypeRef(_, sym, targs) => s"${sym.fullName}[${targs.map(targ => pickleTpe(targ))}]"
+            }
+            reify("\"tpe\": \"" + Expr[String](Literal(Constant(loop(tpe)))).splice + "\"")
+          }
+          def pickleField(name: String, hole: Expr[Pickle]) = reify("\"" + Expr[String](Literal(Constant(name))).splice + "\": " + hole.splice.value)
+          val fragmentTrees = pickleTpe(tpe) +: (ir.fields.zip(holes).map{case (f, h) => pickleField(f.name, h)})
+          val fragmentsTree = fragmentTrees.map(t => reify("  " + t.splice)).reduce((t1, t2) => reify(t1.splice + ",\n" + t2.splice))
+          reify("{\n" + fragmentsTree.splice + "\n}")
         }
-
-        val initialFieldChunks: List[Any] = fieldTemplates.map(_._1).flatten
-        debug("initial field chunks: " + initialFieldChunks.mkString("]["))
-
-        val fieldHoles: List[FieldIR] = fieldTemplates.map(_._2).flatten
-
-        val withoutFirstAndLast = initialFieldChunks.tail.init
-        debug("withoutFirstAndLast: " + withoutFirstAndLast.mkString("]["))
-
-        val pairs = pairUp(withoutFirstAndLast)
-        debug("to be merged: " + pairs.mkString("]["))
-
-        val fieldChunks =
-          initialFieldChunks.head +:
-          (pairs map { case (left, right) => concatChunked(left, right) }) :+
-          initialFieldChunks.last
-
-        debug("field chunks: " + fieldChunks.mkString("]["))
-
-        val objectHeaderChunk: String = "{\n  \"tpe\": \"" + genTypeTemplate(irs.uni)(ir.tpe) + "\""
-
-        val objectFooterChunk: String = "\n}"
-
-        val firstChunk = concatChunked(objectHeaderChunk, fieldChunks.head)
-        val lastChunk  = concatChunked(fieldChunks.last, objectFooterChunk)
-
-        // need to group all chunks and all holes together in separate lists
-        val allChunks = List(firstChunk) ++ fieldChunks.tail.init ++ List(lastChunk)
-        debug("all chunks: " + allChunks.mkString("]["))
-        val allHoles  = fieldHoles
-        (allChunks, allHoles)
       }
+      reify(new Pickle { val value = genJsonAssembler().splice })
     }
-
-    def genFieldTemplate[U <: Universe with Singleton](irs: IRs[U])(ir: irs.FieldIR): (List[Any], List[irs.FieldIR]) =
-      (List("  \"" + ir.name + "\": ", ""), List(ir))
-
-    def concatChunked(c1: Any, c2: Any): Any =
-      c1.toString + c2.toString
   }
 }
 
