@@ -17,7 +17,7 @@ trait GenPicklerMacro extends Macro {
   import c.universe._
   import ir._
 
-  def impl[T: c.WeakTypeTag]: Tree = {
+  def impl[T: c.WeakTypeTag]: c.Expr[Pickler[T]] = {
     val pickleFormatTree: Tree = c.inferImplicitValue(typeOf[PickleFormat]) match {
       case EmptyTree => c.abort(c.enclosingPosition, "Couldn't find implicit PickleFormat")
       case tree => tree
@@ -32,24 +32,24 @@ trait GenPicklerMacro extends Macro {
        .filter(sym => !sym.isMethod && sym.isTerm && (sym.asTerm.isVar || sym.asTerm.isParamAccessor)) // separate issue: minimal versus verbose PickleFormat . i.e. someone might want all concrete inherited fields in their pickle
        .map(sym => FieldIR(sym.name.toString.trim, dehydrate(u)(sym.typeSignatureIn(T))))
        .toList))
-    val holes = oir.fields.map(fir => q"obj.${TermName(fir.name)}.pickle")
+    val holes = oir.fields.map(fir => c.Expr[Pickle](Select(Select(Ident(TermName("obj")), TermName(fir.name)), TermName("pickle"))))
     val pickleLogic = pickleFormat.pickle[u.type](u)(oir, holes)
     debug("Pickler.pickle = " + pickleLogic)
-    val unpickleLogic = pickleFormat.unpickle[u.type](u)(q"pickle")
+    val unpickleLogic = pickleFormat.unpickle[u.type](u)(c.Expr[Pickle](Ident(TermName("pickle"))))
     debug("Pickler.unpickle = " + unpickleLogic)
 
-    q"""
-      new Pickler[$T] {
+    reify {
+      new Pickler[T] {
         def pickle(raw: Any): Pickle = {
-          val obj = raw.asInstanceOf[$T]
-          $pickleLogic
+          val obj = raw.asInstanceOf[T]
+          pickleLogic.splice
         }
-        def unpickle(p: Pickle): $T = {
-          val (dtpe, result) = $unpickleLogic
+        def unpickle(p: Pickle): T = {
+          val (dtpe, result) = unpickleLogic.splice
           // TODO: verify that dtpe <:< T
-          result.asInstanceOf[$T]
+          result.asInstanceOf[T]
         }
       }
-    """
+    }
   }
 }
