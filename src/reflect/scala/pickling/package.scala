@@ -42,9 +42,12 @@ package object pickling {
       case tree => tree
     }
 
-    // TODO: this isn't going to work with implicit pickle formats which are declared in local values
     // get instance of PickleFormat
-    val pickleFormat = c.eval(c.Expr[PickleFormat](c.resetAllAttrs(pickleFormatTree)))
+    val pickleFormatCarrier = c.typeCheck(Select(pickleFormatTree, TermName("instantiate")), silent = true)
+    val pickleFormat = pickleFormatCarrier.attachments.all.find(_.isInstanceOf[PickleFormat]) match {
+      case Some(pf: PickleFormat) => pf
+      case _ => c.abort(c.enclosingPosition, s"Couldn't instantiate PickleFormat of type ${pickleFormatTree.tpe}")
+    }
 
     // build IR
     debug("The tpe just before IR creation is: " + tpe)
@@ -104,6 +107,7 @@ package pickling {
 
   trait PickleFormat {
     import ir._
+    def instantiate = macro ???
     def pickle[U <: Universe with Singleton](irs: IRs[U])(ir: irs.ObjectIR, holes: List[irs.uni.Expr[Pickle]]): irs.uni.Expr[Pickle]
     // def unpickle[U <: Universe with Singleton](u: U)(pickle: u.Expr[Pickle]): u.Expr[(???.Type, Any)]
   }
