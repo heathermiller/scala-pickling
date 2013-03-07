@@ -33,8 +33,7 @@ package object pickling {
     val irs = new IRs[c.universe.type](c.universe)
     import irs._
 
-    val tt = weakTypeTag[T]
-    val tpe = tt.tpe
+    val tpe = weakTypeOf[T]
     try {
       val pickleFormatTree: Tree = c.inferImplicitValue(typeOf[PickleFormat]) match {
         case EmptyTree => c.abort(c.enclosingPosition, "Couldn't find implicit PickleFormat")
