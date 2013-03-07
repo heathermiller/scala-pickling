@@ -39,6 +39,7 @@ package object pickling {
       case tree => tree
     }
 
+    // TODO: this isn't going to work with implicit pickle formats which are declared in local values
     // get instance of PickleFormat
     val pickleFormat = c.eval(c.Expr[PickleFormat](c.resetAllAttrs(pickleFormatTree)))
 
