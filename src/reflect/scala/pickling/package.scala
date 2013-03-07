@@ -8,9 +8,12 @@
 
 package scala
 
+import java.lang.annotation.Inherited
+import scala.annotation.MacroAnnotation
 import scala.language.experimental.macros
 import scala.reflect.runtime.{universe => ru}
 import scala.reflect.api.Universe
+import scala.reflect.macros.AnnotationMacro
 
 package object pickling {
 
@@ -75,6 +78,24 @@ package pickling {
 
   trait Pickle {
     val value: Any
+  }
+
+  @Inherited
+  class pickleable extends MacroAnnotation {
+    def transform = macro PickleableMacro.impl
+  }
+
+  trait PickleableMacro extends AnnotationMacro {
+    def impl = {
+      import c.universe._
+      import Flag._
+      c.annottee match {
+        case ClassDef(mods, name, tparams, Template(parents, self, body)) =>
+          // TODO: implement dispatchTo, add other stuff you find @pickleable should do
+          val dispatchTo = DefDef(Modifiers(OVERRIDE), TermName("dispatchTo"), Nil, Nil, TypeTree(), Ident(TermName("$qmark$qmark$qmark")))
+          ClassDef(mods, name, tparams, Template(parents, self, body :+ dispatchTo))
+      }
+    }
   }
 
   trait HasPicklerDispatch {
