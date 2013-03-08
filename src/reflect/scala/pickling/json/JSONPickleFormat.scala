@@ -50,8 +50,3 @@ package json {
     def impl(c: Context) = c.universe.EmptyTree updateAttachment pickleFormat
   }
 }
-
-
-// "{ \"tpe\": \"" + pickleType(c)(tpe) + "\"\n" +
-//           genFields(fields).splice(vals) + "\n" +
-//           "}"

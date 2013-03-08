@@ -20,10 +20,7 @@ package object pickling {
   def debug(output: => String) = if (debugEnabled) println(output)
 
   implicit class PickleOps[T](x: T) {
-    def pickle(implicit pickler: Pickler[T], format: PickleFormat): Pickle = {
-      pickler.pickle(x)
-      //format.write(ir)
-    }
+    def pickle(implicit pickler: Pickler[T], format: PickleFormat): Pickle = pickler.pickle(x)
   }
 }
 
