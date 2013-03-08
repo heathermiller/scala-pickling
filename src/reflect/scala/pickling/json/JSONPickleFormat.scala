@@ -16,6 +16,7 @@ package json {
   import language.experimental.macros
   import scala.reflect.api.Universe
   import scala.reflect.macros.Context
+  import scala.util.parsing.json._
   import ir._
 
   case class JSONPickle(val value: String) extends Pickle {
@@ -31,7 +32,7 @@ package json {
         // TODO: using `obj` to refer to the value being pickled. needs a more robust approach
         val objTos = Expr[String](Select(Ident(TermName("obj")), TermName("toString")))
         val tpe = ir.tpe.typeSymbol.asType.toType
-        if (tpe =:= typeOf[Char] || tpe =:= typeOf[String]) reify("\"" + objTos.splice + "\"") // TODO: escape
+        if (tpe =:= typeOf[Char] || tpe =:= typeOf[String]) reify("\"" + JSONFormat.quoteString(picklee.splice.toString) + "\"")
         else if (tpe.typeSymbol.asClass.isPrimitive) objTos // TODO: unit?
         else {
           def pickleTpe(tpe: Type): Expr[String] = {
