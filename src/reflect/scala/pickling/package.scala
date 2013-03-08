@@ -29,8 +29,8 @@ package pickling {
 
   trait Pickler[T] {
     type PickleType <: Pickle
-    def pickle(obj: Any): PickleType
-    // def unpickle(p: PickleType): T
+    def pickle(picklee: Any): PickleType
+    // def unpickle(pickle: PickleType): T
   }
 
   object Pickler {
@@ -55,8 +55,8 @@ package pickling {
     import ir._
     type PickleType <: Pickle
     def instantiate = macro ???
-    def pickle[U <: Universe with Singleton](irs: IRs[U])(ir: irs.ObjectIR, holes: List[irs.uni.Expr[PickleType]]): irs.uni.Expr[PickleType]
-    // def unpickle[U <: Universe with Singleton](u: U)(pickle: u.Expr[PickleType]): u.Expr[(ru.Type, Any)]
+    def pickle[U <: Universe with Singleton, T: u.WeakTypeTag](u: Universe)(picklee: u.Expr[Any]): u.Expr[PickleType]
+    // def unpickle[U <: Universe with Singleton, T: u.WeakTypeTag](u: Universe)(pickle: u.Expr[PickleType]): u.Expr[T]
   }
 }
 

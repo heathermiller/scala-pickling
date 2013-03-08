@@ -15,8 +15,6 @@ import ir._
 
 trait GenPicklerMacro extends Macro {
   import c.universe._
-  val irs = new IRs[c.universe.type](c.universe)
-  import irs._
 
   // a reify hack to make it statically work with the type which is calculated dynamically
   type CalculatedPickleType >: Pickle <: Pickle
@@ -60,18 +58,15 @@ trait GenPicklerMacro extends Macro {
     picklerType = RefinedType(List(corePicklerType), newScopeWith(refinedPickleType), refinementOwner)
     refinementOwner.setTypeSignature(picklerType)
 
-    // build IR
-    debug("The tpe just before IR creation is: " + tpe)
-    val oir = flatten(compose(ObjectIR(tpe, null, List())))
-    val holes = oir.fields.map(fir => c.Expr[pickleFormatObj.PickleType](Select(Select(Ident(TermName("obj")), TermName(fir.name)), TermName("pickle"))))
-    val pickleLogic = pickleFormatObj.pickle(irs)(oir, holes)
+    // build pickler methods
+    val pickleLogic = pickleFormatObj.pickle[c.universe.type, T](c.universe)(c.Expr[Any](Ident(TermName("pickleeT"))))
     debug("Pickler.pickle = " + pickleLogic)
 
     reify {
       implicit object anon$pickler extends Pickler[T] {
         type PickleType = CalculatedPickleType
-        def pickle(raw: Any): PickleType = {
-          val obj = raw.asInstanceOf[T]
+        def pickle(picklee: Any): PickleType = {
+          val pickleeT = picklee.asInstanceOf[T]
           pickleLogic.splice
         }
       }
