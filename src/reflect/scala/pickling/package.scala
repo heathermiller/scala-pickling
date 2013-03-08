@@ -19,16 +19,18 @@ package object pickling {
   var debugEnabled: Boolean = System.getProperty("pickling.debug", "false").toBoolean
   def debug(output: => String) = if (debugEnabled) println(output)
 
-  implicit class PickleOps[T](x: T) {
-    def pickle(implicit pickler: Pickler[T], format: PickleFormat): Pickle = pickler.pickle(x)
+  implicit class PickleOps[T](picklee: T) {
+    // needs to be a macro in order to provide the most precise return type possible
+    def pickle(implicit pickler: Pickler[T]): _ = macro PickleMacros.impl[T]
   }
 }
 
 package pickling {
 
   trait Pickler[T] {
-    def pickle(obj: Any): Pickle
-    //def unpickle(p: Pickle): T
+    type PickleType <: Pickle
+    def pickle(obj: Any): PickleType
+    // def unpickle(p: PickleType): T
   }
 
   object Pickler {
@@ -36,7 +38,8 @@ package pickling {
   }
 
   trait Pickle {
-    val value: Any
+    type ValueType
+    val value: ValueType
   }
 
   @Inherited
@@ -50,9 +53,10 @@ package pickling {
 
   trait PickleFormat {
     import ir._
+    type PickleType <: Pickle
     def instantiate = macro ???
-    def pickle[U <: Universe with Singleton](irs: IRs[U])(ir: irs.ObjectIR, holes: List[irs.uni.Expr[Pickle]]): irs.uni.Expr[Pickle]
-    // def unpickle[U <: Universe with Singleton](u: U)(pickle: u.Expr[Pickle]): u.Expr[(???.Type, Any)]
+    def pickle[U <: Universe with Singleton](irs: IRs[U])(ir: irs.ObjectIR, holes: List[irs.uni.Expr[PickleType]]): irs.uni.Expr[PickleType]
+    // def unpickle[U <: Universe with Singleton](u: U)(pickle: u.Expr[PickleType]): u.Expr[(ru.Type, Any)]
   }
 }
 

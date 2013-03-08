@@ -18,9 +18,14 @@ package json {
   import scala.reflect.macros.Context
   import ir._
 
+  case class JSONPickle(val value: String) extends Pickle {
+    type ValueType = String
+  }
+
   class JSONPickleFormat extends PickleFormat {
+    type PickleType = JSONPickle
     override def instantiate = macro JSONPickleInstantiate.impl
-    def pickle[U <: Universe with Singleton](irs: IRs[U])(ir: irs.ObjectIR, holes: List[irs.uni.Expr[Pickle]]): irs.uni.Expr[Pickle] = {
+    def pickle[U <: Universe with Singleton](irs: IRs[U])(ir: irs.ObjectIR, holes: List[irs.uni.Expr[JSONPickle]]): irs.uni.Expr[JSONPickle] = {
       import irs.uni._
       def genJsonAssembler() = {
         // TODO: using `obj` to refer to the value being pickled. needs a more robust approach
@@ -42,7 +47,7 @@ package json {
           reify("{\n" + fragmentsTree.splice + "\n}")
         }
       }
-      reify(new Pickle { val value = genJsonAssembler().splice })
+      reify(JSONPickle(genJsonAssembler().splice))
     }
   }
 
