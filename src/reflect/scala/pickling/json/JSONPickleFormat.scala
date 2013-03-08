@@ -30,6 +30,7 @@ package json {
       import u._
       import definitions._
       val tpe = weakTypeOf[T] // TODO: do we enforce T being non-weak?
+      val sym = tpe.typeSymbol.asClass
 
       def reifyRuntimeClass(tpe: Type): Tree = tpe.normalize match {
         case TypeRef(_, arrayClass, componentTpe :: Nil) if arrayClass == ArrayClass =>
@@ -45,9 +46,10 @@ package json {
       import irs._
       val oir = flatten(compose(ObjectIR(tpe, null, List())))
 
-      val jsonAssembly: Expr[String] = {
-        if (tpe =:= typeOf[Char] || tpe =:= typeOf[String]) reify("\"" + JSONFormat.quoteString(picklee.splice.toString) + "\"")
-        else if (tpe.typeSymbol.asClass.isPrimitive) reify(picklee.splice.toString) // TODO: unit?
+      val rawJsonAssembly: Expr[String] = {
+        // TODO: so we don't reify type info for primitives?
+        if (sym == CharClass || sym == StringClass) reify("\"" + JSONFormat.quoteString(picklee.splice.toString) + "\"")
+        else if (sym.isPrimitive) reify(picklee.splice.toString) // TODO: unit?
         else {
           def pickleTpe(tpe: Type): Expr[String] = {
             def loop(tpe: Type): String = tpe match {
@@ -63,15 +65,18 @@ package json {
           reify("{\n" + fragmentsTree.splice + "\n}")
         }
       }
-      val nullSafeJsonAssembly: Expr[String] = reify(if (picklee.splice ne null) jsonAssembly.splice else "null")
-      val validatingJsonAssembly: Expr[String] = reify {
-        // TODO: do we allow null in value class picklers?
+      val nullSafeJsonAssembly: Expr[String] = reify(if (picklee.splice ne null) rawJsonAssembly.splice else "null")
+      val ensuringNoDerivedClassesJsonAssembly: Expr[String] = reify {
         if ((picklee.splice ne null) && picklee.splice.getClass != rtpe.splice)
           throw new PicklingException(s"Fatal: unexpected input of type ${picklee.splice.getClass} in Pickler[${rtpe.splice}]")
         nullSafeJsonAssembly.splice
       }
+      val jsonAssembly: Expr[String] =
+        if (sym.isPrimitive || sym.isDerivedValueClass) rawJsonAssembly
+        else if (sym.isFinal) nullSafeJsonAssembly
+        else ensuringNoDerivedClassesJsonAssembly
 
-      reify(JSONPickle(validatingJsonAssembly.splice))
+      reify(JSONPickle(jsonAssembly.splice))
     }
   }
 
