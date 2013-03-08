@@ -76,6 +76,16 @@ trait GenPicklerMacro extends Macro {
 }
 
 trait PickleMacros extends Macro {
+  // NOTE: following my ponderings in flowdoc, this is the place which
+  // will be dispatching picklees to correct picklers once we get to this
+  // I mean, this will be the code generating stuff like:
+  // (new HasPicklerDispatch {
+  //   def dispatchTo: Pickler[_] = p match {
+  //     case _: Person => genPickler[Person]
+  //     case _: Employee => genPickler[Employee]
+  //   }
+  // }).dispatchTo.pickle(p)
+  // as described at https://github.com/heathermiller/pickling-design-doc/blob/gh-pages/index.md
   def impl[T: c.WeakTypeTag](pickler: c.Expr[Pickler[T]]) = {
     import c.universe._
     val Apply(_, pickleeTree :: Nil) = c.prefix.tree
