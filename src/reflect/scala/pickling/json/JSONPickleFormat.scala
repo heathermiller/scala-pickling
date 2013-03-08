@@ -9,12 +9,14 @@
 package scala.pickling
 
 package object json {
+  implicit val pickleFormat = new JSONPickleFormat
+}
+
+package json {
   import language.experimental.macros
   import scala.reflect.api.Universe
   import scala.reflect.macros.Context
   import ir._
-
-  implicit val pickleFormat = new JSONPickleFormat
 
   class JSONPickleFormat extends PickleFormat {
     override def instantiate = macro JSONPickleInstantiate.impl
