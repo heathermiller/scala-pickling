@@ -28,19 +28,14 @@ trait GenPicklerMacro extends Macro {
   implicit def picklerTypeTrick: TypeTag[CalculatedPicklerType] = TypeTag[CalculatedPicklerType](picklerType)
   var picklerType: Type = null
 
-  def impl[T: c.WeakTypeTag]: c.Expr[Pickler[T]] = {
+  def impl[T: c.WeakTypeTag](pickleFormat: c.Expr[PickleFormat]): c.Expr[Pickler[T]] = {
     val tpe = weakTypeOf[T]
 
-    // look up the implicit PickleFormat in scope
-    val pickleFormatTree: Tree = c.inferImplicitValue(typeOf[PickleFormat]) match {
-      case EmptyTree => c.abort(c.enclosingPosition, "Couldn't find implicit PickleFormat")
-      case tree => tree
-    }
-    def failPickleFormat(msg: String) = c.abort(c.enclosingPosition, s"$msg for $pickleFormatTree of type ${pickleFormatTree.tpe}")
-
     // get instance of PickleFormat
+    val pickleFormatTree = pickleFormat.tree
+    def failPickleFormat(msg: String) = c.abort(c.enclosingPosition, s"$msg for $pickleFormatTree of type ${pickleFormatTree.tpe}")
     val pickleFormatCarrier = c.typeCheck(Select(pickleFormatTree, TermName("instantiate")), silent = true)
-    val pickleFormat = pickleFormatCarrier.attachments.all.find(_.isInstanceOf[PickleFormat]) match {
+    val pickleFormatObj = pickleFormatCarrier.attachments.all.find(_.isInstanceOf[PickleFormat]) match {
       case Some(pf: PickleFormat) => pf
       case _ => failPickleFormat("Couldn't instantiate PickleFormat")
     }
@@ -68,8 +63,8 @@ trait GenPicklerMacro extends Macro {
     // build IR
     debug("The tpe just before IR creation is: " + tpe)
     val oir = flatten(compose(ObjectIR(tpe, null, List())))
-    val holes = oir.fields.map(fir => c.Expr[pickleFormat.PickleType](Select(Select(Ident(TermName("obj")), TermName(fir.name)), TermName("pickle"))))
-    val pickleLogic = pickleFormat.pickle(irs)(oir, holes)
+    val holes = oir.fields.map(fir => c.Expr[pickleFormatObj.PickleType](Select(Select(Ident(TermName("obj")), TermName(fir.name)), TermName("pickle"))))
+    val pickleLogic = pickleFormatObj.pickle(irs)(oir, holes)
     debug("Pickler.pickle = " + pickleLogic)
 
     reify {
