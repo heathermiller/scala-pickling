@@ -12,15 +12,14 @@ package ir
 import scala.reflect.api.Universe
 
 
-class IRs[U <: Universe with Singleton](val uni: U) {
+class PickleIRs[U <: Universe with Singleton](val uni: U) {
   import uni._
 
-  trait IR
   case class FieldIR(name: String, tpe: Type)
-  case class ObjectIR(tpe: Type, parent: ObjectIR, fields: List[FieldIR]) extends IR
+  case class ClassIR(tpe: Type, parent: ClassIR, fields: List[FieldIR])
 
   type Q = List[FieldIR]
-  type C = ObjectIR
+  type C = ClassIR
 
   def fields(tp: Type): Q =
     tp.declarations
@@ -33,17 +32,17 @@ class IRs[U <: Universe with Singleton](val uni: U) {
 
   val f1 = (q1: Q, q2: Q) => q1 ++ q2
 
-  val f2 = (c1: C, c2: C) => ObjectIR(c2.tpe, c1, fields(c2.tpe))
+  val f2 = (c1: C, c2: C) => ClassIR(c2.tpe, c1, fields(c2.tpe))
 
   val f3 = (c: C) =>
     c.tpe.baseClasses
          .map(_.typeSignature)
-         .map(tp => ObjectIR(tp, null, fields(tp)))
+         .map(tp => ClassIR(tp, null, fields(tp)))
 
   val compose =
     composition(f1, f2, f3)
 
   val flatten: C => C = (c: C) =>
-    if (c.parent != null) ObjectIR(c.tpe, c.parent, f1(c.fields, flatten(c.parent).fields))
+    if (c.parent != null) ClassIR(c.tpe, c.parent, f1(c.fields, flatten(c.parent).fields))
     else c
 }

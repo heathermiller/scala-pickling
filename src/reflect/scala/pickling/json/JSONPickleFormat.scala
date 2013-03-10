@@ -42,9 +42,9 @@ package json {
       }
       val rtpe = Expr[Class[_]](reifyRuntimeClass(tpe))
 
-      val irs = new IRs[u.type](u)
+      val irs = new PickleIRs[u.type](u)
       import irs._
-      val oir = flatten(compose(ObjectIR(tpe, null, List())))
+      val oir = flatten(compose(ClassIR(tpe, null, List())))
 
       val rawJsonAssembly: Expr[String] = {
         // TODO: so we don't reify type info for primitives?
