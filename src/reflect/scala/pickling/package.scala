@@ -31,12 +31,13 @@ package object pickling {
     }
   }
 
-  def genPicklerImpl[T: c.WeakTypeTag](c: Context): c.Expr[Pickler[T]] = {
+  def genPicklerByType(c: Context)(tpe: c.Type): c.Tree = {
     import c.universe._
+    import Flag._
+
     val irs = new IRs[c.universe.type](c.universe)
     import irs._
 
-    val tpe = weakTypeOf[T]
     val pickleFormatTree: Tree = c.inferImplicitValue(typeOf[PickleFormat]) match {
       case EmptyTree => c.abort(c.enclosingPosition, "Couldn't find implicit PickleFormat")
       case tree => tree
@@ -56,16 +57,91 @@ package object pickling {
     val pickleLogic = pickleFormat.pickle(irs)(oir, holes)
     debug("Pickler.pickle = " + pickleLogic)
 
-    reify {
-      implicit val anon$pickler = new Pickler[T] {
-        def pickle(raw: Any): Pickle = {
-          val obj = raw.asInstanceOf[T]
-          pickleLogic.splice
-        }
-      }
-      anon$pickler
+    def lookupRootClass(sym: Symbol): Symbol =
+      if (sym.owner == NoSymbol || sym.owner == sym) sym
+      else lookupRootClass(sym.owner)
+
+    val rootClass = lookupRootClass(tpe.typeSymbol)
+
+    def allKnownDirectSubclasses(sym: Symbol, in: Symbol): List[Symbol] = {
+      val inType =
+        if (in.isTerm) in.asTerm.typeSignature
+        else in.asType.typeSignature
+
+      val subclasses  = inType.members.filter(m => m.isClass &&
+        m.asType.typeSignature.baseClasses.contains(sym)).toList
+
+      val subpackages = inType.members.filter(_.isPackage).toList
+
+      subclasses ++ subpackages.flatMap(pkg => allKnownDirectSubclasses(sym, pkg))
     }
+
+    // now we also need to generate Pickler[S] for all subclasses S found above
+    // can we call genPickler[S] somehow?
+    // we need to generate a pickler based on a c.Type
+    
+    val sym = tpe.typeSymbol
+    //println(s"knownDirectSubclasses of $sym:")
+    //println(allKnownDirectSubclasses(sym, sym.owner))
+
+    //val reifiedType = c.reifyType(Ident(newTermName("reflect.runtime.universe")), )
+    //Select(treeBuild.mkRuntimeUniverseRef, TermName("rootMirror"))
+    val reifiedTypeTree =
+      c.reifyType(treeBuild.mkRuntimeUniverseRef, EmptyTree, tpe)
+
+    val castAndAssignTree: c.Tree =
+      ValDef(Modifiers(), "obj", TypeTree(tpe),
+             TypeApply(Select(Ident("raw"), "asInstanceOf"), List(TypeTree(tpe))))
+
+    /*
+    val pickleBody: c.Expr[Pickle] = reify {
+      c.Expr[Unit](castAndAssignTree).splice //akin to: val obj = raw.asInstanceOf[<tpe>]
+      val rtpe: reflect.runtime.universe.Type = c.Expr[reflect.runtime.universe.TypeTag[T]](reifiedTypeTree).splice.tpe
+      pickleLogic.splice
+    }
+    */
+
+    val pickleBodyTree: Tree =
+      Block(List(castAndAssignTree), pickleLogic.tree)
+
+    val picklerTemplate = Template(
+      List(AppliedTypeTree(Ident(newTypeName("Pickler")), List(TypeTree(tpe)))),
+      emptyValDef,
+      List(
+        DefDef(
+          Modifiers(),
+          nme.CONSTRUCTOR,
+          List(),
+          List(List()),
+          TypeTree(),
+          Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR), List())), Literal(Constant(())))
+        ),
+        DefDef(
+          Modifiers(),
+          TermName("pickle"),
+          List(),
+          List(List(ValDef(Modifiers(PARAM), newTermName("raw"), Ident(newTypeName("Any")), EmptyTree))),
+          Ident(newTypeName("Pickle")),
+          pickleBodyTree
+        )
+      )
+    )
+
+    Block(
+      List(
+        ValDef(Modifiers(IMPLICIT), newTermName("anon$pickler"), TypeTree(),
+               Block(
+                 List(ClassDef(Modifiers(FINAL), TypeName("$anon"), List(), picklerTemplate)),
+                 Apply(Select(New(Ident(TypeName("$anon"))), nme.CONSTRUCTOR), List())
+               )
+             )
+      ),
+      Ident(TermName("anon$pickler"))
+    )
   }
+
+  def genPicklerImpl[T: c.WeakTypeTag](c: Context) =
+    c.Expr[Pickler[T]](genPicklerByType(c)(c.universe.weakTypeOf[T]))
 }
 
 package pickling {
