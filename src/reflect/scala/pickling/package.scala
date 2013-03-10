@@ -95,7 +95,15 @@ package object pickling {
           final class $$anon extends Pickler[$tpe] {
             def pickle(raw: Any): Pickle = {
               val obj = raw.asInstanceOf[$tpe]
-              ${pickleLogic.tree}
+
+              val rtpe = Pickler.getType(obj)
+
+              if (rtpe <:< $reifiedTypeTree.tpe && !(rtpe =:= $reifiedTypeTree.tpe)) {
+                println("using runtime pickler")
+                null
+              } else {
+                ${pickleLogic.tree}
+              }
             }
           }
           new $$anon
@@ -118,6 +126,12 @@ package pickling {
 
   object Pickler {
     implicit def genPickler[T]: Pickler[T] = macro genPicklerImpl[T]
+
+    val rtm = reflect.runtime.universe.runtimeMirror(getClass.getClassLoader)
+    def getType(obj: Any): ru.Type = {
+      val classSym = rtm.classSymbol(obj.getClass)
+      classSym.typeSignature
+    }
   }
 
   trait Pickle {
