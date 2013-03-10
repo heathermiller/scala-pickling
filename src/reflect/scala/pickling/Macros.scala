@@ -21,7 +21,7 @@ trait GenPicklerMacro extends Macro {
   implicit def pickleTypeTrick: TypeTag[CalculatedPickleType] = TypeTag[CalculatedPickleType](pickleType)
   var pickleType: Type = null
 
-  // another reify hack necessary because we cannot reify compound type trees with non-empty templates
+  // another reify hack necessary because we cannot reify compound type trees with non-empty templates (SI-7235)
   type CalculatedPicklerType >: Pickler[_] <: Pickler[_]
   implicit def picklerTypeTrick: TypeTag[CalculatedPicklerType] = TypeTag[CalculatedPicklerType](picklerType)
   var picklerType: Type = null
@@ -49,7 +49,7 @@ trait GenPicklerMacro extends Macro {
     }
 
     // now calculate the type of the pickler, namely: Pickler[$T] { type PickleType = $pickleType }
-    // reify has a bug which prevents it from working correctly with CompoundTypeTrees
+    // reify has a bug (SI-7235) which prevents it from working correctly with some CompoundTypeTrees
     // therefore here we have to do reification of that type by hand
     val corePicklerType = appliedType(typeOf[Pickler[Int]], List(tpe))
     val refinementOwner = build.newNestedSymbol(c.enclosingImpl.symbol, TypeName("<refinement>"), NoPosition, NoFlags, isClass = true)
