@@ -81,8 +81,10 @@ trait PickleMacros extends Macro {
   // I mean, this will be the code generating stuff like:
   // (new HasPicklerDispatch {
   //   def dispatchTo: Pickler[_] = p match {
+  //     case null => genPickler[Person]
   //     case _: Person => genPickler[Person]
   //     case _: Employee => genPickler[Employee]
+  //     case _: Any => runtimeFallback
   //   }
   // }).dispatchTo.pickle(p)
   // as described at https://github.com/heathermiller/pickling-design-doc/blob/gh-pages/index.md
