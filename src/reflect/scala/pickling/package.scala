@@ -34,7 +34,7 @@ package pickling {
   }
 
   object Pickler {
-    implicit def genPickler[T](implicit pickleFormat: PickleFormat): Pickler[T] = macro GenPicklerMacro.impl[T]
+    implicit def genPickler[T](implicit pickleFormat: PickleFormat): Pickler[T] = macro PicklerMacros.impl[T]
   }
 
   trait Pickle {

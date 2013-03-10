@@ -13,7 +13,7 @@ import scala.reflect.macros.Macro
 import scala.reflect.runtime.{universe => ru}
 import ir._
 
-trait GenPicklerMacro extends Macro {
+trait PicklerMacros extends Macro {
   import c.universe._
 
   // a reify hack to make it statically work with the type which is calculated dynamically
