@@ -89,50 +89,13 @@ package object pickling {
     val reifiedTypeTree =
       c.reifyType(treeBuild.mkRuntimeUniverseRef, EmptyTree, tpe)
 
-    val castAndAssignTree: c.Tree =
-      ValDef(Modifiers(), "obj", TypeTree(tpe),
-             TypeApply(Select(Ident("raw"), "asInstanceOf"), List(TypeTree(tpe))))
-
-    /*
-    val pickleBody: c.Expr[Pickle] = reify {
-      c.Expr[Unit](castAndAssignTree).splice //akin to: val obj = raw.asInstanceOf[<tpe>]
-      val rtpe: reflect.runtime.universe.Type = c.Expr[reflect.runtime.universe.TypeTag[T]](reifiedTypeTree).splice.tpe
-      pickleLogic.splice
-    }
-    */
-
-    val pickleBodyTree: Tree =
-      Block(List(castAndAssignTree), pickleLogic.tree)
-
-    val picklerTemplate = Template(
-      List(AppliedTypeTree(Ident(newTypeName("Pickler")), List(TypeTree(tpe)))),
-      emptyValDef,
-      List(
-        DefDef(
-          Modifiers(),
-          nme.CONSTRUCTOR,
-          List(),
-          List(List()),
-          TypeTree(),
-          Block(List(Apply(Select(Super(This(tpnme.EMPTY), tpnme.EMPTY), nme.CONSTRUCTOR), List())), Literal(Constant(())))
-        ),
-        DefDef(
-          Modifiers(),
-          TermName("pickle"),
-          List(),
-          List(List(ValDef(Modifiers(PARAM), newTermName("raw"), Ident(newTypeName("Any")), EmptyTree))),
-          Ident(newTypeName("Pickle")),
-          pickleBodyTree
-        )
-      )
-    )
-
     q"""
       {
         implicit val anon$$pickler = {
           final class $$anon extends Pickler[$tpe] {
             def pickle(raw: Any): Pickle = {
-              $pickleBodyTree
+              val obj = raw.asInstanceOf[$tpe]
+              ${pickleLogic.tree}
             }
           }
           new $$anon
@@ -140,17 +103,6 @@ package object pickling {
         anon$$pickler
       }
     """
-    // Block(
-    //   List(
-    //     ValDef(Modifiers(IMPLICIT), newTermName("anon$pickler"), TypeTree(),
-    //            Block(
-    //              List(ClassDef(Modifiers(FINAL), TypeName("$anon"), List(), picklerTemplate)),
-    //              Apply(Select(New(Ident(TypeName("$anon"))), nme.CONSTRUCTOR), List())
-    //            )
-    //          )
-    //   ),
-    //   Ident(TermName("anon$pickler"))
-    // )
   }
 
   def genPicklerImpl[T: c.WeakTypeTag](c: Context) =
