@@ -79,7 +79,7 @@ package object pickling {
     // now we also need to generate Pickler[S] for all subclasses S found above
     // can we call genPickler[S] somehow?
     // we need to generate a pickler based on a c.Type
-    
+
     val sym = tpe.typeSymbol
     //println(s"knownDirectSubclasses of $sym:")
     //println(allKnownDirectSubclasses(sym, sym.owner))
@@ -127,17 +127,30 @@ package object pickling {
       )
     )
 
-    Block(
-      List(
-        ValDef(Modifiers(IMPLICIT), newTermName("anon$pickler"), TypeTree(),
-               Block(
-                 List(ClassDef(Modifiers(FINAL), TypeName("$anon"), List(), picklerTemplate)),
-                 Apply(Select(New(Ident(TypeName("$anon"))), nme.CONSTRUCTOR), List())
-               )
-             )
-      ),
-      Ident(TermName("anon$pickler"))
-    )
+    q"""
+      {
+        implicit val anon$$pickler = {
+          final class $$anon extends Pickler[$tpe] {
+            def pickle(raw: Any): Pickle = {
+              $pickleBodyTree
+            }
+          }
+          new $$anon
+        }
+        anon$$pickler
+      }
+    """
+    // Block(
+    //   List(
+    //     ValDef(Modifiers(IMPLICIT), newTermName("anon$pickler"), TypeTree(),
+    //            Block(
+    //              List(ClassDef(Modifiers(FINAL), TypeName("$anon"), List(), picklerTemplate)),
+    //              Apply(Select(New(Ident(TypeName("$anon"))), nme.CONSTRUCTOR), List())
+    //            )
+    //          )
+    //   ),
+    //   Ident(TermName("anon$pickler"))
+    // )
   }
 
   def genPicklerImpl[T: c.WeakTypeTag](c: Context) =
