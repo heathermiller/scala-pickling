@@ -64,12 +64,12 @@ package object pickling {
     val rootClass = lookupRootClass(tpe.typeSymbol)
 
     def allKnownDirectSubclasses(sym: Symbol, in: Symbol): List[Symbol] = {
-      val inType =
-        if (in.isTerm) in.asTerm.typeSignature
-        else in.asType.typeSignature
+      val inType = in.typeSignature
 
-      val subclasses  = inType.members.filter(m => m.isClass &&
-        m.asType.typeSignature.baseClasses.contains(sym)).toList
+      val subclasses  = inType.members.filter { m =>
+        (m.isClass || m.isModule) &&
+        m.asType.typeSignature.baseClasses.contains(sym)
+      }.toList
 
       val subpackages = inType.members.filter(_.isPackage).toList
 
