@@ -65,9 +65,9 @@ package json {
           reify("{\n" + fragmentsTree.splice + "\n}")
         }
       }
-      val nullSafeJsonAssembly: Expr[String] = reify(if (picklee.splice ne null) rawJsonAssembly.splice else "null")
+      val nullSafeJsonAssembly: Expr[String] = reify(if (picklee.splice != null) rawJsonAssembly.splice else "null")
       val ensuringNoDerivedClassesJsonAssembly: Expr[String] = reify {
-        if ((picklee.splice ne null) && picklee.splice.getClass != rtpe.splice)
+        if (picklee.splice != null && picklee.splice.getClass != rtpe.splice)
           throw new PicklingException(s"Fatal: unexpected input of type ${picklee.splice.getClass} in Pickler[${rtpe.splice}]")
         nullSafeJsonAssembly.splice
       }
