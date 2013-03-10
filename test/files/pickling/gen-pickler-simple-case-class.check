@@ -1,5 +1,5 @@
 {
-  "tpe": "Person",
+  "$tpe": "Person",
   "name": "Bob",
   "age": 83
 }

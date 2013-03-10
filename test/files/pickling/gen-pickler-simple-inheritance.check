@@ -1,5 +1,5 @@
 {
-  "tpe": "Firefighter",
+  "$tpe": "Firefighter",
   "name": "Jeff",
   "age": 45,
   "since": 1990

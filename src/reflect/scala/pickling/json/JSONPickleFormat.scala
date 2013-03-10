@@ -56,7 +56,7 @@ package json {
               case TypeRef(_, sym, Nil) => s"${sym.fullName}"
               case TypeRef(_, sym, targs) => s"${sym.fullName}[${targs.map(targ => pickleTpe(targ))}]"
             }
-            reify("\"tpe\": \"" + Expr[String](Literal(Constant(loop(tpe)))).splice + "\"")
+            reify("\"$tpe\": \"" + Expr[String](Literal(Constant(loop(tpe)))).splice + "\"")
           }
           def fieldPickle(name: String) = Expr[JSONPickle](Select(Select(picklee.tree, TermName(name)), TermName("pickle")))
           def pickleField(name: String) = reify("\"" + Expr[String](Literal(Constant(name))).splice + "\": " + fieldPickle(name).splice.value)
