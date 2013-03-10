@@ -75,6 +75,54 @@ trait PicklerMacros extends Macro {
   }
 }
 
+trait UnpicklerMacros extends Macro {
+  def impl[T: c.WeakTypeTag]: c.Expr[Unpickler[T]] = {
+    import c.universe._
+    import definitions._
+
+    val tpe = weakTypeOf[T]
+    val expectsValueIR = tpe.typeSymbol.asClass.isPrimitive || tpe.typeSymbol == StringClass
+    val expectsObjectIR = !expectsValueIR
+
+    def unexpectedIR: Expr[T] = {
+      val irRef = c.Expr[UnpickleIR](Ident(TermName("ir")))
+      val stpe = Expr[String](Literal(Constant(tpe.toString)))
+      reify(throw new PicklingException(s"unexpected IR: ${irRef.splice} for type ${stpe.splice}"))
+    }
+
+    def unpickleValueIR: Expr[T] = {
+      val vir = Expr[ValueIR](Ident(TermName("vir")))
+      tpe match {
+        case tpe if tpe =:= IntClass.toType => reify(vir.splice.value.asInstanceOf[Double].toInt.asInstanceOf[T])
+        case tpe if tpe =:= StringClass.toType => reify(vir.splice.value.asInstanceOf[T])
+        case _ => c.abort(c.enclosingPosition, "don't know how to unpickle a ValueIR as $tpe")
+      }
+    }
+
+    def unpickleObjectIR: Expr[T] = {
+      val oir = Expr[ObjectIR](Ident(TermName("oir")))
+      val ctorSym = tpe.declaration(nme.CONSTRUCTOR).asMethod // TODO: multiple constructors
+      val ctorTree = Select(New(TypeTree(tpe)), nme.CONSTRUCTOR)
+      def ctorArg(name: Name, tpe: Type) = {
+        val fieldIrTree = reify(oir.splice.fields(Expr[String](Literal(Constant(name.toString))).splice)).tree
+        TypeApply(Select(fieldIrTree, "unpickle"), List(TypeTree(tpe)))
+      }
+      Expr[T](Apply(ctorTree, ctorSym.paramss.flatten.map(f => ctorArg(f.name, f.typeSignature)))) // TODO: multiple argument lists
+    }
+
+    reify {
+      implicit object anon$unpickler extends Unpickler[T] {
+        def unpickle(ir: UnpickleIR): T = ir match {
+          case vir: ValueIR => (if (expectsValueIR) unpickleValueIR else unexpectedIR).splice
+          case oir: ObjectIR => (if (expectsObjectIR) unpickleObjectIR else unexpectedIR).splice
+          case _ => unexpectedIR.splice
+        }
+      }
+      anon$unpickler.asInstanceOf[Unpickler[T]]
+    }
+  }
+}
+
 trait PickleMacros extends Macro {
   // NOTE: following my ponderings in flowdoc, this is the place which
   // will be dispatching picklees to correct picklers once we get to this
@@ -92,6 +140,61 @@ trait PickleMacros extends Macro {
     import c.universe._
     val Apply(_, pickleeTree :: Nil) = c.prefix.tree
     c.universe.reify(pickler.splice.pickle(Expr[Any](pickleeTree).splice))
+  }
+}
+
+trait UnpickleMacros extends Macro {
+  def pickleUnpickle[T: c.WeakTypeTag]: c.Expr[T] = {
+    import c.universe._
+    val tpe = weakTypeOf[T]
+    val pickleTree = c.prefix.tree
+
+    // TODO: get rid of copy/paste w.r.t GenPicklerMacro
+    def failUnpickle(msg: String) = c.abort(c.enclosingPosition, s"$msg for $pickleTree of type ${pickleTree.tpe}")
+    val pickleFormatTypeCarrier = c.typeCheck(SelectFromTypeTree(TypeTree(pickleTree.tpe), TypeName("PickleFormatType")), mode = c.TYPEmode, silent = false)
+    val pickleFormatTypeTree = pickleFormatTypeCarrier match {
+      case EmptyTree => failUnpickle("Couldn't resolve PickleFormatType")
+      case tree => tree.tpe.normalize match {
+        case tpe if tpe.typeSymbol.isClass => tpe
+        case tpe => failUnpickle(s"PickleFormatType resolved as $tpe is invalid")
+      }
+    }
+    val pickleFormatTree = Apply(Select(New(TypeTree(pickleFormatTypeTree)), nme.CONSTRUCTOR), Nil)
+
+    val currentClassloader = Select(Ident(TermName("getClass")), TermName("getClassLoader"))
+    val currentMirror = Apply(Select(treeBuild.mkRuntimeUniverseRef, TermName("runtimeMirror")), List(currentClassloader))
+    val reifiedTpe = TypeApply(Select(treeBuild.mkRuntimeUniverseRef, TermName("typeOf")), List(TypeTree(tpe)))
+    val irTree = Apply(Select(pickleFormatTree, TermName("parse")), List(reifiedTpe, pickleTree, currentMirror))
+    c.Expr[T](TypeApply(Select(irTree, TermName("unpickle")), List(TypeTree(tpe))))
+  }
+
+  def irUnpickle[T: c.WeakTypeTag]: c.Expr[T] = {
+    import c.universe._
+    val tpe = weakTypeOf[T]
+
+    def unpickleAs(tpe: Type) = {
+      val genPicklerTree = TypeApply(Select(Ident(typeOf[Unpickler.type].termSymbol), TermName("genUnpickler")), List(TypeTree(tpe)))
+      Apply(Select(genPicklerTree, TermName("unpickle")), List(Ident(TermName("ir"))))
+    }
+    val valueIRUnpickleLogic = c.Expr[T](unpickleAs(tpe))
+    def allSubclasses(tpe: Type): List[Type] = List(tpe) // TODO: implement this and share the logic with Heather & Philipp
+    val defaultClause = CaseDef(Ident(nme.WILDCARD), EmptyTree, reify(throw new PicklingException("not yet implemented: runtime dispatch for unpickling")).tree)
+    val subclassClauses = allSubclasses(tpe) map (tpe => {
+      val reifiedTpe = TypeApply(Select(treeBuild.mkRuntimeUniverseRef, TermName("typeOf")), List(TypeTree(tpe)))
+      val checkTpe = Apply(Select(Ident(TermName("tpe")), TermName("$eq$colon$eq")), List(reifiedTpe))
+      CaseDef(Bind(TermName("tpe"), Ident(nme.WILDCARD)), checkTpe, unpickleAs(tpe))
+    })
+    // TODO: this should also go through HasPicklerDispatch, probably routed through a companion of T
+    val objectIRUnpickleLogic = c.Expr[T](Match(Select(Ident(TermName("ir")), TermName("tpe")), subclassClauses :+ defaultClause))
+
+    reify {
+      val ir = c.prefix.splice
+      ir match {
+        case ir: ValueIR => valueIRUnpickleLogic.splice
+        case ir: ObjectIR => objectIRUnpickleLogic.splice
+        case ir => throw new PicklingException(s"unknown IR: $ir")
+      }
+    }
   }
 }
 

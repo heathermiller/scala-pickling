@@ -30,16 +30,27 @@ package pickling {
   trait Pickler[T] {
     type PickleType <: Pickle
     def pickle(picklee: Any): PickleType
-    // def unpickle(pickle: PickleType): T
   }
 
   object Pickler {
     implicit def genPickler[T](implicit pickleFormat: PickleFormat): Pickler[T] = macro PicklerMacros.impl[T]
   }
 
+  trait Unpickler[T] {
+    import ir._
+    def unpickle(ir: UnpickleIR): T
+  }
+
+  object Unpickler {
+    implicit def genUnpickler[T]: Unpickler[T] = macro UnpicklerMacros.impl[T]
+  }
+
   trait Pickle {
     type ValueType
     val value: ValueType
+
+    type PickleFormatType <: PickleFormat
+    def unpickle[T] = macro UnpickleMacros.pickleUnpickle[T]
   }
 
   @Inherited
@@ -56,7 +67,7 @@ package pickling {
     type PickleType <: Pickle
     def instantiate = macro ???
     def pickle[U <: Universe with Singleton, T: u.WeakTypeTag](u: Universe)(picklee: u.Expr[Any]): u.Expr[PickleType]
-    // def unpickle[U <: Universe with Singleton, T: u.WeakTypeTag](u: Universe)(pickle: u.Expr[PickleType]): u.Expr[T]
+    def parse(tpe: ru.Type, pickle: PickleType, mirror: ru.Mirror): ir.UnpickleIR
   }
 
   case class PicklingException(msg: String) extends Exception(msg)

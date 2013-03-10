@@ -10,17 +10,21 @@ package scala.pickling
 
 package object json {
   implicit val pickleFormat = new JSONPickleFormat
+  implicit def toJSONPickle(value: String): JSONPickle = new JSONPickle(value)
 }
 
 package json {
   import language.experimental.macros
+  import scala.collection.immutable.ListMap
   import scala.reflect.api.Universe
+  import scala.reflect.runtime.{universe => ru}
   import scala.reflect.macros.Context
   import scala.util.parsing.json._
   import ir._
 
   case class JSONPickle(val value: String) extends Pickle {
     type ValueType = String
+    type PickleFormatType = JSONPickleFormat
   }
 
   class JSONPickleFormat extends PickleFormat {
@@ -77,6 +81,26 @@ package json {
         else ensuringNoDerivedClassesJsonAssembly
 
       reify(JSONPickle(jsonAssembly.splice))
+    }
+    def parse(tpe: ru.Type, pickle: JSONPickle, mirror: ru.Mirror): UnpickleIR = {
+      def unpickleTpe(stpe: String): ru.Type = {
+        // TODO: support polymorphic types as serialized above in pickleTpe
+        mirror.staticClass(stpe).asType.toType
+      }
+      def translate(parsedJSON: Any): UnpickleIR = parsedJSON match {
+        case JSONObject(data) =>
+          val tpe = unpickleTpe(data("$tpe").asInstanceOf[String])
+          val fields = ListMap() ++ data.map{case (k, v) => (k -> translate(v))} - "$tpe"
+          ObjectIR(tpe, fields)
+        case JSONArray(data) =>
+          throw new PicklingException(s"not yet implemented: $parsedJSON")
+        case value =>
+          ValueIR(value)
+      }
+      JSON.parseRaw(pickle.value) match {
+        case Some(parsedJSON) => translate(parsedJSON)
+        case None => throw new PicklingException(s"""failed to unpickle \"${pickle.value}\" as $tpe""") // TODO: how to get an exact error and its position?
+      }
     }
   }
 
