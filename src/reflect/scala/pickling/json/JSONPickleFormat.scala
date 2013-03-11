@@ -14,6 +14,16 @@ package object json {
   import scala.reflect.macros.Context
   import ir._
 
+  implicit val intPickler: Pickler[Int]         = new Pickler[Int]     { def pickle(x: Any) = new Pickle { val value: Any = x }}
+  implicit val longPickler: Pickler[Long]       = new Pickler[Long]    { def pickle(x: Any) = new Pickle { val value: Any = x }}
+  implicit val shortPickler: Pickler[Short]     = new Pickler[Short]   { def pickle(x: Any) = new Pickle { val value: Any = x }}
+  implicit val doublePickler: Pickler[Double]   = new Pickler[Double]  { def pickle(x: Any) = new Pickle { val value: Any = x }}
+  implicit val floatPickler: Pickler[Float]     = new Pickler[Float]   { def pickle(x: Any) = new Pickle { val value: Any = x }}
+  implicit val booleanPickler: Pickler[Boolean] = new Pickler[Boolean] { def pickle(x: Any) = new Pickle { val value: Any = x }}
+  implicit val bytePickler: Pickler[Byte]       = new Pickler[Byte]    { def pickle(x: Any) = new Pickle { val value: Any = x }}
+  implicit val charPickler: Pickler[Char]       = new Pickler[Char]    { def pickle(x: Any) = new Pickle { val value: Any = "\"" + x.toString + "\""}}
+  implicit val stringPickler: Pickler[String]   = new Pickler[String]  { def pickle(x: Any) = new Pickle { val value: Any = "\"" + x.toString + "\""}}
+
   implicit val pickleFormat = new JSONPickleFormat
 
   class JSONPickleFormat extends PickleFormat {
