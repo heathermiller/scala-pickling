@@ -100,7 +100,6 @@ package object pickling {
               val tpe  = $reifiedTypeTree.tpe
 
               if (rtpe <:< tpe && !(rtpe =:= tpe)) {
-                println("using runtime pickler")
                 val rtmPickler = Pickler.runtimePickler(rtpe, obj)
                 rtmPickler.pickle(obj)
               } else {
@@ -152,19 +151,15 @@ package pickling {
         new Pickler[Any] {
           def pickle(obj: Any): Pickle = {
             val im = rtm.reflect(obj) // instance mirror
-            
-            // produce Pickles for each field
-            val pickles: List[Pickle] = oir.fields.map { fld =>
+
+            format.format(irs)(oir, (fld: irs.FieldIR) => {
               val fldAccessor = rtpe.declaration(ru.newTermName(fld.name)).asTerm.accessed.asTerm
               val fldMirror   = im.reflectField(fldAccessor)
               val fldValue    = fldMirror.get
               debug("pickling field value: " + fldValue)
               val fldPickler  = runtimePickler(fld.tpe, fldValue)
               fldPickler.pickle(fldValue)
-            }
-
-            println("creating Pickle for type " + oir.tpe)
-            null
+            })
           }
         }
       }
@@ -202,6 +197,16 @@ package pickling {
     def instantiate = macro ???
     def pickle[U <: Universe with Singleton](irs: IRs[U])(ir: irs.ObjectIR, holes: List[irs.uni.Expr[Pickle]]): irs.uni.Expr[Pickle]
     // def unpickle[U <: Universe with Singleton](u: U)(pickle: u.Expr[Pickle]): u.Expr[(???.Type, Any)]
+
+    type Data
+
+    def objectPrefix(u: Universe)(tpe: u.Type): Data
+    def objectSuffix: Data
+    def fieldSeparator: Data
+    def fieldPrefix[U <: Universe with Singleton](irs: IRs[U])(fir: irs.FieldIR): Data
+    def fieldSuffix: Data
+
+    def format[U <: Universe with Singleton](irs: IRs[U])(oir: irs.ObjectIR, pickle: irs.FieldIR => Pickle): Pickle
   }
 }
 

@@ -52,6 +52,25 @@ package object json {
       }
       reify(new Pickle { val value = genJsonAssembler().splice })
     }
+
+    type Data = String
+
+    def objectPrefix(u: Universe)(tpe: u.Type): Data = "{\n  \"tpe\": \"" + tpe.typeSymbol.name.toString + "\",\n"
+    def objectSuffix: Data                           = "\n}"
+    def fieldSeparator: Data                         = ",\n"
+    def fieldPrefix[U <: Universe with Singleton](irs: IRs[U])(fir: irs.FieldIR): Data =
+      "  \"" + fir.name + "\": "
+    def fieldSuffix: Data                            = ""
+
+    def format[U <: Universe with Singleton](irs: IRs[U])(oir: irs.ObjectIR, pickle: irs.FieldIR => Pickle): Pickle =
+      new Pickle {
+        val value =
+          objectPrefix(irs.uni)(oir.tpe) + {
+            val formattedFields = oir.fields.map(fld => fieldPrefix(irs)(fld) + pickle(fld).value)
+            formattedFields mkString fieldSeparator
+          } + objectSuffix
+      }
+
   }
 
   object JSONPickleInstantiate {
