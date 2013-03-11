@@ -97,10 +97,12 @@ package object pickling {
               val obj = raw.asInstanceOf[$tpe]
 
               val rtpe = Pickler.getType(obj)
+              val tpe  = $reifiedTypeTree.tpe
 
-              if (rtpe <:< $reifiedTypeTree.tpe && !(rtpe =:= $reifiedTypeTree.tpe)) {
+              if (rtpe <:< tpe && !(rtpe =:= tpe)) {
                 println("using runtime pickler")
-                null
+                val rtmPickler = Pickler.runtimePickler(rtpe, obj)
+                rtmPickler.pickle(obj)
               } else {
                 ${pickleLogic.tree}
               }
@@ -125,12 +127,47 @@ package pickling {
   }
 
   object Pickler {
+    import reflect.runtime.{universe => ru}
+
     implicit def genPickler[T]: Pickler[T] = macro genPicklerImpl[T]
 
     val rtm = reflect.runtime.universe.runtimeMirror(getClass.getClassLoader)
     def getType(obj: Any): ru.Type = {
       val classSym = rtm.classSymbol(obj.getClass)
-      classSym.typeSignature
+      classSym.toType
+    }
+
+    def runtimePickler(rtpe: ru.Type, obj: Any)(implicit format: PickleFormat, p1: Pickler[Int], p2: Pickler[String]): Pickler[_] = {
+      // TODO: cover all primitive types
+      if (rtpe <:< ru.typeOf[Int])         implicitly[Pickler[Int]]
+      else if (rtpe <:< ru.typeOf[String]) implicitly[Pickler[String]]
+      else {
+        val irs = new ir.IRs[ru.type](ru)
+        import irs._
+
+        debug("creating IR for runtime pickler of type " + rtpe)
+        val oir = flatten(compose(ObjectIR(rtpe, null, List())))
+        
+        // build "interpreted" runtime pickler
+        new Pickler[Any] {
+          def pickle(obj: Any): Pickle = {
+            val im = rtm.reflect(obj) // instance mirror
+            
+            // produce Pickles for each field
+            val pickles: List[Pickle] = oir.fields.map { fld =>
+              val fldAccessor = rtpe.declaration(ru.newTermName(fld.name)).asTerm.accessed.asTerm
+              val fldMirror   = im.reflectField(fldAccessor)
+              val fldValue    = fldMirror.get
+              debug("pickling field value: " + fldValue)
+              val fldPickler  = runtimePickler(fld.tpe, fldValue)
+              fldPickler.pickle(fldValue)
+            }
+
+            println("creating Pickle for type " + oir.tpe)
+            null
+          }
+        }
+      }
     }
   }
 
