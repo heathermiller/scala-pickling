@@ -31,16 +31,15 @@ package object pickling {
     }
   }
 
-  def genPicklerRuntime(tpe: ru.Type)(implicit format: PickleFormat): Pickler[Any] = {
+  def genPicklerRuntime(tpe: ru.Type, mirror: ru.Mirror)(implicit format: PickleFormat): Pickler[Any] = {
     val pickleExpr = genPicklerCommon(ru)(tpe)
-    evalPickler(pickleExpr, tpe)
+    evalPickler(pickleExpr, tpe, mirror)
   }
 
-  def evalPickler(pickleLogic: ru.Expr[Pickle], tpe: ru.Type): Pickler[Any] = {
+  def evalPickler(pickleLogic: ru.Expr[Pickle], tpe: ru.Type, mirror: ru.Mirror): Pickler[Any] = {
     import scala.tools.reflect.ToolBox
     import ru._
-    val m                    = ru.runtimeMirror(getClass.getClassLoader)
-    val tb: ToolBox[ru.type] = m.mkToolBox(options = "-cp classes:build/quick/classes/reflect:build/quick/classes/compiler")
+    val tb: ToolBox[ru.type] = mirror.mkToolBox()
 
     val castAndAssignTree: ru.Tree =
       ValDef(Modifiers(), "obj", TypeTree(tpe),
@@ -49,7 +48,7 @@ package object pickling {
     val picklerExpr = ru.reify {
       {
         implicit val `anon$$pickler` = {
-          import scala.pickling.Pickler.genPickler
+          import scala.pickling._
           final class `$$anon` extends scala.pickling.Pickler[Any] {
             def pickle(raw: Any): scala.pickling.Pickle = {
               reflect.runtime.universe.Expr[Unit](castAndAssignTree).splice
@@ -72,11 +71,13 @@ package object pickling {
     // build IR
     debug("The tpe just before IR creation is: " + tpe)
     val oir         = flatten(compose(ObjectIR(tpe, null, List())))
-    val holes       = oir.fields.map(fir => u.Expr[Pickle](
-      //Apply(Select(TypeApply(Ident("implicitly"), TypeTree(fir.tpe)), "pickle")
-      Apply(Select(TypeApply(Ident(TermName("implicitly")), List(AppliedTypeTree(TypeTree(u.typeOf[Pickler[_]]), List(TypeTree(u.typeOf[Any]))))), TermName("pickle")), List(Select(Ident(TermName("obj")), TermName(fir.name))))
-      //Select(Select(Ident(TermName("obj")), TermName(fir.name)), TermName("pickle"))
-    ))
+    val holes       = oir.fields.map(fir => {
+      //Apply(Select(TypeApply(Ident("implicitly"), TypeTree(fir.tpe)), "pickle"))
+      //Apply(Select(TypeApply(Ident(TermName("implicitly")), List(AppliedTypeTree(TypeTree(u.typeOf[Pickler[_]]), List(TypeTree(u.typeOf[Any]))))), TermName("pickle")), List(Select(Ident(TermName("obj")), TermName(fir.name))))
+      u.Expr[Pickle](
+        Select(Select(Ident(TermName("obj")), TermName(fir.name)), TermName("pickle"))
+      )
+    })
     val pickleLogic = format.pickle(irs)(oir, holes)
     debug("Pickler.pickle = " + pickleLogic)
     pickleLogic
@@ -140,6 +141,9 @@ package object pickling {
     val reifiedTypeTree =
       c.reifyType(treeBuild.mkRuntimeUniverseRef, EmptyTree, tpe)
 
+    val currentClassloader = Select(Ident(TermName("getClass")), TermName("getClassLoader"))
+    val currentMirror = Apply(Select(treeBuild.mkRuntimeUniverseRef, TermName("runtimeMirror")), List(currentClassloader))
+
     q"""
       {
         implicit val anon$$pickler = {
@@ -152,7 +156,7 @@ package object pickling {
 
               if (rtpe <:< tpe && !(rtpe =:= tpe)) {
                 //val rtmPickler = Pickler.runtimePickler(rtpe, obj)
-                val rtmPickler = genPicklerRuntime(rtpe)
+                val rtmPickler = genPicklerRuntime(rtpe, $currentMirror)
                 rtmPickler.pickle(obj)
               } else {
                 ${pickleLogic.tree}
