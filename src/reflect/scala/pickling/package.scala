@@ -31,6 +31,57 @@ package object pickling {
     }
   }
 
+  def genPicklerRuntime(tpe: ru.Type)(implicit format: PickleFormat): Pickler[Any] = {
+    val pickleExpr = genPicklerCommon(ru)(tpe)
+    evalPickler(pickleExpr, tpe)
+  }
+
+  def evalPickler(pickleLogic: ru.Expr[Pickle], tpe: ru.Type): Pickler[Any] = {
+    import scala.tools.reflect.ToolBox
+    import ru._
+    val m                    = ru.runtimeMirror(getClass.getClassLoader)
+    val tb: ToolBox[ru.type] = m.mkToolBox(options = "-cp classes:build/quick/classes/reflect:build/quick/classes/compiler")
+
+    val castAndAssignTree: ru.Tree =
+      ValDef(Modifiers(), "obj", TypeTree(tpe),
+             TypeApply(Select(Ident("raw"), "asInstanceOf"), List(TypeTree(tpe))))
+
+    val picklerExpr = ru.reify {
+      {
+        implicit val `anon$$pickler` = {
+          import scala.pickling.Pickler.genPickler
+          final class `$$anon` extends scala.pickling.Pickler[Any] {
+            def pickle(raw: Any): scala.pickling.Pickle = {
+              reflect.runtime.universe.Expr[Unit](castAndAssignTree).splice
+              pickleLogic.splice
+            }
+          }
+          new `$$anon`
+        }
+        `anon$$pickler`
+      }
+    }
+    tb.eval(picklerExpr.tree).asInstanceOf[Pickler[Any]]
+  }
+
+  def genPicklerCommon(u: Universe)(tpe: u.Type)(implicit format: PickleFormat): u.Expr[Pickle] = {
+    import u._
+    val irs = new IRs[u.type](u)
+    import irs._
+
+    // build IR
+    debug("The tpe just before IR creation is: " + tpe)
+    val oir         = flatten(compose(ObjectIR(tpe, null, List())))
+    val holes       = oir.fields.map(fir => u.Expr[Pickle](
+      //Apply(Select(TypeApply(Ident("implicitly"), TypeTree(fir.tpe)), "pickle")
+      Apply(Select(TypeApply(Ident(TermName("implicitly")), List(AppliedTypeTree(TypeTree(u.typeOf[Pickler[_]]), List(TypeTree(u.typeOf[Any]))))), TermName("pickle")), List(Select(Ident(TermName("obj")), TermName(fir.name))))
+      //Select(Select(Ident(TermName("obj")), TermName(fir.name)), TermName("pickle"))
+    ))
+    val pickleLogic = format.pickle(irs)(oir, holes)
+    debug("Pickler.pickle = " + pickleLogic)
+    pickleLogic
+  }
+
   def genPicklerByType(c: Context)(tpe: c.Type): c.Tree = {
     import c.universe._
     import Flag._
@@ -100,7 +151,8 @@ package object pickling {
               val tpe  = $reifiedTypeTree.tpe
 
               if (rtpe <:< tpe && !(rtpe =:= tpe)) {
-                val rtmPickler = Pickler.runtimePickler(rtpe, obj)
+                //val rtmPickler = Pickler.runtimePickler(rtpe, obj)
+                val rtmPickler = genPicklerRuntime(rtpe)
                 rtmPickler.pickle(obj)
               } else {
                 ${pickleLogic.tree}
