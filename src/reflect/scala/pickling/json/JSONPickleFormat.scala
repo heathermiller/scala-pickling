@@ -31,13 +31,7 @@ package json {
         else if (sym == CharClass || sym == StringClass) reify("\"" + JSONFormat.quoteString(picklee.splice.toString) + "\"")
         else if (sym.isPrimitive) reify(picklee.splice.toString) // TODO: unit?
         else {
-          def pickleTpe(tpe: Type): Expr[String] = {
-            def loop(tpe: Type): String = tpe match {
-              case TypeRef(_, sym, Nil) => s"${sym.fullName}"
-              case TypeRef(_, sym, targs) => s"${sym.fullName}[${targs.map(targ => pickleTpe(targ))}]"
-            }
-            reify("\"tpe\": \"" + Expr[String](Literal(Constant(loop(tpe)))).splice + "\"")
-          }
+          def pickleTpe(tpe: Type): Expr[String] = reify("\"tpe\": \"" + Expr[String](Literal(Constant(tpe.erasure.typeSymbol.fullName.toString))).splice + "\"")
           def pickleField(fir: irs.FieldIR) = reify("\"" + Expr[String](Literal(Constant(fir.name))).splice + "\": " + fields(fir).splice.value)
           val fragmentTrees = pickleTpe(cir.tpe) +: cir.fields.map(fir => pickleField(fir))
           val fragmentsTree = fragmentTrees.map(t => reify("  " + t.splice)).reduce((t1, t2) => reify(t1.splice + ",\n" + t2.splice))
@@ -59,11 +53,8 @@ package json {
         } + objectSuffix
       }
     }
-    def parse(pickle: JSONPickle, mirror: ru.Mirror): Option[UnpickleIR] = {
-      def unpickleTpe(stpe: String): ru.Type = {
-        // TODO: support polymorphic types as serialized above in formatCT/formatRT
-        mirror.staticClass(stpe).asType.toType
-      }
+    def parse(pickle: JSONPickle, classLoader: ClassLoader): Option[UnpickleIR] = {
+      def unpickleTpe(stpe: String): Class[_] = classLoader.loadClass(stpe)
       def translate(parsedJSON: Any): UnpickleIR = parsedJSON match {
         case JSONObject(data) =>
           val tpe = unpickleTpe(data("tpe").asInstanceOf[String])

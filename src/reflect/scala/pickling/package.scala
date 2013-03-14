@@ -27,10 +27,10 @@ package pickling {
     implicit def genPickler[T](implicit pickleFormat: PickleFormat): Pickler[T] = macro PicklerMacros.impl[T]
     // TODO: the primitive pickler hack employed here is funny, but I think we should fix this one
     // since people probably would also have to deal with the necessity to abstract over pickle formats
-    def genPickler(mirror: ru.Mirror, tpe: ru.Type)(implicit format: PickleFormat, p1: Pickler[Int], p2: Pickler[String]): Pickler[_] = {
-      println(s"generating runtime pickler for $tpe") // TODO: needs to be an explicit println, so that we don't occasionally fallback to runtime in static cases
-      PicklerRuntime.genCompiledPickler(mirror, tpe)
-      // PicklerRuntime.genInterpretedPickler(mirror, tpe)
+    def genPickler(mirror: ru.Mirror, clazz: Class[_])(implicit format: PickleFormat, p1: Pickler[Int], p2: Pickler[String]): Pickler[_] = {
+      println(s"generating runtime pickler for $clazz") // TODO: needs to be an explicit println, so that we don't occasionally fallback to runtime in static cases
+      PicklerRuntime.genCompiledPickler(mirror, clazz)
+      // PicklerRuntime.genInterpretedPickler(mirror, clazz)
     }
   }
 
@@ -72,7 +72,7 @@ package pickling {
     // looks like scalac fails to generate a bridge here...
     // def formatRT[U <: Universe with Singleton](irs: PickleIRs[U])(cir: irs.ClassIR, picklee: Any, fields: irs.FieldIR => Pickle): PickleType
     def formatRT[U <: Universe with Singleton](irs: PickleIRs[U])(cir: irs.ClassIR, picklee: Any, fields: irs.FieldIR => Pickle): Pickle
-    def parse(pickle: PickleType, mirror: ru.Mirror): Option[UnpickleIR]
+    def parse(pickle: PickleType, classLoader: ClassLoader): Option[UnpickleIR]
   }
 
   case class PicklingException(msg: String) extends Exception(msg)

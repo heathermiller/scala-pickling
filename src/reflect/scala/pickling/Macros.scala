@@ -9,6 +9,9 @@ trait PicklerMacros extends Macro {
     import c.universe._
     val tpe = weakTypeOf[T]
 
+    if (tpe.typeSymbol.asClass.typeParams.nonEmpty)
+      c.abort(c.enclosingPosition, s"implementation restriction: cannot pickle polymorphic type $tpe")
+
     import irs._
     val cir = flatten(compose(ClassIR(tpe, null, List())))
     val nullCir = ClassIR(definitions.NullTpe, null, Nil)
@@ -46,6 +49,9 @@ trait UnpicklerMacros extends Macro {
     val tpe = weakTypeOf[T]
     val expectsValueIR = tpe.typeSymbol.asClass.isPrimitive || tpe.typeSymbol == StringClass
     val expectsObjectIR = !expectsValueIR
+
+    if (tpe.typeSymbol.asClass.typeParams.nonEmpty)
+      c.abort(c.enclosingPosition, s"implementation restriction: cannot unpickle polymorphic type $tpe")
 
     def unexpectedIR: c.Tree = q"""throw new PicklingException("unexpected IR: " + ir + " for type " + ${tpe.toString})"""
 
@@ -85,21 +91,22 @@ trait PickleMacros extends Macro {
     val q"${_}($picklee)" = c.prefix.tree
 
     def pickleAs(tpe: Type) = q"scala.pickling.Pickler.genPickler[$tpe]"
+    val nullDispatch = CaseDef(Literal(Constant(null)), EmptyTree, pickleAs(tpe))
     val compileTimeDispatch = compileTimeDispatchees(tpe) map (tpe => {
-      CaseDef(Bind(TermName("tpe"), Ident(nme.WILDCARD)), q"tpe =:= pickleeTpe", pickleAs(tpe))
+      CaseDef(Bind(TermName("pickleeClass"), Ident(nme.WILDCARD)), q"pickleeClass == classOf[$tpe]", pickleAs(tpe))
     })
-    val runtimeDispatch = CaseDef(Ident(nme.WILDCARD), EmptyTree, q"scala.pickling.Pickler.genPickler(mirror, pickleeTpe)")
+    val runtimeDispatch = CaseDef(Ident(nme.WILDCARD), EmptyTree, q"scala.pickling.Pickler.genPickler(mirror, pickleeClass)")
     // TODO: this should go through HasPicklerDispatch
     // TODO: you know, probably we should move dispatch logic directly into picklers and unpicklers after some time
     // at the moment this won't help us at all, but later on when picklers/unpicklers will be hoisted, this will save us some bytecodes
-    val dispatchLogic = Match(q"pickleeTpe", compileTimeDispatch :+ runtimeDispatch)
+    val dispatchLogic = Match(q"pickleeClass", nullDispatch +: compileTimeDispatch :+ runtimeDispatch)
 
     // TODO: we don't really need ru.Types, neither here nor in unpickle dispatch
     // we could just use erasures and be perfectly fine. that would also bring a performance boost
     q"""
       import scala.pickling._
       val mirror = scala.reflect.runtime.currentMirror
-      val pickleeTpe = mirror.reflect($picklee).symbol.asType.toType
+      val pickleeClass = if ($picklee != null) $picklee.getClass else null
       val pickler = $dispatchLogic.asInstanceOf[Pickler[_]{ type PickleType = ${pickleType(pickleFormat)} }]
       pickler.pickle($picklee)
     """
@@ -118,7 +125,7 @@ trait UnpickleMacros extends Macro {
 
     q"""
       val pickle = $pickleTree
-      new ${pickleFormatType(pickleTree)}().parse(pickle, scala.reflect.runtime.currentMirror) match {
+      new ${pickleFormatType(pickleTree)}().parse(pickle, getClass.getClassLoader) match {
         case Some(result) => result.unpickle[$tpe]
         case None => throw new PicklingException("failed to unpickle \"" + pickle + "\" as ${tpe.toString}")
       }
@@ -132,11 +139,11 @@ trait UnpickleMacros extends Macro {
     def unpickleAs(tpe: Type) = q"scala.pickling.Unpickler.genUnpickler[$tpe].unpickle(ir)"
     val valueIRUnpickleLogic = unpickleAs(tpe)
     val compileTimeDispatch = compileTimeDispatchees(tpe) map (tpe => {
-      CaseDef(Bind(TermName("tpe"), Ident(nme.WILDCARD)), q"tpe =:= scala.reflect.runtime.universe.typeOf[$tpe]", unpickleAs(tpe))
+      CaseDef(Bind(TermName("clazz"), Ident(nme.WILDCARD)), q"clazz == classOf[$tpe]", unpickleAs(tpe))
     })
     val runtimeDispatch = CaseDef(Ident(nme.WILDCARD), EmptyTree, q"???")
     // TODO: this should also go through HasPicklerDispatch, probably routed through a companion of T
-    val objectIRUnpickleLogic = Match(q"ir.tpe", compileTimeDispatch :+ runtimeDispatch)
+    val objectIRUnpickleLogic = Match(q"ir.clazz", compileTimeDispatch :+ runtimeDispatch)
 
     q"""
       import scala.pickling._

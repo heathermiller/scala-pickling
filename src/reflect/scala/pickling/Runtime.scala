@@ -5,10 +5,11 @@ import scala.tools.reflect.ToolBox
 import ir._
 
 object PicklerRuntime {
-  def genCompiledPickler(mirror: ru.Mirror, tpe: ru.Type)(implicit format: PickleFormat, p1: Pickler[Int], p2: Pickler[String]): Pickler[_] = {
+  def genCompiledPickler(mirror: ru.Mirror, clazz: Class[_])(implicit format: PickleFormat, p1: Pickler[Int], p2: Pickler[String]): Pickler[_] = {
     // TODO: we should somehow cache toolboxes. maybe even inside the reflection API
     import scala.reflect.runtime.universe._
     val tb = mirror.mkToolBox()
+    val tpe = mirror.classSymbol(clazz).asType.toType // TODO: what if the resulting class symbol is polymorphic?
     val formatTpe = mirror.reflect(format).symbol.asType.toType
     // TODO: toolbox bug. if we don't explicitly import PickleOps, it will fail to be found
     // more precisely: it will be found, but then immediately discarded, because a reference to it won't typecheck
@@ -20,8 +21,9 @@ object PicklerRuntime {
     """).asInstanceOf[Pickler[_]]
   }
 
-  def genInterpretedPickler(mirror: ru.Mirror, tpe: ru.Type)(implicit format: PickleFormat, p1: Pickler[Int], p2: Pickler[String]): Pickler[_] = {
+  def genInterpretedPickler(mirror: ru.Mirror, clazz: Class[_])(implicit format: PickleFormat, p1: Pickler[Int], p2: Pickler[String]): Pickler[_] = {
     // TODO: cover all primitive types
+    val tpe = mirror.classSymbol(clazz).asType.toType // TODO: what if the resulting class symbol is polymorphic?
     if (tpe <:< ru.typeOf[Int])         implicitly[Pickler[Int]]
     else if (tpe <:< ru.typeOf[String]) implicitly[Pickler[String]]
     else {
@@ -41,7 +43,7 @@ object PicklerRuntime {
             val fldMirror   = im.reflectField(fldAccessor)
             val fldValue    = fldMirror.get
             debug("pickling field value: " + fldValue)
-            val fldPickler  = genInterpretedPickler(mirror, fld.tpe)
+            val fldPickler  = genInterpretedPickler(mirror, mirror.runtimeClass(fld.tpe))
             fldPickler.pickle(fldValue)
           }).asInstanceOf[PickleType]
         }
