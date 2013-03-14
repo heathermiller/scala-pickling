@@ -7,7 +7,7 @@ class PickleIRs[U <: Universe with Singleton](val uni: U) {
   import uni._
 
   sealed abstract class PickleIR
-  case class FieldIR(name: String, tpe: Type)
+  case class FieldIR(name: String, tpe: Type, isPublic: Boolean)
   case class ClassIR(tpe: Type, parent: ClassIR, fields: List[FieldIR]) extends PickleIR
 
   type Q = List[FieldIR]
@@ -17,8 +17,12 @@ class PickleIRs[U <: Universe with Singleton](val uni: U) {
     tp.typeSymbol
       .typeSignature
       .declarations
-      .filter(sym => !sym.isMethod && sym.isTerm && (sym.asTerm.isVar || sym.asTerm.isParamAccessor)) // separate issue: minimal versus verbose PickleFormat . i.e. someone might want all concrete inherited fields in their pickle
-      .map(sym => FieldIR(sym.name.toString.trim, sym.typeSignatureIn(tp)))
+      .filter(sym => {
+        val isCtorParam = sym.isMethod && sym.isTerm && sym.asTerm.isParamAccessor
+        val isVar = sym.isMethod && sym.asTerm.isGetter && sym.asTerm.accessed.isTerm && sym.asTerm.accessed.asTerm.isVar
+        isCtorParam || isVar
+      }) // separate issue: minimal versus verbose PickleFormat . i.e. someone might want all concrete inherited fields in their pickle
+      .map(sym => FieldIR(sym.name.toString.trim, sym.typeSignatureIn(tp), sym.isPublic))
       .toList
 
   def composition(f1: (Q, Q) => Q, f2: (C, C) => C, f3: C => List[C]) =

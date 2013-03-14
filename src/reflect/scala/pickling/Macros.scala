@@ -12,7 +12,10 @@ trait PicklerMacros extends Macro {
     import irs._
     val cir = flatten(compose(ClassIR(tpe, null, List())))
     val nullCir = ClassIR(definitions.NullTpe, null, Nil)
-    val fieldAccessor = (fir: FieldIR) => Expr[Pickle](q"picklee.${TermName(fir.name)}.pickle")
+    val fieldAccessor = (fir: FieldIR) => {
+      if (!fir.isPublic) c.abort(c.enclosingPosition, s"implementation restriction: cannot pickle non-public field ${fir.name} in class $tpe")
+      Expr[Pickle](q"picklee.${TermName(fir.name)}.pickle")
+    }
     def pickleLogic(cir: ClassIR) = instantiatePickleFormat(pickleFormat).formatCT[c.universe.type](irs)(cir, Expr(q"picklee"), fieldAccessor)
 
     // TODO: genPickler and genUnpickler should really hoist their results to the top level

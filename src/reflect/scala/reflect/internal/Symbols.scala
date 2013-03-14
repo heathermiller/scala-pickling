@@ -3424,7 +3424,7 @@ trait Symbols extends api.Symbols { self: SymbolTable =>
 
   /** An exception for cyclic references of symbol definitions */
   case class CyclicReference(sym: Symbol, info: Type)
-  extends TypeError("illegal cyclic reference involving " + sym) {
+  extends TypeError("illegal cyclic reference involving " + sym.fullName) {
     if (settings.debug.value) printStackTrace()
   }
 
