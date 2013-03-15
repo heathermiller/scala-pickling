@@ -35,6 +35,8 @@ object PicklerRuntime {
 
       // build "interpreted" runtime pickler
       new Pickler[Any] {
+        type PickleFormatType = PickleFormat
+        val pickleFormat = format
         def pickle(picklee: Any): PickleType = {
           val im = mirror.reflect(picklee) // instance mirror
 

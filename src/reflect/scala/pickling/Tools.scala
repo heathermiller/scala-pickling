@@ -144,4 +144,14 @@ abstract class Macro extends scala.reflect.macros.Macro {
   def compileTimeDispatchees(tpe: Type): List[Type] = {
     tools.compileTimeDispatchees(tpe.typeSymbol, rootMirror).map(_.asType.toType)
   }
+
+  def syntheticPackageName: String = "scala.pickling.synthetic"
+  def syntheticName(tpe: Type): TypeName = TypeName(tpe.typeSymbol.fullName.split('.').map(_.capitalize).mkString(""))
+  def syntheticQualifiedName(tpe: Type): TypeName = TypeName(syntheticPackageName + "." + syntheticName(tpe).toString)
+  def syntheticPicklerName(tpe: Type, formatTpe: Type): TypeName = syntheticName(tpe) + syntheticPicklerSuffix(formatTpe)
+  def syntheticPicklerQualifiedName(tpe: Type, formatTpe: Type): TypeName = syntheticQualifiedName(tpe) + syntheticPicklerSuffix(formatTpe)
+  def syntheticPicklerSuffix(formatTpe: Type): String = formatTpe.typeSymbol.name.toString.stripSuffix("PickleFormat") + "Pickler"
+  def syntheticUnpicklerName(tpe: Type): TypeName = syntheticName(tpe) + syntheticUnpicklerSuffix
+  def syntheticUnpicklerQualifiedName(tpe: Type): TypeName = syntheticQualifiedName(tpe) + syntheticUnpicklerSuffix
+  def syntheticUnpicklerSuffix: String = "Unpickler"
 }

@@ -19,6 +19,9 @@ package object pickling {
 package pickling {
 
   trait Pickler[T] {
+    type PickleFormatType <: PickleFormat
+    val pickleFormat: PickleFormatType
+
     type PickleType <: Pickle
     def pickle(picklee: Any): PickleType
   }
