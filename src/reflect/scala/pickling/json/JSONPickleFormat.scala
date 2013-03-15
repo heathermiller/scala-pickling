@@ -33,15 +33,15 @@ package json {
         else {
           def pickleTpe(tpe: Type): Expr[String] = reify("\"tpe\": \"" + Expr[String](Literal(Constant(tpe.erasure.typeSymbol.fullName.toString))).splice + "\"")
           def pickleField(fir: irs.FieldIR) = reify("\"" + Expr[String](Literal(Constant(fir.name))).splice + "\": " + fields(fir).splice.value)
-          val fragmentTrees = pickleTpe(cir.tpe) +: cir.fields.map(fir => pickleField(fir))
-          val fragmentsTree = fragmentTrees.map(t => reify("  " + t.splice)).reduce((t1, t2) => reify(t1.splice + ",\n" + t2.splice))
+          val fragmentTrees = cir.fields.map(fir => pickleField(fir))
+          val fragmentsTree = fragmentTrees.map(t => reify("  " + t.splice)).foldLeft(pickleTpe(cir.tpe))((t1, t2) => reify(t1.splice + ",\n" + t2.splice))
           reify("{\n" + fragmentsTree.splice + "\n}")
         }
       reify(JSONPickle(value.splice))
     }
     // def formatRT[U <: Universe with Singleton](irs: PickleIRs[U])(cir: irs.ClassIR, picklee: Any, fields: irs.FieldIR => Pickle): JSONPickle = {
     def formatRT[U <: Universe with Singleton](irs: PickleIRs[U])(cir: irs.ClassIR, picklee: Any, fields: irs.FieldIR => Pickle): Pickle = {
-      def objectPrefix(tpe: irs.uni.Type) = "{\n  \"tpe\": \"" + tpe.typeSymbol.name.toString + "\",\n"
+      def objectPrefix(tpe: irs.uni.Type) = "{\n  \"tpe\": \"" + tpe.typeSymbol.name.toString + "\"" + (if (cir.fields.nonEmpty) ",\n" else "")
       val objectSuffix = "\n}"
       val fieldSeparator = ",\n"
       def fieldPrefix(fir: irs.FieldIR) = "  \"" + fir.name + "\": "

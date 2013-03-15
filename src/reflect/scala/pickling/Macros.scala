@@ -136,12 +136,11 @@ trait UnpickleMacros extends Macro {
     import c.universe._
     val tpe = weakTypeOf[T]
     val pickleTree = c.prefix.tree
-
     q"""
       val pickle = $pickleTree
       new ${pickleFormatType(pickleTree)}().parse(pickle, getClass.getClassLoader) match {
         case Some(result) => result.unpickle[$tpe]
-        case None => throw new PicklingException("failed to unpickle \"" + pickle + "\" as ${tpe.toString}")
+        case None => throw new PicklingException("failed to unpickle \"" + pickle + "\" as " + ${tpe.toString})
       }
     """
   }
