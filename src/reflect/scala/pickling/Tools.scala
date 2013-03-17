@@ -166,23 +166,23 @@ abstract class Macro extends scala.reflect.macros.Macro {
 
   def preferringAlternativeImplicits(body: => Tree): Tree = {
     def debug(msg: Any) = {
-      val padding = "  " * (c.openImplicits.length - 1)
+      val padding = "  " * (c.enclosingImplicits.length - 1)
       // Console.err.println(padding + msg)
     }
-    debug("can we enter " + c.openImplicits.head.pt + "?")
-    debug(c.openImplicits)
-    c.openImplicits match {
+    debug("can we enter " + c.enclosingImplicits.head.pt + "?")
+    debug(c.enclosingImplicits)
+    c.enclosingImplicits match {
       case c.ImplicitCandidate(_, _, ourPt, _) :: c.ImplicitCandidate(_, _, theirPt, _) :: _ if ourPt =:= theirPt =>
         debug(s"no, because: ourPt = $ourPt, theirPt = $theirPt")
         c.diverge()
       case _ =>
         debug(s"not sure, need to explore alternatives")
-        c.inferImplicitValue(c.openImplicits.head.pt, silent = true) match {
+        c.inferImplicitValue(c.enclosingImplicits.head.pt, silent = true) match {
           case success if success != EmptyTree =>
             debug(s"no, because there's $success")
             c.diverge()
           case _ =>
-            debug("yes, there are no obstacles. entering " + c.openImplicits.head.pt)
+            debug("yes, there are no obstacles. entering " + c.enclosingImplicits.head.pt)
             val result = body
             debug("result: " + result)
             result
