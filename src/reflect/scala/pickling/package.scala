@@ -7,6 +7,7 @@ import scala.reflect.runtime.{universe => ru}
 import scala.reflect.runtime.universe._
 
 package object pickling {
+
   // TOGGLE DEBUGGING
   var debugEnabled: Boolean = System.getProperty("pickling.debug", "false").toBoolean
   def debug(output: => String) = if (debugEnabled) println(output)
@@ -20,11 +21,14 @@ package object pickling {
 package pickling {
 
   trait Pickler[T] {
+    type PickleFormatType <: PickleFormat
+    implicit val format: PickleFormatType
+
     type PickleBuilderType <: PickleBuilder
     def pickle(picklee: Any, builder: PickleBuilderType): Unit
   }
 
-  object Pickler {
+  trait GenPicklers {
     implicit def genPickler[T](implicit format: PickleFormat): Pickler[T] = macro PicklerMacros.impl[T]
     // TODO: the primitive pickler hack employed here is funny, but I think we should fix this one
     // since people probably would also have to deal with the necessity to abstract over pickle formats
@@ -36,12 +40,17 @@ package pickling {
     }
   }
 
+  object Pickler extends CorePicklersUnpicklers with GenPicklers
+
   trait Unpickler[T] {
+    type PickleFormatType <: PickleFormat
+    implicit val format: PickleFormatType
+
     type PickleReaderType <: PickleReader
     def unpickle(tpe: Type, reader: PickleReaderType): Any
   }
 
-  object Unpickler {
+  object Unpickler extends CorePicklersUnpicklers {
     implicit def genUnpickler[T](implicit format: PickleFormat): Unpickler[T] = macro UnpicklerMacros.impl[T]
     def genPickler(mirror: Mirror, tpe: Type)(implicit format: PickleFormat): Unpickler[_] = ??? // TODO: runtime dispatch for unpickling
   }

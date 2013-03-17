@@ -32,13 +32,17 @@ class CompiledPicklerRuntime(classLoader: ClassLoader, clazz: Class[_]) extends 
   }
 }
 
+// TODO: didn't test this one yet
 class InterpretedPicklerRuntime(classLoader: ClassLoader, clazz: Class[_]) extends PicklerRuntime(classLoader, clazz) {
   def genPickler(implicit format: PickleFormat, p1: Pickler[Int], p2: Pickler[String]) = {
     if (tpe <:< typeOf[Int])         implicitly[Pickler[Int]]
     else if (tpe <:< typeOf[String]) implicitly[Pickler[String]]
     else {
       // build "interpreted" runtime pickler
+      val format0 = format
       new Pickler[Any] {
+        type PickleFormatType = PickleFormat
+        implicit val format = format0
         type PickleBuilderType = PickleBuilder
         def pickle(picklee: Any, builder: PickleBuilder): Unit = {
           if (picklee != null) {

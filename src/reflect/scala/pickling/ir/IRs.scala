@@ -5,6 +5,7 @@ import scala.reflect.api.Universe
 
 class IRs[U <: Universe with Singleton](val uni: U) {
   import uni._
+  import definitions._
 
   case class FieldFlags(param: Option[TermSymbol], accessor: Option[MethodSymbol]) {
     def isPublic = accessor.map(_.isPublic).getOrElse(throw new Exception(s"unexpected: $this"))
@@ -23,7 +24,8 @@ class IRs[U <: Universe with Singleton](val uni: U) {
   // TODO: minimal versus verbose PickleFormat. i.e. someone might want all concrete inherited fields in their pickle
   private def fields(tp: Type): Q = {
     val info = tp.typeSymbol.typeSignature
-    val ctorParams = info.declaration(nme.CONSTRUCTOR).asMethod.paramss.flatten.map(_.asTerm) // TODO: multiple ctors
+    val ctor = info.declaration(nme.CONSTRUCTOR)
+    val ctorParams = if (ctor != NoSymbol) ctor.asMethod.paramss.flatten.map(_.asTerm) else Nil // TODO: multiple ctors
     val allAccessors = info.declarations.collect{ case meth: MethodSymbol if meth.isAccessor || meth.isParamAccessor => meth }
     val (paramAccessors, otherAccessors) = allAccessors.partition(_.isParamAccessor)
     def mkFieldIR(sym: TermSymbol, flags: FieldFlags) = FieldIR(sym.name.toString.trim, sym.typeSignatureIn(tp), flags)

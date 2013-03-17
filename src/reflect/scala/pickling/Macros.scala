@@ -18,31 +18,40 @@ trait PicklerMacros extends Macro {
     val pickler = {
       val builderTpe = pickleBuilderType(format)
       c.topLevelRef(syntheticPicklerQualifiedName(tpe, builderTpe)) orElse c.introduceTopLevel(syntheticPackageName, {
-        def pickleAs(tpe: Type) = {
+        def unifiedPickle = { // NOTE: unified = the same code works for both primitives and objects
           if (tpe.typeSymbol.asClass.typeParams.nonEmpty)
             c.abort(c.enclosingPosition, s"TODO: cannot pickle polymorphic types yet ($tpe)")
           val cir = classIR(tpe)
-          notImplementedYet(cir, _.flags.isPublic, "non-public members")
+          notImplementedYet(cir, !_.flags.isPublic, "non-public members")
           val beginEntry = q"builder.beginEntry(typeOf[$tpe], picklee)"
           val putFields = cir.fields.map(fir => q"builder.putField(${fir.name}, b => picklee.${TermName(fir.name)}.pickleInto(b))")
+          val optimizedPutFields =
+            if (putFields.isEmpty) q""
+            else if (sym.isPrimitive || sym.isDerivedValueClass) q"{ ..$putFields; () }"
+            else q"if (picklee != null) { ..$putFields; () }"
           val endEntry = q"builder.endEntry()"
           q"""
             import scala.reflect.runtime.universe._
-            val picklee = pickleeRaw.asInstanceOf[$tpe]
             $beginEntry
-            ..$putFields
+            $optimizedPutFields
             $endEntry
           """
         }
-        def pickleValue = q"${pickleAs(tpe)}"
-        def pickleReference = q"if (picklee != null) ${pickleAs(tpe)} else ${pickleAs(NullTpe)}"
-        val pickleLogic = if (sym.isPrimitive || sym.isDerivedValueClass) pickleValue else pickleReference
+        def pickleLogic = tpe match {
+          case NothingTpe => c.abort(c.enclosingPosition, "cannot pickle Nothing") // TODO: report the serialization path that brought us here
+          case _ => unifiedPickle
+        }
         q"""
           class ${syntheticPicklerName(tpe, builderTpe)} extends scala.pickling.Pickler[$tpe] {
             import scala.pickling._
             import scala.pickling.`package`.PickleOps
+            type PickleFormatType = ${format.tpe}
+            implicit val format = new PickleFormatType()
             type PickleBuilderType = ${pickleBuilderType(format)}
-            def pickle(picklee: Any, builder: PickleBuilderType): Unit = $pickleLogic
+            def pickle(pickleeRaw: Any, builder: PickleBuilderType): Unit = {
+              val picklee = pickleeRaw.asInstanceOf[$tpe]
+              $pickleLogic
+            }
           }
         """
       })
@@ -70,18 +79,24 @@ trait UnpicklerMacros extends Macro {
         def unpicklePrimitive = q"reader.readPrimitive(tpe)"
         def unpickleObject = {
           val cir = classIR(tpe)
-          notImplementedYet(cir, _.flags.isPublic, "non-public members")
+          notImplementedYet(cir, !_.flags.isPublic, "non-public members")
           notImplementedYet(cir, _.flags.isVar, "mutable fields")
           val ctorSym = tpe.declaration(nme.CONSTRUCTOR).asMethod // TODO: multiple constructors
           def ctorArg(name: String, tpe: Type) = q"reader.readField($name).unpickle[$tpe]"
           val ctorArgs = ctorSym.paramss.flatten.map(f => ctorArg(f.name.toString, f.typeSignature)) // TODO: multiple argument lists
           q"new $tpe(..$ctorArgs)"
         }
-        def unpickleLogic = q"if (reader.atPrimitive) $unpicklePrimitive else $unpickleObject"
+        def unpickleLogic = tpe match {
+          case NullTpe => q"null"
+          case NothingTpe => c.abort(c.enclosingPosition, "cannot unpickle Nothing") // TODO: report the deserialization path that brought us here
+          case _ => q"if (reader.atPrimitive) $unpicklePrimitive else $unpickleObject"
+        }
         q"""
           class ${syntheticUnpicklerName(tpe, readerTpe)} extends scala.pickling.Unpickler[$tpe] {
             import scala.pickling._
             import scala.pickling.ir._
+            type PickleFormatType = ${format.tpe}
+            implicit val format = new PickleFormatType()
             type PickleReaderType = ${pickleBuilderType(format)}
             def unpickle(tpe: Type, reader: PickleReaderType): Any = $unpickleLogic
           }
@@ -121,7 +136,7 @@ trait PickleMacros extends Macro {
       val compileTimeDispatch = compileTimeDispatchees(tpe) map (tpe => {
         CaseDef(Bind(TermName("clazz"), Ident(nme.WILDCARD)), q"clazz == classOf[$tpe]", createPickler(tpe))
       })
-      val runtimeDispatch = CaseDef(Ident(nme.WILDCARD), EmptyTree, q"Pickler.genPickler(getClass.getClassLoader, pickleeClazz)")
+      val runtimeDispatch = CaseDef(Ident(nme.WILDCARD), EmptyTree, q"Pickler.genPickler(getClass.getClassLoader, clazz)")
       // TODO: do we still want to use something HasPicklerDispatch?
       // NOTE: we dispatch on erasure, because that's the best we can have here anyways
       // so, if we have C[T], then we generate a pickler for C[_] and let the pickler do the rest
