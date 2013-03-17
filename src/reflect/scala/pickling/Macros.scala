@@ -78,6 +78,7 @@ trait UnpicklerMacros extends Macro {
           c.abort(c.enclosingPosition, s"TODO: cannot unpickle polymorphic types yet ($tpe)")
         def unpicklePrimitive = q"reader.readPrimitive(tpe)"
         def unpickleObject = {
+          // TODO: validate that the tpe argument of unpickle and weakTypeOf[T] work together
           val cir = classIR(tpe)
           notImplementedYet(cir, !_.flags.isPublic, "non-public members")
           notImplementedYet(cir, _.flags.isVar, "mutable fields")
@@ -203,7 +204,7 @@ trait UnpickleMacros extends Macro {
       import scala.reflect.runtime.universe._
       import scala.reflect.runtime.currentMirror
       val reader = $readerArg
-      val tpe = reader.readType
+      val tpe = reader.readType(currentMirror)
       val unpicklerRaw = $dispatchLogic
       val unpickler = unpicklerRaw.asInstanceOf[Unpickler[_]{ type PickleReaderType = ${readerArg.tpe} }]
       val result = unpickler.unpickle(tpe, reader)

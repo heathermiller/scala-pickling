@@ -84,7 +84,7 @@ package pickling {
   }
 
   trait PickleReader {
-    def readType: Type
+    def readType(mirror: Mirror): Type
     def atPrimitive: Boolean
     def readPrimitive(tpe: Type): Any
     def atObject: Boolean

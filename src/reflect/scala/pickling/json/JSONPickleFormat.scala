@@ -27,7 +27,12 @@ package json {
     def createBuilder() = new JSONPickleBuilder
 
     type PickleReaderType = JSONPickleReader
-    def createReader(pickle: JSONPickle) = new JSONPickleReader(pickle)
+    def createReader(pickle: JSONPickle) = {
+      JSON.parseRaw(pickle.value) match {
+        case Some(raw) => new JSONPickleReader(raw)
+        case None => throw new PicklingException("failed to parse \"" + pickle.value + "\" as JSON")
+      }
+    }
   }
 
   class JSONPickleBuilder extends PickleBuilder {
@@ -79,13 +84,34 @@ package json {
     }
   }
 
-  class JSONPickleReader(pickle: JSONPickle) extends PickleReader {
+  class JSONPickleReader(datum: Any) extends PickleReader {
     type PickleFormatType = JSONPickleFormat
     implicit val format = json.pickleFormat
-    def readType: Type = ???
-    def atPrimitive: Boolean = ???
-    def readPrimitive(tpe: Type): Any = ???
-    def atObject: Boolean = ???
-    def readField(name: String): this.type = ???
+    def readType(mirror: Mirror): Type = {
+      def unpickleTpe(stpe: String): Type = {
+        // TODO: support polymorphic types as serialized above with pickleTpe
+        mirror.staticClass(stpe).asType.toType
+      }
+      datum match {
+        case JSONObject(fields) => unpickleTpe(fields("tpe").asInstanceOf[String])
+        case JSONArray(elements) => throw new PicklingException(s"TODO: not yet implemented ($datum)")
+        case _: String => StringClass.toType
+        case _: Double => DoubleClass.toType
+        case null => NullTpe
+      }
+    }
+    def atPrimitive: Boolean = !atObject
+    def readPrimitive(tpe: Type): Any = {
+      tpe match {
+        case tpe if tpe =:= StringClass.toType => datum.asInstanceOf[String]
+        case tpe if tpe =:= IntClass.toType => datum.asInstanceOf[Double].toInt
+      }
+    }
+    def atObject: Boolean = datum.isInstanceOf[JSONObject]
+    def readField(name: String): this.type = {
+      datum match {
+        case JSONObject(fields) => new JSONPickleReader(fields(name)).asInstanceOf[this.type] // TODO: think this over
+      }
+    }
   }
 }

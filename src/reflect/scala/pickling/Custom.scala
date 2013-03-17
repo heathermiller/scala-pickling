@@ -9,15 +9,15 @@ trait CorePicklersUnpicklers extends GenPicklers with GenUnpicklers {
     type PickleFormatType = PickleFormat
     type PickleBuilderType = PickleBuilder
     def pickle(picklee: Any, builder: PickleBuilderType): Unit = {
-      val tpe = typeOf[T]
-      builder.beginEntry(tpe, picklee)
+      builder.beginEntry(typeOf[T], picklee)
       builder.endEntry()
     }
     type PickleReaderType = PickleReader
     def unpickle(tpe: Type, reader: PickleReaderType): Any = {
       // NOTE: here we essentially require that ints and strings are primitives for all readers
       // TODO: discuss that and see whether it defeats all the purpose of abstracting primitives away from picklers
-      reader.readPrimitive(tpe)
+      // TODO: validate that tpe and typeOf[T] work together
+      reader.readPrimitive(typeOf[T])
     }
   }
 
