@@ -22,7 +22,7 @@ package pickling {
 
   trait Pickler[T] {
     type PickleFormatType <: PickleFormat
-    implicit val format: PickleFormatType
+    val format: PickleFormatType
 
     type PickleBuilderType <: PickleBuilder
     def pickle(picklee: Any, builder: PickleBuilderType): Unit
@@ -44,7 +44,7 @@ package pickling {
 
   trait Unpickler[T] {
     type PickleFormatType <: PickleFormat
-    implicit val format: PickleFormatType
+    val format: PickleFormatType
 
     type PickleReaderType <: PickleReader
     def unpickle(tpe: Type, reader: PickleReaderType): Any
@@ -52,7 +52,7 @@ package pickling {
 
   trait GenUnpicklers {
     implicit def genUnpickler[T](implicit format: PickleFormat): Unpickler[T] = macro UnpicklerMacros.impl[T]
-    def genPickler(mirror: Mirror, tpe: Type)(implicit format: PickleFormat): Unpickler[_] = ??? // TODO: runtime dispatch for unpickling
+    def genUnpickler(mirror: Mirror, tpe: Type)(implicit format: PickleFormat): Unpickler[_] = ??? // TODO: runtime dispatch for unpickling
   }
 
   object Unpickler extends CorePicklersUnpicklers

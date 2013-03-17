@@ -95,9 +95,10 @@ trait UnpicklerMacros extends Macro {
           class ${syntheticUnpicklerName(tpe, readerTpe)} extends scala.pickling.Unpickler[$tpe] {
             import scala.pickling._
             import scala.pickling.ir._
+            import scala.reflect.runtime.universe._
             type PickleFormatType = ${format.tpe}
             implicit val format = new PickleFormatType()
-            type PickleReaderType = ${pickleBuilderType(format)}
+            type PickleReaderType = ${pickleReaderType(format)}
             def unpickle(tpe: Type, reader: PickleReaderType): Any = $unpickleLogic
           }
         """
@@ -168,12 +169,13 @@ trait UnpickleMacros extends Macro {
   // }
   def pickleUnpickle[T: c.WeakTypeTag]: c.Tree = {
     import c.universe._
+    val tpe = weakTypeOf[T]
     val pickleArg = c.prefix.tree
     q"""
       val pickle = $pickleArg
-      implicit val format = new ${pickleFormatType(pickleArg)}()
+      val format = new ${pickleFormatType(pickleArg)}()
       val reader = format.createReader(pickle)
-      reader.unpickle[T]
+      reader.unpickle[$tpe]
     """
   }
   def readerUnpickle[T: c.WeakTypeTag]: c.Tree = {
@@ -192,17 +194,20 @@ trait UnpickleMacros extends Macro {
         // therefore here we dispatch on erasure and later on pass the precise type to `unpickle`
         CaseDef(Bind(TermName("tpe"), Ident(nme.WILDCARD)), q"tpe.typeSymbol == typeOf[$tpe].typeSymbol", createUnpickler(tpe))
       })
-      val runtimeDispatch = CaseDef(Ident(nme.WILDCARD), EmptyTree, q"Pickler.genUnpickler(scala.reflect.universe.currentMirror, tpe)")
+      val runtimeDispatch = CaseDef(Ident(nme.WILDCARD), EmptyTree, q"Unpickler.genUnpickler(currentMirror, tpe)")
       Match(q"tpe", compileTimeDispatch :+ runtimeDispatch)
     }
     val dispatchLogic = if (sym.isFinal) finalDispatch else nonFinalDispatch
 
     q"""
+      import scala.reflect.runtime.universe._
+      import scala.reflect.runtime.currentMirror
+      val reader = $readerArg
+      val tpe = reader.readType
       val unpicklerRaw = $dispatchLogic
       val unpickler = unpicklerRaw.asInstanceOf[Unpickler[_]{ type PickleReaderType = ${readerArg.tpe} }]
-      val reader = $readerArg
       val result = unpickler.unpickle(tpe, reader)
-      result.asInstanceOf[T]
+      result.asInstanceOf[$tpe]
     """
   }
 }
