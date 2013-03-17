@@ -12,6 +12,6 @@ import json._
 class Person(val name: String, val age: Int)
 
 object Test extends App {
-  val pickle = new Person("Bob", 83).pickle()
+  val pickle = new Person("Bob", 83).pickle
   println(pickle.value)
 }

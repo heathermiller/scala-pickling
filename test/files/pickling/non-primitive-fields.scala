@@ -14,6 +14,6 @@ class Person(val name: String, val age: Int)
 class Philipp(val nationality: String, val weird: Boolean, val mother: Person)
 
 object Test extends App {
-  val ppickle = new Philipp("German", true, new Person("Gudrun", 62)).pickle()
+  val ppickle = new Philipp("German", true, new Person("Gudrun", 62)).pickle
   println(ppickle.value)
 }
