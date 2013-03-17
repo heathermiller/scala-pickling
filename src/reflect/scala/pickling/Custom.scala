@@ -2,7 +2,7 @@ package scala.pickling
 
 import scala.reflect.runtime.universe._
 
-trait CorePicklersUnpicklers {
+trait CorePicklersUnpicklers extends GenPicklers with GenUnpicklers {
   // TODO: since we don't know precise types of builder and reader, we can't do optimizations here!!
   // I think we can fix this problem with type macros, so let's not worry much for now - I'll handle it when looking into custom picklers
   class PrimitivePicklerUnpickler[T: TypeTag](implicit val format: PickleFormat) extends Pickler[T] with Unpickler[T] {

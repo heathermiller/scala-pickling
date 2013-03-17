@@ -40,7 +40,7 @@ package pickling {
     }
   }
 
-  object Pickler extends CorePicklersUnpicklers with GenPicklers
+  object Pickler extends CorePicklersUnpicklers
 
   trait Unpickler[T] {
     type PickleFormatType <: PickleFormat
@@ -50,10 +50,12 @@ package pickling {
     def unpickle(tpe: Type, reader: PickleReaderType): Any
   }
 
-  object Unpickler extends CorePicklersUnpicklers {
+  trait GenUnpicklers {
     implicit def genUnpickler[T](implicit format: PickleFormat): Unpickler[T] = macro UnpicklerMacros.impl[T]
     def genPickler(mirror: Mirror, tpe: Type)(implicit format: PickleFormat): Unpickler[_] = ??? // TODO: runtime dispatch for unpickling
   }
+
+  object Unpickler extends CorePicklersUnpicklers
 
   trait Pickle {
     type ValueType

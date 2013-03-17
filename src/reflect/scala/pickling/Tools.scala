@@ -163,4 +163,30 @@ abstract class Macro extends scala.reflect.macros.Macro {
     cir.fields.filter(predicate).foreach(fir =>
       c.abort(c.enclosingPosition, s"TODO: cannot unpickle $description yet (${fir.name} in class ${cir.tpe})"))
   }
+
+  def preferringAlternativeImplicits(body: => Tree): Tree = {
+    def debug(msg: Any) = {
+      val padding = "  " * (c.openImplicits.length - 1)
+      // Console.err.println(padding + msg)
+    }
+    debug("can we enter " + c.openImplicits.head.pt + "?")
+    debug(c.openImplicits)
+    c.openImplicits match {
+      case c.ImplicitCandidate(_, _, ourPt, _) :: c.ImplicitCandidate(_, _, theirPt, _) :: _ if ourPt =:= theirPt =>
+        debug(s"no, because: ourPt = $ourPt, theirPt = $theirPt")
+        c.diverge()
+      case _ =>
+        debug(s"not sure, need to explore alternatives")
+        c.inferImplicitValue(c.openImplicits.head.pt, silent = true) match {
+          case success if success != EmptyTree =>
+            debug(s"no, because there's $success")
+            c.diverge()
+          case _ =>
+            debug("yes, there are no obstacles. entering " + c.openImplicits.head.pt)
+            val result = body
+            debug("result: " + result)
+            result
+        }
+    }
+  }
 }
