@@ -213,8 +213,8 @@ trait PickleableMacro extends AnnotationMacro {
     import Flag._
     c.annottee match {
       case ClassDef(mods, name, tparams, Template(parents, self, body)) =>
-        // TODO: implement Pickleable methods and append them to body
-        ClassDef(mods, name, tparams, Template(parents :+ tq"scala.pickling.Pickleable", self, body))
+        // TODO: implement PickleableBase methods and append them to body
+        ClassDef(mods, name, tparams, Template(parents :+ tq"scala.pickling.PickleableBase", self, body))
     }
   }
 }

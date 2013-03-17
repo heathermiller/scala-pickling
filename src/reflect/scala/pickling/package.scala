@@ -97,7 +97,8 @@ package pickling {
     def transform = macro PickleableMacro.impl
   }
 
-  trait Pickleable {
+  // NOTE: can't call it Pickleable because of a name clash w.r.t pickleable on case-insensitive file systems
+  trait PickleableBase {
     // TODO: what other methods do we want here?
   }
 
