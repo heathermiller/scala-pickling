@@ -30,7 +30,8 @@ class IRs[U <: Universe with Singleton](val uni: U) {
     val (paramAccessors, otherAccessors) = allAccessors.partition(_.isParamAccessor)
     def mkFieldIR(sym: TermSymbol, flags: FieldFlags) = FieldIR(sym.name.toString.trim, sym.typeSignatureIn(tp), flags)
     val paramFields = ctorParams.map(sym => mkFieldIR(sym, FieldFlags(Some(sym), paramAccessors.find(_.name == sym.name))))
-    val varFields = otherAccessors.collect{case meth if meth.accessed != NoSymbol => meth}.filter(_.accessed.asTerm.isVar).map(sym => mkFieldIR(sym, FieldFlags(None, Some(sym))))
+    val varGetters = otherAccessors.collect{ case meth if meth.isGetter && meth.accessed != NoSymbol && meth.accessed.asTerm.isVar => meth }
+    val varFields = varGetters.map(sym => mkFieldIR(sym, FieldFlags(None, Some(sym))))
     paramFields ++ varFields
   }
 
