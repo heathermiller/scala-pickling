@@ -45,7 +45,6 @@ trait PicklerMacros extends Macro {
             else List(q"if (picklee != null) { ..$putFields; () }")
           val endEntry = q"builder.endEntry()"
           q"""
-            import scala.reflect.runtime.universe._
             $beginEntry
             ..$optimizedPutFields
             $endEntry
@@ -178,14 +177,20 @@ trait PickleMacros extends Macro {
     val sym = tpe.typeSymbol.asClass
     val q"${_}($pickleeArg)" = c.prefix.tree
 
-    def createPickler(tpe: Type) = q"implicitly[Pickler[$tpe]]"
-    def finalDispatch = createPickler(tpe)
+    def createPickler(tpe: Type, inlinePicklee: Boolean) = {
+      val picklee = if (inlinePicklee) pickleeArg else q"picklee"
+      q"implicitly[Pickler[$tpe]].pickle($picklee, $builder)"
+    }
+    def finalDispatch = createPickler(tpe, inlinePicklee = true)
     def nonFinalDispatch = {
-      val nullDispatch = CaseDef(Literal(Constant(null)), EmptyTree, createPickler(NullTpe))
+      val nullDispatch = CaseDef(Literal(Constant(null)), EmptyTree, createPickler(NullTpe, inlinePicklee = false))
       val compileTimeDispatch = compileTimeDispatchees(tpe) map (tpe => {
-        CaseDef(Bind(TermName("clazz"), Ident(nme.WILDCARD)), q"clazz == classOf[$tpe]", createPickler(tpe))
+        CaseDef(Bind(TermName("clazz"), Ident(nme.WILDCARD)), q"clazz == classOf[$tpe]", createPickler(tpe, inlinePicklee = false))
       })
-      val runtimeDispatch = CaseDef(Ident(nme.WILDCARD), EmptyTree, q"Pickler.genPickler(getClass.getClassLoader, clazz)")
+      val runtimeDispatch = CaseDef(Ident(nme.WILDCARD), EmptyTree, q"""
+        val pickler = Pickler.genPickler(getClass.getClassLoader, clazz)
+        pickler.pickle(picklee, $builder.asInstanceOf[pickler.PickleBuilderType])
+      """)
       // TODO: do we still want to use something like HasPicklerDispatch?
       // NOTE: we dispatch on erasure, because that's the best we can have here anyways
       // so, if we have C[T], then we generate a pickler for C[_] and let the pickler do the rest
@@ -195,13 +200,12 @@ trait PickleMacros extends Macro {
         ${Match(q"clazz", nullDispatch +: compileTimeDispatch :+ runtimeDispatch)}
       """
     }
-    val dispatchLogic = if (sym.isFinal || sym.isModuleClass) finalDispatch else nonFinalDispatch
-
+    val isFinalDispatch = sym.isFinal || sym.isModuleClass
+    val prologue = if (isFinalDispatch) q"" else q"val picklee = $pickleeArg"
+    val dispatchLogic = if (isFinalDispatch) finalDispatch else nonFinalDispatch
     q"""
-      import scala.pickling._
-      val picklee = $pickleeArg
-      val pickler = $dispatchLogic
-      pickler.pickle(picklee, $builder.asInstanceOf[pickler.PickleBuilderType])
+      $prologue
+      $dispatchLogic
     """
   }
 }
@@ -247,7 +251,6 @@ trait UnpickleMacros extends Macro {
     val dispatchLogic = if (sym.isFinal || sym.isModuleClass) finalDispatch else nonFinalDispatch
 
     q"""
-      import scala.reflect.runtime.universe._
       import scala.reflect.runtime.currentMirror
       val reader = $readerArg
       val tag = reader.readTag(currentMirror)
