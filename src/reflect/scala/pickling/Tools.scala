@@ -46,9 +46,9 @@ class Tools[U <: Universe with Singleton](val u: U) {
   }
 
   def compileTimeDispatchees(tpe: Type, mirror: Mirror): List[Type] = {
-    val subtypes = allStaticallyKnownConcreteSubclasses(tpe, mirror)
+    val subtypes = allStaticallyKnownConcreteSubclasses(tpe, mirror).filter(subtpe => subtpe.typeSymbol != tpe.typeSymbol)
     def includeTpeItself = isRelevantSubclass(tpe.typeSymbol, tpe.typeSymbol)
-    subtypes ++ (if (includeTpeItself) List(tpe) else Nil)
+    if (includeTpeItself) subtypes :+ tpe else subtypes
   }
 
   def allStaticallyKnownConcreteSubclasses(tpe: Type, mirror: Mirror): List[Type] = {
