@@ -22,7 +22,7 @@ trait PicklerMacros extends Macro {
           if (tpe.typeSymbol.asClass.typeParams.nonEmpty)
             c.abort(c.enclosingPosition, s"TODO: cannot pickle polymorphic types yet ($tpe)")
           val cir = classIR(tpe)
-          val beginEntry = q"builder.beginEntry(typeOf[$tpe], picklee)"
+          val beginEntry = q"builder.beginEntry(scala.pickling.`package`.fastTypeOf[$tpe], picklee)"
           val putFields = cir.fields.flatMap(fir => {
             if (sym.isModuleClass) {
               Nil
@@ -235,7 +235,7 @@ trait UnpickleMacros extends Macro {
         // NOTE: we have a precise type at hand here, but we do dispatch on erasure
         // why? because picklers are created generic, i.e. for C[T] we have a single pickler of type Pickler[C[_]]
         // therefore here we dispatch on erasure and later on pass the precise type to `unpickle`
-        CaseDef(Bind(TermName("tpe"), Ident(nme.WILDCARD)), q"tpe.typeSymbol == typeOf[$tpe].typeSymbol", createUnpickler(tpe))
+        CaseDef(Bind(TermName("tpe"), Ident(nme.WILDCARD)), q"tpe.typeSymbol == scala.pickling.`package`.fastTypeOf[$tpe].typeSymbol", createUnpickler(tpe))
       })
       val runtimeDispatch = CaseDef(Ident(nme.WILDCARD), EmptyTree, q"Unpickler.genUnpickler(currentMirror, tpe)")
       Match(q"tpe", compileTimeDispatch :+ runtimeDispatch)

@@ -17,6 +17,8 @@ package object pickling {
     def pickle(implicit format: PickleFormat): _ = macro PickleMacros.pickle[T]
     def pickleInto(builder: PickleBuilder): _ = macro PickleMacros.pickleInto[T]
   }
+
+  def fastTypeOf[T]: Type = macro FastTypeOfMacro.impl[T]
 }
 
 package pickling {
