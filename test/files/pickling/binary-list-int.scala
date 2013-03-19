@@ -32,10 +32,10 @@ object Test extends App {
     def pickle(picklee: Any, builder: PickleBuilderType): Unit = {
       val list = picklee.asInstanceOf[List[T]]
 
-      builder.beginEntry(typeOf[AnyRef], picklee)
+      builder.beginEntry(typeTag[AnyRef], picklee)
 
       builder.putField("numElems", b => {
-        b.beginEntry(typeOf[Int], list.length)
+        b.beginEntry(typeTag[Int], list.length)
         b.endEntry()
       })
 
@@ -48,19 +48,19 @@ object Test extends App {
       builder.endEntry()
     }
 
-    def unpickle(tpe: Type, reader: PickleReaderType): Any = {
-      val tpe = reader.readType(rtm) // should be "Custom"
+    def unpickle(tag: TypeTag[_], reader: PickleReaderType): Any = {
+      val tpe = reader.readTag(rtm).tpe // should be "Custom"
       val r2 = reader.readField("numElems")
-      val itpe = r2.readType(rtm)
-      val num = r2.readPrimitive(typeOf[Int]).asInstanceOf[Int]
+      val itpe = r2.readTag(rtm).tpe
+      val num = r2.readPrimitive(typeTag[Int]).asInstanceOf[Int]
       println(s"original list contained $num elements")
 
       var currReader: PickleReader = null
       var list = List[T]()
       for (i <- 1 to num) {
         currReader = reader.readField("elem")
-        val itpe = currReader.readType(rtm)
-        val el = currReader.readPrimitive(typeOf[T]).asInstanceOf[T]
+        val itpe = currReader.readTag(rtm).tpe
+        val el = currReader.readPrimitive(typeTag[T]).asInstanceOf[T]
         list = list :+ el
       }
 
@@ -83,6 +83,6 @@ object Test extends App {
 
   val listUnpickler = listPicklerRaw.asInstanceOf[Unpickler[_]{ type PickleBuilderType = BinaryPickleBuilder ; type PickleReaderType = BinaryPickleReader }]
 
-  val res = listUnpickler.unpickle(typeOf[Int], pf.createReader(pckl))
+  val res = listUnpickler.unpickle(typeTag[Int], pf.createReader(pckl))
   println(res)
 }

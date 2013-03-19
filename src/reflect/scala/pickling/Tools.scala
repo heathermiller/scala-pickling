@@ -246,7 +246,7 @@ abstract class Macro extends scala.reflect.macros.Macro {
   }
 }
 
-trait FastTypeOfMacro extends Macro {
+trait FastTypeTagMacro extends Macro {
   def impl[T: c.WeakTypeTag]: c.Tree = {
     import c.universe._
     val tpe = weakTypeOf[T]
@@ -257,6 +257,6 @@ trait FastTypeOfMacro extends Macro {
         val reifiedTpe = c.reifyType(treeBuild.mkRuntimeUniverseRef, EmptyTree, tpe, concrete = true)
         q"object $wrapperName { val tag = $reifiedTpe }"
      }
-    q"$wrapperRef.tag.tpe"
+    q"$wrapperRef.tag"
   }
 }
