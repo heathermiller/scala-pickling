@@ -4,63 +4,43 @@ import scala.reflect.runtime.universe._
 import language.experimental.macros
 
 trait CorePicklersUnpicklers extends GenPicklers with GenUnpicklers {
-  // TODO: since we don't know precise types of builder and reader, we can't do optimizations here!!
-  // I think we can fix this problem with type macros, so let's not worry much for now - I'll handle it when looking into custom picklers
-  class PrimitivePicklerUnpickler[T: TypeTag](implicit val format: PickleFormat) extends Pickler[T] with Unpickler[T] {
-    type PickleFormatType = PickleFormat
-    type PickleBuilderType = PickleBuilder
-    def pickle(picklee: Any, builder: PickleBuilderType): Unit = {
-      builder.beginEntry(typeTag[T], picklee)
-      builder.endEntry()
-    }
-    type PickleReaderType = PickleReader
-    def unpickle(tag: TypeTag[_], reader: PickleReaderType): Any = {
-      // NOTE: here we essentially require that ints and strings are primitives for all readers
-      // TODO: discuss that and see whether it defeats all the purpose of abstracting primitives away from picklers
-      // TODO: validate that tpe and typeOf[T] work together
-      reader.readPrimitive(typeTag[T])
-    }
-  }
-
-  implicit def intPicklerUnpickler(implicit format: PickleFormat): PrimitivePicklerUnpickler[Int] = new PrimitivePicklerUnpickler[Int]()
-  implicit def stringPicklerUnpickler(implicit format: PickleFormat): PrimitivePicklerUnpickler[String] = new PrimitivePicklerUnpickler[String]()
-  implicit def booleanPicklerUnpickler(implicit format: PickleFormat): PrimitivePicklerUnpickler[Boolean] = new PrimitivePicklerUnpickler[Boolean]()
-  implicit def nullPicklerUnpickler(implicit format: PickleFormat): Pickler[Null] with Unpickler[Null] = new PrimitivePicklerUnpickler[Null]()
+  implicit def intPicklerUnpickler(implicit format: PickleFormat): Pickler[Int] with Unpickler[Int] = macro PrimitivePicklerUnpicklerMacro.impl[Int]
+  implicit def stringPicklerUnpickler(implicit format: PickleFormat): Pickler[String] with Unpickler[String] = macro PrimitivePicklerUnpicklerMacro.impl[String]
+  implicit def booleanPicklerUnpickler(implicit format: PickleFormat): Pickler[Boolean] with Unpickler[Boolean] = macro PrimitivePicklerUnpicklerMacro.impl[Boolean]
+  implicit def nullPicklerUnpickler(implicit format: PickleFormat): Pickler[Null] with Unpickler[Null] = macro PrimitivePicklerUnpicklerMacro.impl[Null]
   // TODO: if you uncomment this one, it will shadow picklers/unpicklers for Int and String. why?!
   // TODO: due to the inability to implement module pickling/unpickling in a separate macro, I moved the logic into genPickler/genUnpickler
   // implicit def modulePicklerUnpickler[T <: Singleton](implicit format: PickleFormat): Pickler[T] with Unpickler[T] = macro ModulePicklerUnpicklerMacro.impl[T]
 }
 
-trait ModulePicklerUnpicklerMacro extends Macro {
+trait PrimitivePicklerUnpicklerMacro extends Macro {
+  import c.universe._
   def impl[T: c.WeakTypeTag](format: c.Tree): c.Tree = {
-    import c.universe._
+    val tpe = weakTypeOf[T]
+    generatePicklerUnpickler(tpe, format, tq"PrimitivePicklerUnpicklerMacro")
+  }
+  def pickle(pickleeRaw: c.Tree, builder: c.Tree): c.Tree = q"""
+    $builder.beginEntry(scala.pickling.`package`.fastTypeTag[${dataType(c.prefix.tree)}], $pickleeRaw)
+    $builder.endEntry()
+  """
+  def unpickle(tag: c.Tree, reader: c.Tree): c.Tree = q"""
+    $reader.readPrimitive(scala.pickling.`package`.fastTypeTag[${dataType(c.prefix.tree)}])
+  """
+}
+
+trait ModulePicklerUnpicklerMacro extends Macro {
+  import c.universe._
+  def impl[T: c.WeakTypeTag](format: c.Tree): c.Tree = {
     val tpe = weakTypeOf[T]
     val module = tpe.typeSymbol.asClass.module
     if (module == NoSymbol) c.diverge()
-    val picklerUnpickler = {
-      val builderTpe = pickleBuilderType(format)
-      val readerTpe = pickleReaderType(format)
-      c.topLevelRef(syntheticPicklerUnpicklerQualifiedName(tpe, builderTpe, readerTpe)) orElse c.introduceTopLevel(syntheticPackageName, {
-        q"""
-          class ${syntheticPicklerUnpicklerName(tpe, builderTpe, readerTpe)} extends scala.pickling.Pickler[$tpe] with scala.pickling.Unpickler[$tpe] {
-            import scala.reflect.runtime.universe._
-            import scala.pickling._
-            import scala.pickling.`package`.PickleOps
-            type PickleFormatType = ${format.tpe}
-            implicit val format = new PickleFormatType()
-            type PickleBuilderType = ${pickleBuilderType(format)}
-            def pickle(pickleeRaw: Any, builder: PickleBuilderType): Unit = {
-              builder.beginEntry(typeOf[$tpe], pickleeRaw)
-              builder.endEntry()
-            }
-            type PickleReaderType = ${pickleReaderType(format)}
-            def unpickle(tag: TypeTag[_], reader: PickleReaderType): Any = {
-              $module
-            }
-          }
-        """
-      })
-    }
-    q"new $picklerUnpickler"
+    generatePicklerUnpickler(tpe, format, tq"ModulePicklerUnpicklerMacro")
   }
+  def pickle(pickleeRaw: c.Tree, builder: c.Tree): c.Tree = q"""
+    $builder.beginEntry(scala.pickling.`package`.fastTypeTag[${c.prefix}.DataType], $pickleeRaw)
+    $builder.endEntry()
+  """
+  def unpickle(tag: c.Tree, reader: c.Tree): c.Tree = q"""
+    ${dataType(c.prefix.tree).typeSymbol.asClass.module}
+  """
 }

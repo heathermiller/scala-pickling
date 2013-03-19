@@ -159,6 +159,7 @@ abstract class Macro extends scala.reflect.macros.Macro {
   def pickleBuilderType(pickleFormat: Tree): Type = innerType(pickleFormat, "PickleBuilderType")
   def pickleReaderType(pickleFormat: Tree): Type = innerType(pickleFormat, "PickleReaderType")
   def pickleFormatType(pickle: Tree): Type = innerType(pickle, "PickleFormatType")
+  def dataType(picklerOrUnpickler: Tree): Type = innerType(picklerOrUnpickler, "DataType")
 
   def compileTimeDispatchees(tpe: Type): List[Type] = tools.compileTimeDispatchees(tpe, rootMirror)
 
@@ -250,6 +251,32 @@ abstract class Macro extends scala.reflect.macros.Macro {
         }
         c.topLevelRef(fullName)
     }
+  }
+
+  def generatePicklerUnpickler(tpe: c.Type, format: c.Tree, implHost: c.Tree): c.Tree = {
+    import c.universe._
+    val picklerUnpickler = {
+      val builderTpe = pickleBuilderType(format)
+      val readerTpe = pickleReaderType(format)
+      val pid = syntheticPackageName
+      val name = syntheticPicklerUnpicklerName(tpe, builderTpe, readerTpe)
+      introduceTopLevel(pid, name){ q"""
+        class ${name} extends scala.pickling.Pickler[$tpe] with scala.pickling.Unpickler[$tpe] {
+          import scala.reflect.runtime.universe._
+          import scala.pickling._
+          import scala.pickling.`package`.PickleOps
+          import language.experimental.macros
+          type PickleFormatType = ${format.tpe}
+          implicit val format = new PickleFormatType()
+          type PickleBuilderType = ${pickleBuilderType(format)}
+          type PickleReaderType = ${pickleReaderType(format)}
+          type DataType = $tpe
+          def pickle(pickleeRaw: Any, builder: PickleBuilderType): Unit = macro $implHost.pickle
+          def unpickle(tag: TypeTag[_], reader: PickleReaderType): Any = macro $implHost.unpickle
+        }
+      """}
+    }
+    q"new $picklerUnpickler"
   }
 }
 
