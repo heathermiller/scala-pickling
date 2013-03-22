@@ -22,12 +22,12 @@ trait PicklerMacros extends Macro {
       val picklerName = syntheticPicklerName(tpe, builderTpe)
       introduceTopLevel(picklerPid, picklerName) {
         def unifiedPickle = { // NOTE: unified = the same code works for both primitives and objects
-          if (tpe.typeSymbol.asClass.typeParams.nonEmpty)
-            c.abort(c.enclosingPosition, s"TODO: cannot pickle polymorphic types yet ($tpe)")
+          // if (tpe.typeSymbol.asClass.typeParams.nonEmpty)
+          //   c.abort(c.enclosingPosition, s"TODO: cannot pickle polymorphic types yet ($tpe)")
           val cir = classIR(tpe)
           val beginEntry =
-            if(isNonExtensible) q"builder.beginEntryNoType(typeTag[$tpe], picklee)"
-            else q"builder.beginEntry(typeTag[$tpe], picklee)"
+            if(isNonExtensible) q"builder.beginEntryNoType(weakTypeTag[$tpe], picklee)"
+            else q"builder.beginEntry(weakTypeTag[$tpe], picklee)"
           val putFields = cir.fields.flatMap(fir => {
             if (sym.isModuleClass) {
               Nil
@@ -93,15 +93,15 @@ trait UnpicklerMacros extends Macro {
       val unpicklerPid = syntheticPackageName
       val unpicklerName = syntheticUnpicklerName(tpe, readerTpe)
       introduceTopLevel(unpicklerPid, unpicklerName) {
-        if (tpe.typeSymbol.asClass.typeParams.nonEmpty)
-          c.abort(c.enclosingPosition, s"TODO: cannot unpickle polymorphic types yet ($tpe)")
+        // val isPolymorphic = tpe.typeSymbol.asClass.typeParams.nonEmpty)
+        //   c.abort(c.enclosingPosition, s"TODO: cannot unpickle polymorphic types yet ($tpe)")
         def unpicklePrimitive = q"reader.readPrimitive(tag)"
         def unpickleObject = {
           def readField(name: String, tpe: Type) = q"reader.readField($name).unpickle[$tpe]"
           // TODO: validate that the tpe argument of unpickle and weakTypeOf[T] work together
           // NOTE: step 1) this creates an instance and initializes its fields reified from constructor arguments
           val cir = classIR(tpe)
-          val canCallCtor = !cir.fields.exists(_.isErasedParam)
+          val canCallCtor = !cir.fields.exists(_.isErasedParam) && tpe.typeSymbol.asClass.typeParams.isEmpty
           val pendingFields = cir.fields.filter(fir => fir.isNonParam || (!canCallCtor && fir.isReifiedParam))
           val instantiationLogic = {
             if (sym.isModuleClass) {
@@ -150,7 +150,7 @@ trait UnpicklerMacros extends Macro {
             type PickleFormatType = ${format.tpe}
             implicit val format = new PickleFormatType()
             type PickleReaderType = ${pickleReaderType(format)}
-            def unpickle(tag: TypeTag[_], reader: PickleReaderType): Any = $unpickleLogic
+            def unpickle(tag: WeakTypeTag[_], reader: PickleReaderType): Any = $unpickleLogic
           }
         """
       }
@@ -232,7 +232,7 @@ trait UnpickleMacros extends Macro {
   def readerUnpickle[T: c.WeakTypeTag]: c.Tree = {
     import c.universe._
     val tpe = weakTypeOf[T]
-    val sym = tpe.typeSymbol.asClass
+    val sym = tpe.typeSymbol
     val readerArg = c.prefix.tree
 
     def createUnpickler(tpe: Type) = q"implicitly[Unpickler[$tpe]]"
@@ -248,9 +248,9 @@ trait UnpickleMacros extends Macro {
       val runtimeDispatch = CaseDef(Ident(nme.WILDCARD), EmptyTree, q"Unpickler.genUnpickler(currentMirror, tag)")
       Match(q"tag.tpe", compileTimeDispatch :+ runtimeDispatch)
     }
-    val isNonExtensible = sym.isFinal || sym.isPrimitive || sym.isModuleClass
+    val isNonExtensible = sym.isFinal || (sym.isClass && sym.asClass.isPrimitive) || sym.isModuleClass
     // val tagReified = c.reifyType(treeBuild.mkRuntimeUniverseRef, EmptyTree, tpe)
-    val readTypeTagLogic = if (isNonExtensible) q"typeTag[$tpe]" else q"reader.readTag(currentMirror)"
+    val readTypeTagLogic = if (isNonExtensible) q"weakTypeTag[$tpe]" else q"reader.readTag(currentMirror)"
     val dispatchLogic = if (isNonExtensible) finalDispatch else nonFinalDispatch
 
     q"""

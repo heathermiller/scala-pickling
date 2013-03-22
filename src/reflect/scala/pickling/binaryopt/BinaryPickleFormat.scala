@@ -45,14 +45,14 @@ package binaryopt {
       else ???
     }
 
-    def beginEntryNoType(tag: TypeTag[_], picklee: Any, knownSize: Int): this.type = {
+    def beginEntryNoType(tag: WeakTypeTag[_], picklee: Any, knownSize: Int): this.type = {
       mkByteBuffer(knownSize)
 
       // in the "NoType" version we are very careful not to call .tpe on the tag if not needed
       // the tag can be compared against tags for primitive types as-is
-      if (tag == TypeTag.Int)
+      if (tag == WeakTypeTag.Int)
         pos = byteBuffer.encodeIntTo(pos, picklee.asInstanceOf[Int])
-      else if (tag == TypeTag.Boolean)
+      else if (tag == WeakTypeTag.Boolean)
         pos = byteBuffer.encodeBooleanTo(pos, picklee.asInstanceOf[Boolean])
       else {
         val tpe = tag.tpe
@@ -67,7 +67,7 @@ package binaryopt {
       this
     }
 
-    def beginEntry(tag: TypeTag[_], picklee: Any, knownSize: Int): this.type = {
+    def beginEntry(tag: WeakTypeTag[_], picklee: Any, knownSize: Int): this.type = {
       val tpe = tag.tpe
       mkByteBuffer(knownSize)
 
@@ -105,7 +105,7 @@ package binaryopt {
     private var pos = 0
     private var atPrim = false
 
-    def readTag(mirror: Mirror): TypeTag[_] = {
+    def readTag(mirror: Mirror): WeakTypeTag[_] = {
       def readType = {
         def unpickleTpe(stpe: String): Type = {
           // TODO: support polymorphic types as serialized above with pickleTpe
@@ -117,12 +117,12 @@ package binaryopt {
         atPrim = format.isPrimitive(tpe)
         tpe
       }
-      TypeTag(readType)
+      WeakTypeTag(readType)
     }
 
     def atPrimitive: Boolean = atPrim
 
-    def readPrimitive(tag: TypeTag[_]): Any = {
+    def readPrimitive(tag: WeakTypeTag[_]): Any = {
       val tpe = tag.tpe
       val (res, newpos) =
         if      (tpe =:= typeOf[Int])     byteBuffer.decodeIntFrom(pos)

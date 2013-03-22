@@ -35,8 +35,8 @@ class CompiledPicklerRuntime(classLoader: ClassLoader, clazz: Class[_]) extends 
 // TODO: didn't test this one yet
 class InterpretedPicklerRuntime(classLoader: ClassLoader, clazz: Class[_]) extends PicklerRuntime(classLoader, clazz) {
   def genPickler(implicit format: PickleFormat, p1: Pickler[Int], p2: Pickler[String]) = {
-    if (tpe <:< typeOf[Int])         implicitly[Pickler[Int]]
-    else if (tpe <:< typeOf[String]) implicitly[Pickler[String]]
+    if (tpe <:< weakTypeOf[Int])         implicitly[Pickler[Int]]
+    else if (tpe <:< weakTypeOf[String]) implicitly[Pickler[String]]
     else {
       // build "interpreted" runtime pickler
       val format0 = format
@@ -47,7 +47,7 @@ class InterpretedPicklerRuntime(classLoader: ClassLoader, clazz: Class[_]) exten
         def pickle(picklee: Any, builder: PickleBuilder): Unit = {
           if (picklee != null) {
             val im = mirror.reflect(picklee)
-            builder.beginEntry(TypeTag(tpe), picklee)
+            builder.beginEntry(WeakTypeTag(tpe), picklee)
             cir.fields.foreach(fir => {
               if (!fir.hasGetter)
                 throw new PicklingException(s"TODO: cannot pickle erased params yet (${fir.name} in $tpe)")
@@ -61,7 +61,7 @@ class InterpretedPicklerRuntime(classLoader: ClassLoader, clazz: Class[_]) exten
             })
             builder.endEntry()
           } else {
-            builder.beginEntry(TypeTag(NullTpe), null)
+            builder.beginEntry(WeakTypeTag(NullTpe), null)
             builder.endEntry()
           }
         }
@@ -71,7 +71,7 @@ class InterpretedPicklerRuntime(classLoader: ClassLoader, clazz: Class[_]) exten
 }
 
 // TODO: copy/paste wrt CompiledPicklerRuntime
-class CompiledUnpicklerRuntime(mirror: Mirror, tag: TypeTag[_]) {
+class CompiledUnpicklerRuntime(mirror: Mirror, tag: WeakTypeTag[_]) {
   def genUnpickler(implicit format: PickleFormat): Unpickler[_] = {
     // see notes and todos in CompiledPicklerRuntime.genPickler
     val formatTpe = mirror.reflect(format).symbol.asType.toType
@@ -85,7 +85,7 @@ class CompiledUnpicklerRuntime(mirror: Mirror, tag: TypeTag[_]) {
 }
 
 // TODO: implement this one
-class InterpretedUnpicklerRuntime(mirror: Mirror, tag: TypeTag[_]) {
+class InterpretedUnpicklerRuntime(mirror: Mirror, tag: WeakTypeTag[_]) {
   def genPickler(implicit format: PickleFormat, p1: Pickler[Int], p2: Pickler[String]): Unpickler[_] = {
     ???
   }

@@ -41,7 +41,7 @@ package binary {
       s.getBytes("UTF-8")
     }
 
-    def beginEntryNoType(tag: TypeTag[_], picklee: Any, knownSize: Int = -1): this.type = {
+    def beginEntryNoType(tag: WeakTypeTag[_], picklee: Any, knownSize: Int = -1): this.type = {
       val tpe = tag.tpe
       if (byteBuffer == null) {
         byteBuffer = collection.mutable.ListBuffer[Byte]()
@@ -69,7 +69,7 @@ package binary {
     }
 
     //TODO: pass size hint, so that an array of the right size can be allocated
-    def beginEntry(tag: TypeTag[_], picklee: Any, knownSize: Int = -1): this.type = {
+    def beginEntry(tag: WeakTypeTag[_], picklee: Any, knownSize: Int = -1): this.type = {
       val tpe = tag.tpe
 
       if (byteBuffer == null) {
@@ -212,7 +212,7 @@ package binary {
     private var pos = 0
     private var atPrim = false
 
-    def readTag(mirror: Mirror): TypeTag[_] = {
+    def readTag(mirror: Mirror): WeakTypeTag[_] = {
       def readType = {
         def unpickleTpe(stpe: String): Type = {
           // TODO: support polymorphic types as serialized above with pickleTpe
@@ -225,12 +225,12 @@ package binary {
         atPrim = format.isPrimitive(tpe)
         tpe
       }
-      TypeTag(readType)
+      WeakTypeTag(readType)
     }
 
     def atPrimitive: Boolean = atPrim
 
-    def readPrimitive(tag: TypeTag[_]): Any = {
+    def readPrimitive(tag: WeakTypeTag[_]): Any = {
       val tpe = tag.tpe
       val (res, newpos) =
         if      (tpe =:= typeOf[Int])     Util.decodeIntFrom(arr, pos)

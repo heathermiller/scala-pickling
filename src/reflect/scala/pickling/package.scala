@@ -18,7 +18,7 @@ package object pickling {
     def pickleInto(builder: PickleBuilder): _ = macro PickleMacros.pickleInto[T]
   }
 
-  def fastTypeTag[T]: TypeTag[T] = macro FastTypeTagMacro.impl[T]
+  def fastTypeTag[T]: WeakTypeTag[T] = macro FastTypeTagMacro.impl[T]
 }
 
 package pickling {
@@ -52,12 +52,12 @@ package pickling {
     val format: PickleFormatType
 
     type PickleReaderType <: PickleReader
-    def unpickle(tag: TypeTag[_], reader: PickleReaderType): Any
+    def unpickle(tag: WeakTypeTag[_], reader: PickleReaderType): Any
   }
 
   trait GenUnpicklers {
     implicit def genUnpickler[T](implicit format: PickleFormat): Unpickler[T] = macro UnpicklerMacros.impl[T]
-    def genUnpickler(mirror: Mirror, tag: TypeTag[_])(implicit format: PickleFormat): Unpickler[_] = {
+    def genUnpickler(mirror: Mirror, tag: WeakTypeTag[_])(implicit format: PickleFormat): Unpickler[_] = {
       println(s"generating runtime unpickler for ${tag.tpe}") // NOTE: needs to be an explicit println, so that we don't occasionally fallback to runtime in static cases
       val runtime = new CompiledUnpicklerRuntime(mirror, tag)
       // val runtime = new InterpretedUnpicklerRuntime(mirror, tag)
@@ -87,17 +87,17 @@ package pickling {
 
   trait PickleBuilder {
     type PickleType <: Pickle
-    def beginEntry(tag: TypeTag[_], picklee: Any, knownSize: Int = -1): this.type
-    def beginEntryNoType(tag: TypeTag[_], picklee: Any, knownSize: Int = -1): this.type
+    def beginEntry(tag:   WeakTypeTag[_], picklee: Any, knownSize: Int = -1): this.type
+    def beginEntryNoType(tag: WeakTypeTag[_], picklee: Any, knownSize: Int = -1): this.type
     def putField(name: String, pickler: this.type => Unit): this.type
     def endEntry(): Unit
     def result(): PickleType
   }
 
   trait PickleReader {
-    def readTag(mirror: Mirror): TypeTag[_]
+    def readTag(mirror: Mirror): WeakTypeTag[_]
     def atPrimitive: Boolean
-    def readPrimitive(tag: TypeTag[_]): Any
+    def readPrimitive(tag: WeakTypeTag[_]): Any
     def atObject: Boolean
     def readField(name: String): PickleReader
     def unpickle[T] = macro UnpickleMacros.readerUnpickle[T]

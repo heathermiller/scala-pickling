@@ -43,10 +43,10 @@ package json {
       sym == NullClass || sym.isPrimitive || sym == StringClass
     }
 
-    def beginEntryNoType(tag: TypeTag[_], picklee: Any, knownSize: Int = -1): this.type =
+    def beginEntryNoType(tag: WeakTypeTag[_], picklee: Any, knownSize: Int = -1): this.type =
       beginEntry(tag, picklee)
 
-    def beginEntry(tag: TypeTag[_], picklee: Any, knownSize: Int = -1): this.type = {
+    def beginEntry(tag: WeakTypeTag[_], picklee: Any, knownSize: Int = -1): this.type = {
       val tpe = tag.tpe
       stack.push(tpe)
       val sym = tpe.typeSymbol.asClass
@@ -87,7 +87,7 @@ package json {
   class JSONPickleReader(datum: Any) extends PickleReader {
     type PickleFormatType = JSONPickleFormat
     implicit val format = json.pickleFormat
-    def readTag(mirror: Mirror): TypeTag[_] = {
+    def readTag(mirror: Mirror): WeakTypeTag[_] = {
       def readType = {
         def unpickleTpe(stpe: String): Type = {
           // TODO: support polymorphic types as serialized above with pickleTpe
@@ -103,10 +103,10 @@ package json {
           case null => NullTpe
         }
       }
-      TypeTag(readType)
+      WeakTypeTag(readType)
     }
     def atPrimitive: Boolean = !atObject
-    def readPrimitive(tag: TypeTag[_]): Any = {
+    def readPrimitive(tag: WeakTypeTag[_]): Any = {
       val tpe = tag.tpe
       tpe match {
         case tpe if tpe =:= StringClass.toType => datum.asInstanceOf[String]

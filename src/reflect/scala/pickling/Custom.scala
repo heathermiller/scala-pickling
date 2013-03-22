@@ -6,19 +6,19 @@ import language.experimental.macros
 trait CorePicklersUnpicklers extends GenPicklers with GenUnpicklers {
   // TODO: since we don't know precise types of builder and reader, we can't do optimizations here!!
   // I think we can fix this problem with type macros, so let's not worry much for now - I'll handle it when looking into custom picklers
-  class PrimitivePicklerUnpickler[T: TypeTag](implicit val format: PickleFormat) extends Pickler[T] with Unpickler[T] {
+  class PrimitivePicklerUnpickler[T: WeakTypeTag](implicit val format: PickleFormat) extends Pickler[T] with Unpickler[T] {
     type PickleFormatType = PickleFormat
     type PickleBuilderType = PickleBuilder
     def pickle(picklee: Any, builder: PickleBuilderType): Unit = {
-      builder.beginEntryNoType(typeTag[T], picklee)
+      builder.beginEntryNoType(weakTypeTag[T], picklee)
       builder.endEntry()
     }
     type PickleReaderType = PickleReader
-    def unpickle(tag: TypeTag[_], reader: PickleReaderType): Any = {
+    def unpickle(tag: WeakTypeTag[_], reader: PickleReaderType): Any = {
       // NOTE: here we essentially require that ints and strings are primitives for all readers
       // TODO: discuss that and see whether it defeats all the purpose of abstracting primitives away from picklers
       // TODO: validate that tpe and typeOf[T] work together
-      reader.readPrimitive(typeTag[T])
+      reader.readPrimitive(weakTypeTag[T])
     }
   }
 
@@ -50,11 +50,11 @@ trait ModulePicklerUnpicklerMacro extends Macro {
             implicit val format = new PickleFormatType()
             type PickleBuilderType = ${pickleBuilderType(format)}
             def pickle(pickleeRaw: Any, builder: PickleBuilderType): Unit = {
-              builder.beginEntry(typeTag[$tpe], pickleeRaw)
+              builder.beginEntry(weakTypeTag[$tpe], pickleeRaw)
               builder.endEntry()
             }
             type PickleReaderType = ${pickleReaderType(format)}
-            def unpickle(tag: TypeTag[_], reader: PickleReaderType): Any = {
+            def unpickle(tag: WeakTypeTag[_], reader: PickleReaderType): Any = {
               $module
             }
           }
