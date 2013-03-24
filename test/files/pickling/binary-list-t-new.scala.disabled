@@ -1,5 +1,5 @@
 import scala.pickling._
-import json._
+import binary._
 
 import scala.reflect.runtime.currentMirror
 import scala.reflect.runtime.universe._
