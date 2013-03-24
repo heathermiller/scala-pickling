@@ -32,7 +32,7 @@ package binary {
     }
 
     private val primitives = Map[TypeTag[_], Any => Unit](
-      ReifiedNull.tag -> ((picklee: Any) => pos = byteBuffer.encodeIntTo(pos, 0)),
+      ReifiedNull.tag -> ((picklee: Any) => pos = byteBuffer.encodeIntTo(pos, format.NULL_TAG)),
       ReifiedInt.tag -> ((picklee: Any) => pos = byteBuffer.encodeIntTo(pos, picklee.asInstanceOf[Int])),
       ReifiedBoolean.tag -> ((picklee: Any) => pos = byteBuffer.encodeBooleanTo(pos, picklee.asInstanceOf[Boolean])),
       ReifiedString.tag -> ((picklee: Any) => pos = byteBuffer.encodeStringTo(pos, picklee.asInstanceOf[String]))
@@ -42,7 +42,7 @@ package binary {
       mkByteBuffer(hints.knownSize)
 
       if (primitives.contains(hints.tag)) {
-        assert(hints.isStaticType)
+        assert(hints.isStaticType || hints.isElidedType)
         primitives(hints.tag)(picklee)
       } else {
         if (hints.isStaticType) {} // do nothing
@@ -76,35 +76,41 @@ package binary {
   class BinaryPickleReader(arr: Array[Byte], val mirror: Mirror, format: BinaryPickleFormat) extends PickleReader with PickleTools {
     private val byteBuffer: ByteBuffer = new ByteArray(arr)
     private var pos = 0
-    private var tag: TypeTag[_] = null
+    private var lastTagRead: TypeTag[_] = null
 
     private val primitives = Map[TypeTag[_], () => (Any, Int)](
-      ReifiedNull.tag -> (() => ???),
+      ReifiedNull.tag -> (() => (null, pos)),
       ReifiedInt.tag -> (() => byteBuffer.decodeIntFrom(pos)),
       ReifiedBoolean.tag -> (() => byteBuffer.decodeBooleanFrom(pos)),
       ReifiedString.tag -> (() => byteBuffer.decodeStringFrom(pos))
     )
 
     def beginEntry(): TypeTag[_] = withHints { hints =>
-      tag = hints.tag
-      if (hints.isStaticType) hints.tag
-      else {
-        val (lookahead, newpos) = byteBuffer.decodeIntFrom(pos)
-        if (lookahead == format.ELIDED_TAG) {
-          pos = newpos
-          tag
-        } else {
-          val (typeString, newpos) = byteBuffer.decodeStringFrom(pos)
-          pos = newpos
-          TypeTag(typeFromString(mirror, typeString))
+      lastTagRead = {
+        if (hints.isStaticType) hints.tag
+        else {
+          val (lookahead, newpos) = byteBuffer.decodeIntFrom(pos)
+          lookahead match {
+            case format.NULL_TAG =>
+              pos = newpos
+              ReifiedNull.tag
+            case format.ELIDED_TAG =>
+              pos = newpos
+              hints.tag
+            case _ =>
+              val (typeString, newpos) = byteBuffer.decodeStringFrom(pos)
+              pos = newpos
+              TypeTag(typeFromString(mirror, typeString))
+          }
         }
       }
+      lastTagRead
     }
 
-    def atPrimitive: Boolean = primitives contains tag
+    def atPrimitive: Boolean = primitives.contains(lastTagRead)
 
     def readPrimitive(): Any = {
-      val (res, newpos) = primitives(tag)()
+      val (res, newpos) = primitives(lastTagRead)()
       pos = newpos
       res
     }
@@ -119,6 +125,7 @@ package binary {
 
   class BinaryPickleFormat extends PickleFormat {
     val ELIDED_TAG = -1
+    val NULL_TAG = 0
 
     type PickleType = BinaryPickle
     def createBuilder() = new BinaryPickleBuilder(this)
