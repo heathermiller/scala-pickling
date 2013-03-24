@@ -32,7 +32,7 @@ package binary {
     }
 
     private val primitives = Map[TypeTag[_], Any => Unit](
-      ReifiedNull.tag -> ((picklee: Any) => pos = byteBuffer.encodeIntTo(pos, format.NULL_TAG)),
+      ReifiedNull.tag -> ((picklee: Any) => pos = byteBuffer.encodeByteTo(pos, format.NULL_TAG)),
       ReifiedInt.tag -> ((picklee: Any) => pos = byteBuffer.encodeIntTo(pos, picklee.asInstanceOf[Int])),
       ReifiedBoolean.tag -> ((picklee: Any) => pos = byteBuffer.encodeBooleanTo(pos, picklee.asInstanceOf[Boolean])),
       ReifiedString.tag -> ((picklee: Any) => pos = byteBuffer.encodeStringTo(pos, picklee.asInstanceOf[String]))
@@ -46,7 +46,7 @@ package binary {
         primitives(hints.tag)(picklee)
       } else {
         if (hints.isStaticType) {} // do nothing
-        else if (hints.isElidedType) pos = byteBuffer.encodeIntTo(pos, format.ELIDED_TAG)
+        else if (hints.isElidedType) pos = byteBuffer.encodeByteTo(pos, format.ELIDED_TAG)
         else {
           // write pickled tpe to `target`:
           // length of pickled type, pickled type
@@ -89,7 +89,7 @@ package binary {
       lastTagRead = {
         if (hints.isStaticType) hints.tag
         else {
-          val (lookahead, newpos) = byteBuffer.decodeIntFrom(pos)
+          val (lookahead, newpos) = byteBuffer.decodeByteFrom(pos)
           lookahead match {
             case format.NULL_TAG =>
               pos = newpos
@@ -124,8 +124,8 @@ package binary {
   }
 
   class BinaryPickleFormat extends PickleFormat {
-    val ELIDED_TAG = -1
-    val NULL_TAG = 0
+    val ELIDED_TAG: Byte = -1
+    val NULL_TAG: Byte = -2
 
     type PickleType = BinaryPickle
     def createBuilder() = new BinaryPickleBuilder(this)
