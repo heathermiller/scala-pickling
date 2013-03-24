@@ -7,13 +7,15 @@ package object binary {
 
 package binary {
   import scala.reflect.runtime.{universe => ru}
+  import scala.reflect.synthetic._
+  import scala.reflect.runtime.universe._
 
   case class BinaryPickle(value: Array[Byte]) extends Pickle {
     type ValueType = Array[Byte]
     type PickleFormatType = BinaryPickleFormat
   }
 
-  class BinaryPickleBuilder(format: BinaryPickleFormat) extends PickleBuilder {
+  class BinaryPickleBuilder(format: BinaryPickleFormat) extends PickleBuilder with PickleTools {
     import ru._
     import definitions._
 
@@ -21,11 +23,7 @@ package binary {
     private var pos = 0
 
     private def formatType(tpe: Type): Array[Byte] = {
-      val s = tpe match {
-        case TypeRef(_, sym, Nil) => s"${sym.fullName}"
-        case TypeRef(_, sym, targs) => ???
-      }
-      s.getBytes("UTF-8")
+      typeToString(tpe).getBytes("UTF-8")
     }
 
     private def mkByteBuffer(knownSize: Int) = {
@@ -36,48 +34,28 @@ package binary {
       }
     }
 
-    private def encodePicklee(sym: Symbol, picklee: Any): Int = {
-      if (sym == IntClass) byteBuffer.encodeIntTo(pos, picklee.asInstanceOf[Int])
-      else if (sym == StringClass) byteBuffer.encodeStringTo(pos, picklee.asInstanceOf[String])
-      else if (sym == BooleanClass) byteBuffer.encodeBooleanTo(pos, picklee.asInstanceOf[Boolean])
-      else ???
-    }
+    private val primitives = Map[TypeTag[_], Any => Unit](
+      ReifiedNull.tag -> ???,
+      ReifiedInt.tag -> ((picklee: Any) => byteBuffer.encodeIntTo(pos, picklee.asInstanceOf[Int])),
+      ReifiedBoolean.tag -> ((picklee: Any) => byteBuffer.encodeBooleanTo(pos, picklee.asInstanceOf[Boolean])),
+      ReifiedString.tag -> ((picklee: Any) => byteBuffer.encodeStringTo(pos, picklee.asInstanceOf[String]))
+    )
 
-    def beginEntryNoType(tag: TypeTag[_], picklee: Any, knownSize: Int): this.type = {
-      mkByteBuffer(knownSize)
+    def beginEntry(picklee: Any): this.type = withHints { hints =>
+      mkByteBuffer(hints.knownSize)
 
-      // in the "NoType" version we are very careful not to call .tpe on the tag if not needed
-      // the tag can be compared against tags for primitive types as-is
-      if (tag == TypeTag.Int)
-        pos = byteBuffer.encodeIntTo(pos, picklee.asInstanceOf[Int])
-      else if (tag == TypeTag.Boolean)
-        pos = byteBuffer.encodeBooleanTo(pos, picklee.asInstanceOf[Boolean])
-      else {
-        val tpe = tag.tpe
-        if (format.isPrimitive(tpe)) {
-          if (tpe.typeSymbol.asClass == StringClass)
-            pos = byteBuffer.encodeStringTo(pos, picklee.asInstanceOf[String])
-          else
-            ???
+      if (primitives.contains(hints.tag)) {
+        assert(hints.isStaticType)
+        primitives(hints.tag)(picklee)
+      } else {
+        if (!hints.isStaticType) {
+          // write pickled tpe to `target`:
+          // length of pickled type, pickled type
+          val tpe = hints.tag.tpe
+          val tpeBytes = formatType(tpe)
+          pos = byteBuffer.encodeIntTo(pos, tpeBytes.length)
+          pos = byteBuffer.copyTo(pos, tpeBytes)
         }
-      }
-
-      this
-    }
-
-    def beginEntry(tag: TypeTag[_], picklee: Any, knownSize: Int): this.type = {
-      val tpe = tag.tpe
-      mkByteBuffer(knownSize)
-
-      // write pickled tpe to `target`:
-      // length of pickled type, pickled type
-      val tpeBytes = formatType(tpe)
-      pos = byteBuffer.encodeIntTo(pos, tpeBytes.length)
-      pos = byteBuffer.copyTo(pos, tpeBytes)
-
-      if (format.isPrimitive(tpe)) {
-        val sym = tpe.typeSymbol.asClass
-        pos = encodePicklee(sym, picklee)
       }
 
       this
@@ -96,37 +74,39 @@ package binary {
     }
   }
 
-  class BinaryPickleReader(arr: Array[Byte], format: BinaryPickleFormat) extends PickleReader {
+  class BinaryPickleReader(arr: Array[Byte], val mirror: Mirror, format: BinaryPickleFormat) extends PickleReader with PickleTools {
     import ru._
 
     private val byteBuffer: ByteBuffer = new ByteArray(arr)
     private var pos = 0
-    private var atPrim = false
+    private var tag: TypeTag[_] = null
 
-    def readTag(mirror: Mirror): TypeTag[_] = {
-      def readType = {
-        def unpickleTpe(stpe: String): Type = {
-          // TODO: support polymorphic types as serialized above with pickleTpe
-          mirror.staticClass(stpe).asType.toType
+    private val primitives = Map[TypeTag[_], () => (Any, Int)](
+      ReifiedNull.tag -> ???,
+      ReifiedInt.tag -> (() => byteBuffer.decodeIntFrom(pos)),
+      ReifiedBoolean.tag -> (() => byteBuffer.decodeBooleanFrom(pos)),
+      ReifiedString.tag -> (() => byteBuffer.decodeStringFrom(pos))
+    )
+
+    def beginEntry(): TypeTag[_] = withHints { hints =>
+      tag = hints.tag
+      if (hints.isStaticType) hints.tag
+      else {
+        // TODO: how do I find out whether there's a tpe written at the current position?
+        def readType = {
+          val (typeString, newpos) = byteBuffer.decodeStringFrom(pos)
+          pos = newpos
+          val tpe = typeFromString(mirror, typeString)
+          tpe
         }
-        val (typeString, newpos) = byteBuffer.decodeStringFrom(pos)
-        pos = newpos
-        val tpe = unpickleTpe(typeString)
-        atPrim = format.isPrimitive(tpe)
-        tpe
+        TypeTag(readType)
       }
-      TypeTag(readType)
     }
 
-    def atPrimitive: Boolean = atPrim
+    def atPrimitive: Boolean = primitives contains tag
 
-    def readPrimitive(tag: TypeTag[_]): Any = {
-      val tpe = tag.tpe
-      val (res, newpos) =
-        if      (tpe =:= typeOf[Int])     byteBuffer.decodeIntFrom(pos)
-        else if (tpe =:= typeOf[String])  byteBuffer.decodeStringFrom(pos)
-        else if (tpe =:= typeOf[Boolean]) byteBuffer.decodeBooleanFrom(pos)
-        else ???
+    def readPrimitive(): Any = {
+      val (res, newpos) = primitives(tag)()
       pos = newpos
       res
     }
@@ -135,6 +115,8 @@ package binary {
 
     def readField(name: String): BinaryPickleReader =
       this
+
+    def endEntry(): Unit = { /* do nothing */ }
   }
 
   class BinaryPickleFormat extends PickleFormat {
@@ -143,12 +125,6 @@ package binary {
 
     type PickleType = BinaryPickle
     def createBuilder() = new BinaryPickleBuilder(this)
-    def createReader(pickle: PickleType) = new BinaryPickleReader(pickle.value, this)
-
-    def isPrimitive(tpe: Type) = {
-      val sym = tpe.typeSymbol.asClass
-      sym == IntClass || sym == StringClass || sym == BooleanClass
-    }
+    def createReader(pickle: PickleType, mirror: Mirror) = new BinaryPickleReader(pickle.value, mirror, this)
   }
-
 }

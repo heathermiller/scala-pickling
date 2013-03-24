@@ -4,6 +4,9 @@ import scala.reflect.api.Universe
 import scala.reflect.macros.Context
 import scala.collection.mutable.{Map => MutableMap, ListBuffer => MutableList, WeakHashMap, Set => MutableSet}
 import java.lang.ref.WeakReference
+import scala.collection.mutable.{Stack => MutableStack}
+import scala.reflect.runtime.universe._
+import scala.reflect.synthetic._
 
 object Tools {
   private val subclassCaches = new WeakHashMap[AnyRef, WeakReference[AnyRef]]()
@@ -269,5 +272,38 @@ trait FastTypeTagMacro extends Macro {
         q"object $wrapperName { val tag = $reifiedTpe }"
      }
     q"$wrapperRef.tag"
+  }
+}
+
+trait PickleTools {
+  case class Hints(tag: TypeTag[_] = null, knownSize: Int = -1, isStaticType: Boolean = false, isCollectionType: Boolean = false)
+  private var hints = new Hints()
+
+  def hintTag(tag: TypeTag[_]): this.type = { hints = hints.copy(tag = tag); this }
+  def hintKnownSize(knownSize: Int): this.type = { hints = hints.copy(knownSize = knownSize); this }
+  def hintStaticType(): this.type = { hints = hints.copy(isStaticType = true); this }
+  def hintCollectionType(): this.type = { hints = hints.copy(isCollectionType = true); this }
+
+  def withHints[T](body: Hints => T): T = {
+    val hints = this.hints
+    this.hints = new Hints
+    body(hints)
+  }
+
+  def typeToString(tpe: Type): String = {
+    def loop(tpe: Type): String = {
+      tpe match {
+        case SingleType(pre, sym) => loop(TypeRef(pre, sym.asModule.moduleClass, Nil))
+        case TypeRef(_, sym, Nil) => s"${sym.fullName}" + (if (sym.isModuleClass) "$" else "")
+        case TypeRef(_, sym, targs) => loop(tpe.typeConstructor) + s"[${targs.map(targ => loop(targ))}]"
+        case _ => throw new PicklingException(s"fatal: unknown type $tpe repesented as ${showRaw(tpe)}")
+      }
+    }
+    loop(tpe)
+  }
+
+  def typeFromString(mirror: Mirror, tpe: String): Type = {
+    val sym = if (tpe.endsWith("$")) mirror.staticModule(tpe.stripSuffix("$")).moduleClass else mirror.staticClass(tpe)
+    sym.asType.toType
   }
 }

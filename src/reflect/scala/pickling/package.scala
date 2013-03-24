@@ -72,23 +72,31 @@ package pickling {
   trait PickleFormat {
     type PickleType <: Pickle
     def createBuilder(): PickleBuilder
-    def createReader(pickle: PickleType): PickleReader
+    def createReader(pickle: PickleType, mirror: Mirror): PickleReader
   }
 
-  trait PickleBuilder {
-    def beginEntry(tag: TypeTag[_], picklee: Any, knownSize: Int = -1): this.type
-    def beginEntryNoType(tag: TypeTag[_], picklee: Any, knownSize: Int = -1): this.type
+  trait Hintable {
+    def hintTag(tag: TypeTag[_]): this.type
+    def hintKnownSize(knownSize: Int): this.type
+    def hintStaticType(): this.type
+    def hintCollectionType(): this.type
+  }
+
+  trait PickleBuilder extends Hintable {
+    def beginEntry(picklee: Any): this.type
     def putField(name: String, pickler: this.type => Unit): this.type
     def endEntry(): Unit
     def result(): Pickle
   }
 
-  trait PickleReader {
-    def readTag(mirror: Mirror): TypeTag[_]
+  trait PickleReader extends Hintable {
+    def mirror: Mirror
+    def beginEntry(): TypeTag[_]
     def atPrimitive: Boolean
-    def readPrimitive(tag: TypeTag[_]): Any
+    def readPrimitive(): Any
     def atObject: Boolean
     def readField(name: String): PickleReader
+    def endEntry(): Unit
     def unpickle[T] = macro UnpickleMacros.readerUnpickle[T]
   }
 
