@@ -51,15 +51,11 @@ trait PicklerMacros extends Macro {
               Nil
             }
           })
-          val optimizedPutFields =
-            if (putFields.isEmpty) Nil
-            else if (sym.isPrimitive || sym.isDerivedValueClass) putFields
-            else List(q"if (picklee != null) { ..$putFields; () }")
           val endEntry = q"builder.endEntry()"
           q"""
             import scala.reflect.runtime.universe._
             $beginEntry
-            ..$optimizedPutFields
+            ..$putFields
             $endEntry
           """
         }
@@ -182,7 +178,10 @@ trait PickleMacros extends Macro {
     val q"${_}($pickleeArg)" = c.prefix.tree
 
     def createPickler(tpe: Type) = q"implicitly[Pickler[$tpe]]"
-    def finalDispatch = createPickler(tpe)
+    def finalDispatch = {
+      if (sym.isNotNull) createPickler(tpe)
+      else q"if (picklee != null) ${createPickler(tpe)} else ${createPickler(NullTpe)}"
+    }
     def nonFinalDispatch = {
       val nullDispatch = CaseDef(Literal(Constant(null)), EmptyTree, createPickler(NullTpe))
       val compileTimeDispatch = compileTimeDispatchees(tpe) map (tpe => {
@@ -198,7 +197,7 @@ trait PickleMacros extends Macro {
         ${Match(q"clazz", nullDispatch +: compileTimeDispatch :+ runtimeDispatch)}
       """
     }
-    val dispatchLogic = if (sym.isFinal || sym.isModuleClass) finalDispatch else nonFinalDispatch
+    val dispatchLogic = if (sym.isEffectivelyFinal) finalDispatch else nonFinalDispatch
 
     q"""
       import scala.pickling._
@@ -230,12 +229,16 @@ trait UnpickleMacros extends Macro {
   }
   def readerUnpickle[T: c.WeakTypeTag]: c.Tree = {
     import c.universe._
+    import definitions._
     val tpe = weakTypeOf[T]
     val sym = tpe.typeSymbol.asClass
     val readerArg = c.prefix.tree
 
     def createUnpickler(tpe: Type) = q"implicitly[Unpickler[$tpe]]"
-    def finalDispatch = createUnpickler(tpe)
+    def finalDispatch = {
+      if (sym.isNotNull) createUnpickler(tpe)
+      else q"if (tag != scala.pickling.`package`.fastTypeTag[Null]) ${createUnpickler(tpe)} else ${createUnpickler(NullTpe)}"
+    }
     def nonFinalDispatch = {
       def compileTimeDispatch(fast: Boolean) = compileTimeDispatchees(tpe) map (subtpe => {
         // TODO: do we still want to use something like HasPicklerDispatch (for unpicklers it would be routed throw tpe's companion)?

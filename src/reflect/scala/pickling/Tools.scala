@@ -258,6 +258,7 @@ abstract class Macro extends scala.reflect.macros.Macro {
 
   implicit class RichSymbol(sym: Symbol) {
     def isEffectivelyFinal = sym.asInstanceOf[scala.reflect.internal.Symbols#Symbol].isEffectivelyFinal
+    def isNotNull = sym.asType.toType.asInstanceOf[scala.reflect.internal.Types#Type].isNotNull
   }
 }
 

@@ -7,14 +7,16 @@ import scala.reflect.synthetic._
 trait CorePicklersUnpicklers extends GenPicklers with GenUnpicklers {
   class PrimitivePicklerUnpickler[T](tag: TypeTag[T])(implicit val format: PickleFormat) extends Pickler[T] with Unpickler[T] {
     def pickle(picklee: T, builder: PickleBuilder): Unit = {
-      builder.hintTag(tag)
+      if (picklee != null) builder.hintTag(tag)
+      else builder.hintTag(ReifiedNull.tag)
       builder.beginEntry(picklee)
       builder.endEntry()
     }
     def unpickle(tag: TypeTag[_], reader: PickleReader): Any = {
       // NOTE: here we essentially require that ints and strings are primitives for all readers
       // TODO: discuss that and see whether it defeats all the purpose of abstracting primitives away from picklers
-      reader.readPrimitive()
+      if (tag != ReifiedNull.tag) reader.readPrimitive()
+      else null
     }
   }
 

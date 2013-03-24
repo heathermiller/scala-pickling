@@ -41,7 +41,9 @@ package binary {
     def beginEntry(picklee: Any): this.type = withHints { hints =>
       mkByteBuffer(hints.knownSize)
 
-      if (primitives.contains(hints.tag)) {
+      if (picklee == null) {
+        pos = byteBuffer.encodeByteTo(pos, format.NULL_TAG)
+      } else if (primitives.contains(hints.tag)) {
         assert(hints.isElidedType)
         primitives(hints.tag)(picklee)
       } else {
@@ -86,7 +88,16 @@ package binary {
 
     def beginEntry(): TypeTag[_] = withHints { hints =>
       lastTagRead = {
-        if (primitives.contains(hints.tag)) {
+        if (hints.tag == ReifiedString.tag) {
+          val (lookahead, newpos) = byteBuffer.decodeByteFrom(pos)
+          lookahead match {
+            case format.NULL_TAG =>
+              pos = newpos
+              ReifiedNull.tag
+            case _ =>
+              hints.tag
+          }
+        } else if (primitives.contains(hints.tag)) {
           assert(hints.isElidedType)
           hints.tag
         } else {
