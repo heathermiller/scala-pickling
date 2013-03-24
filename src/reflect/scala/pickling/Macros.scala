@@ -33,11 +33,11 @@ trait PicklerMacros extends Macro {
                 def wrap(pickleLogic: Tree) = q"builder.putField(${fir.name}, b => $pickleLogic)"
                 wrap {
                   if (fir.tpe.typeSymbol.isEffectivelyFinal) q"""
-                    b.hintStaticType
+                    b.hintStaticallyElidedType()
                     $getterLogic.pickleInto(b)
                   """ else q"""
                     val subPicklee = $getterLogic
-                    if (subPicklee == null || subPicklee.getClass == classOf[${fir.tpe}]) b.hintElidedType() else ()
+                    if (subPicklee == null || subPicklee.getClass == classOf[${fir.tpe}]) b.hintDynamicallyElidedType() else ()
                     subPicklee.pickleInto(b)
                   """
                 }
@@ -254,7 +254,7 @@ trait UnpickleMacros extends Macro {
     q"""
       val reader = $readerArg
       reader.hintTag(scala.pickling.`package`.fastTypeTag[$tpe])
-      ${if (sym.isEffectivelyFinal) (q"reader.hintStaticType()": Tree) else q""}
+      ${if (sym.isEffectivelyFinal) (q"reader.hintStaticallyElidedType()": Tree) else q""}
       val tag = reader.beginEntry()
       val unpickler = $dispatchLogic
       val result = unpickler.unpickle(tag, reader)

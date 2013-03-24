@@ -40,11 +40,11 @@ package json {
     def beginEntry(picklee: Any): this.type = withHints { hints =>
       tags.push(hints.tag)
       if (primitives.contains(hints.tag)) {
-        assert(hints.isStaticType)
+        assert(hints.isElidedType)
         primitives(hints.tag)(picklee)
       } else {
         buf ++= "{\n"
-        if (!hints.isStaticType && !hints.isElidedType) buf ++= "  \"tpe\": \"" + typeToString(hints.tag.tpe) + "\""
+        if (!hints.isElidedType) buf ++= "  \"tpe\": \"" + typeToString(hints.tag.tpe) + "\""
       }
       this
     }
@@ -66,7 +66,7 @@ package json {
   }
 
   class JSONPickleReader(datum: Any, val mirror: Mirror, format: JSONPickleFormat) extends PickleReader with PickleTools {
-    private var tag: TypeTag[_] = null
+    private var lastReadTag: TypeTag[_] = null
     private val primitives = Map[TypeTag[_], () => Any](
       ReifiedNull.tag -> (() => null),
       ReifiedInt.tag -> (() => datum.asInstanceOf[Double].toInt),
@@ -74,18 +74,21 @@ package json {
       ReifiedString.tag -> (() => datum.asInstanceOf[String])
     )
     def beginEntry(): TypeTag[_] = withHints { hints =>
-      tag = hints.tag
-      if (hints.isStaticType) tag
-      else {
-        datum match {
-          case JSONObject(fields) if fields.contains("tpe") => TypeTag(typeFromString(mirror, fields("tpe").asInstanceOf[String]))
-          case JSONObject(fields) => tag
-          case JSONArray(elements) => throw new PicklingException(s"TODO: not yet implemented ($datum)")
+      lastReadTag = {
+        if (datum == null) ReifiedNull.tag
+        else if (hints.isElidedType) hints.tag
+        else {
+          datum match {
+            case JSONObject(fields) if fields.contains("tpe") => TypeTag(typeFromString(mirror, fields("tpe").asInstanceOf[String]))
+            case JSONObject(fields) => hints.tag
+            case JSONArray(elements) => throw new PicklingException(s"TODO: not yet implemented ($datum)")
+          }
         }
       }
+      lastReadTag
     }
     def atPrimitive: Boolean = !atObject
-    def readPrimitive(): Any = primitives(tag)()
+    def readPrimitive(): Any = primitives(lastReadTag)()
     def atObject: Boolean = datum.isInstanceOf[JSONObject]
     def readField(name: String): JSONPickleReader = {
       datum match {

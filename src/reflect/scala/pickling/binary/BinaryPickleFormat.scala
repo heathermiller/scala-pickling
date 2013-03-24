@@ -42,11 +42,10 @@ package binary {
       mkByteBuffer(hints.knownSize)
 
       if (primitives.contains(hints.tag)) {
-        assert(hints.isStaticType || hints.isElidedType)
+        assert(hints.isElidedType)
         primitives(hints.tag)(picklee)
       } else {
-        if (hints.isStaticType) {} // do nothing
-        else if (hints.isElidedType) pos = byteBuffer.encodeByteTo(pos, format.ELIDED_TAG)
+        if (hints.isElidedType) pos = byteBuffer.encodeByteTo(pos, format.ELIDED_TAG)
         else {
           // write pickled tpe to `target`:
           // length of pickled type, pickled type
@@ -87,8 +86,10 @@ package binary {
 
     def beginEntry(): TypeTag[_] = withHints { hints =>
       lastTagRead = {
-        if (hints.isStaticType) hints.tag
-        else {
+        if (primitives.contains(hints.tag)) {
+          assert(hints.isElidedType)
+          hints.tag
+        } else {
           val (lookahead, newpos) = byteBuffer.decodeByteFrom(pos)
           lookahead match {
             case format.NULL_TAG =>

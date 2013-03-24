@@ -281,14 +281,16 @@ trait PickleTools {
   case class Hints(
     tag: TypeTag[_] = null,
     knownSize: Int = -1,
-    isStaticType: Boolean = false,
-    isElidedType: Boolean = false,
-    isCollectionType: Boolean = false)
+    isStaticallyElidedType: Boolean = false,
+    isDynamicallyElidedType: Boolean = false,
+    isCollectionType: Boolean = false) {
+    def isElidedType = isStaticallyElidedType || isDynamicallyElidedType
+  }
 
   def hintTag(tag: TypeTag[_]): this.type = { hints = hints.copy(tag = tag); this }
   def hintKnownSize(knownSize: Int): this.type = { hints = hints.copy(knownSize = knownSize); this }
-  def hintStaticType(): this.type = { hints = hints.copy(isStaticType = true); this }
-  def hintElidedType(): this.type = { hints = hints.copy(isElidedType = true); this }
+  def hintStaticallyElidedType(): this.type = { hints = hints.copy(isStaticallyElidedType = true); this }
+  def hintDynamicallyElidedType(): this.type = { hints = hints.copy(isDynamicallyElidedType = true); this }
   def hintCollectionType(): this.type = { hints = hints.copy(isCollectionType = true); this }
 
   def withHints[T](body: Hints => T): T = {
