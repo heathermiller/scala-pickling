@@ -8,7 +8,6 @@ trait CorePicklersUnpicklers extends GenPicklers with GenUnpicklers {
   class PrimitivePicklerUnpickler[T](tag: TypeTag[T])(implicit val format: PickleFormat) extends Pickler[T] with Unpickler[T] {
     def pickle(picklee: T, builder: PickleBuilder): Unit = {
       builder.hintTag(tag)
-      builder.hintStaticType()
       builder.beginEntry(picklee)
       builder.endEntry()
     }
@@ -44,7 +43,6 @@ trait ModulePicklerUnpicklerMacro extends Macro {
             implicit val format = new ${format.tpe}()
             def pickle(picklee: $tpe, builder: PickleBuilder): Unit = {
               builder.hintTag(scala.pickling.`package`.fastTypeTag[$tpe])
-              builder.hintStaticType()
               builder.beginEntry(picklee)
               builder.endEntry()
             }

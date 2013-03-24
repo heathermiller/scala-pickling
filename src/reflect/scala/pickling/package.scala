@@ -79,6 +79,7 @@ package pickling {
     def hintTag(tag: TypeTag[_]): this.type
     def hintKnownSize(knownSize: Int): this.type
     def hintStaticType(): this.type
+    def hintElidedType(): this.type
     def hintCollectionType(): this.type
   }
 

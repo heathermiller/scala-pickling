@@ -44,7 +44,7 @@ package json {
         primitives(hints.tag)(picklee)
       } else {
         buf ++= "{\n"
-        if (!hints.isStaticType) buf ++= "  \"tpe\": \"" + typeToString(hints.tag.tpe) + "\""
+        if (!hints.isStaticType && !hints.isElidedType) buf ++= "  \"tpe\": \"" + typeToString(hints.tag.tpe) + "\""
       }
       this
     }

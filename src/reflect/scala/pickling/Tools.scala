@@ -276,12 +276,18 @@ trait FastTypeTagMacro extends Macro {
 }
 
 trait PickleTools {
-  case class Hints(tag: TypeTag[_] = null, knownSize: Int = -1, isStaticType: Boolean = false, isCollectionType: Boolean = false)
   private var hints = new Hints()
+  case class Hints(
+    tag: TypeTag[_] = null,
+    knownSize: Int = -1,
+    isStaticType: Boolean = false,
+    isElidedType: Boolean = false,
+    isCollectionType: Boolean = false)
 
   def hintTag(tag: TypeTag[_]): this.type = { hints = hints.copy(tag = tag); this }
   def hintKnownSize(knownSize: Int): this.type = { hints = hints.copy(knownSize = knownSize); this }
   def hintStaticType(): this.type = { hints = hints.copy(isStaticType = true); this }
+  def hintElidedType(): this.type = { hints = hints.copy(isElidedType = true); this }
   def hintCollectionType(): this.type = { hints = hints.copy(isCollectionType = true); this }
 
   def withHints[T](body: Hints => T): T = {

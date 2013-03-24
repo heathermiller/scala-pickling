@@ -37,7 +37,7 @@ trait PicklerMacros extends Macro {
                     $getterLogic.pickleInto(b)
                   """ else q"""
                     val subPicklee = $getterLogic
-                    if (subPicklee == null || subPicklee.getClass == classOf[${fir.tpe}]) b.hintStaticType() else ()
+                    if (subPicklee == null || subPicklee.getClass == classOf[${fir.tpe}]) b.hintElidedType() else ()
                     subPicklee.pickleInto(b)
                   """
                 }

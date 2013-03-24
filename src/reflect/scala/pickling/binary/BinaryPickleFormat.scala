@@ -16,9 +16,6 @@ package binary {
   }
 
   class BinaryPickleBuilder(format: BinaryPickleFormat) extends PickleBuilder with PickleTools {
-    import ru._
-    import definitions._
-
     private var byteBuffer: ByteBuffer = _
     private var pos = 0
 
@@ -35,10 +32,10 @@ package binary {
     }
 
     private val primitives = Map[TypeTag[_], Any => Unit](
-      ReifiedNull.tag -> ???,
-      ReifiedInt.tag -> ((picklee: Any) => byteBuffer.encodeIntTo(pos, picklee.asInstanceOf[Int])),
-      ReifiedBoolean.tag -> ((picklee: Any) => byteBuffer.encodeBooleanTo(pos, picklee.asInstanceOf[Boolean])),
-      ReifiedString.tag -> ((picklee: Any) => byteBuffer.encodeStringTo(pos, picklee.asInstanceOf[String]))
+      ReifiedNull.tag -> ((picklee: Any) => pos = byteBuffer.encodeIntTo(pos, 0)),
+      ReifiedInt.tag -> ((picklee: Any) => pos = byteBuffer.encodeIntTo(pos, picklee.asInstanceOf[Int])),
+      ReifiedBoolean.tag -> ((picklee: Any) => pos = byteBuffer.encodeBooleanTo(pos, picklee.asInstanceOf[Boolean])),
+      ReifiedString.tag -> ((picklee: Any) => pos = byteBuffer.encodeStringTo(pos, picklee.asInstanceOf[String]))
     )
 
     def beginEntry(picklee: Any): this.type = withHints { hints =>
@@ -48,7 +45,9 @@ package binary {
         assert(hints.isStaticType)
         primitives(hints.tag)(picklee)
       } else {
-        if (!hints.isStaticType) {
+        if (hints.isStaticType) {} // do nothing
+        else if (hints.isElidedType) pos = byteBuffer.encodeIntTo(pos, format.ELIDED_TAG)
+        else {
           // write pickled tpe to `target`:
           // length of pickled type, pickled type
           val tpe = hints.tag.tpe
@@ -75,14 +74,12 @@ package binary {
   }
 
   class BinaryPickleReader(arr: Array[Byte], val mirror: Mirror, format: BinaryPickleFormat) extends PickleReader with PickleTools {
-    import ru._
-
     private val byteBuffer: ByteBuffer = new ByteArray(arr)
     private var pos = 0
     private var tag: TypeTag[_] = null
 
     private val primitives = Map[TypeTag[_], () => (Any, Int)](
-      ReifiedNull.tag -> ???,
+      ReifiedNull.tag -> (() => ???),
       ReifiedInt.tag -> (() => byteBuffer.decodeIntFrom(pos)),
       ReifiedBoolean.tag -> (() => byteBuffer.decodeBooleanFrom(pos)),
       ReifiedString.tag -> (() => byteBuffer.decodeStringFrom(pos))
@@ -92,14 +89,15 @@ package binary {
       tag = hints.tag
       if (hints.isStaticType) hints.tag
       else {
-        // TODO: how do I find out whether there's a tpe written at the current position?
-        def readType = {
+        val (lookahead, newpos) = byteBuffer.decodeIntFrom(pos)
+        if (lookahead == format.ELIDED_TAG) {
+          pos = newpos
+          tag
+        } else {
           val (typeString, newpos) = byteBuffer.decodeStringFrom(pos)
           pos = newpos
-          val tpe = typeFromString(mirror, typeString)
-          tpe
+          TypeTag(typeFromString(mirror, typeString))
         }
-        TypeTag(readType)
       }
     }
 
@@ -120,8 +118,7 @@ package binary {
   }
 
   class BinaryPickleFormat extends PickleFormat {
-    import ru._
-    import definitions._
+    val ELIDED_TAG = -1
 
     type PickleType = BinaryPickle
     def createBuilder() = new BinaryPickleBuilder(this)
