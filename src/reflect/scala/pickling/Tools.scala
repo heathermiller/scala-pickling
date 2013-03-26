@@ -166,7 +166,11 @@ abstract class Macro extends scala.reflect.macros.Macro {
 
   def syntheticPackageName: String = "scala.pickling.synthetic"
   def syntheticBaseName(tpe: Type): TypeName = {
-    def prettyName(sym: Symbol) = sym.fullName.split('.').map(_.capitalize).mkString("") + (if (sym.isModuleClass) "$" else "")
+    def prettyName(sym: Symbol) = {
+      val parts = sym.fullName.split('.')
+      def encode(name: String) = TermName(name).encoded.toString
+      parts.map(encode).map(_.capitalize).mkString("") + (if (sym.isModuleClass) "$" else "")
+    }
     var erasedTypeName = prettyName(tpe.typeSymbol)
     if (tpe.typeSymbol == ArrayClass) erasedTypeName += prettyName(tpe.asInstanceOf[TypeRef].args.head.typeSymbol)
     TypeName(erasedTypeName)
