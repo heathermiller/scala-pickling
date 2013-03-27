@@ -309,6 +309,20 @@ trait Types extends api.Types { self: SymbolTable =>
     def isSpliceable = {
       this.isInstanceOf[TypeRef] && typeSymbol.isAbstractType && !typeSymbol.isExistential
     }
+
+    def key = {
+      this match {
+        case ExistentialType(tparams, TypeRef(pre, sym, targs))
+        if targs.nonEmpty && targs.forall(targ => tparams.contains(targ.typeSymbol)) =>
+          TypeRef(pre, sym, Nil).key
+        case TypeRef(pre, sym, targs) if pre.typeSymbol.isModuleClass =>
+          sym.fullName +
+          (if (sym.isModuleClass) ".type" else "") +
+          (if (targs.isEmpty) "" else targs.map(_.key).mkString("[", ",", "]"))
+        case _ =>
+          this.toString
+      }
+    }
   }
 
   /** Same as a call to narrow unless existentials are visible
@@ -2754,6 +2768,8 @@ trait Types extends api.Types { self: SymbolTable =>
       case ExistentialType(qs, restpe) => newExistentialType(quantified ::: qs, restpe)
       case _                           => ExistentialType(quantified, underlying)
     }
+
+  def existentialType(quantified: List[Symbol], underlying: Type): Type = newExistentialType(quantified, underlying)
 
   case class ExistentialType(quantified: List[Symbol],
                              override val underlying: Type) extends RewrappingTypeProxy with ExistentialTypeApi

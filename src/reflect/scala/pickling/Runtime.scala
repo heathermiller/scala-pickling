@@ -5,7 +5,6 @@ import definitions._
 import scala.reflect.runtime.{universe => ru}
 import scala.tools.reflect.ToolBox
 import ir._
-import scala.reflect.synthetic._
 
 object Runtime {
   val toUnboxed = Map[Class[_], Class[_]](
@@ -24,10 +23,18 @@ object Runtime {
 
 abstract class PicklerRuntime(classLoader: ClassLoader, preclazz: Class[_]) {
 
-  val clazz = Runtime.toUnboxed.getOrElse(preclazz, preclazz)
+  val clazz = if (preclazz != null) Runtime.toUnboxed.getOrElse(preclazz, preclazz) else null
   val mirror = runtimeMirror(classLoader)
-  val sym = mirror.classSymbol(clazz)
-  val tpe = sym.toType
+  val sym = if (clazz != null) mirror.classSymbol(clazz) else NullClass
+  val tpe = {
+    // TODO: fix duplication w.r.t Tools.scala
+    val tpeWithMaybeTparams = sym.asType.toType
+    val tparams = tpeWithMaybeTparams match {
+      case TypeRef(_, _, targs) => targs.map(_.typeSymbol)
+      case _ => Nil
+    }
+    existentialAbstraction(tparams, tpeWithMaybeTparams)
+  }
   val tag = TypeTag(tpe)
   debug("PicklerRuntime: tpe = " + tpe)
   val irs = new IRs[ru.type](ru)
@@ -72,7 +79,7 @@ class InterpretedPicklerRuntime(classLoader: ClassLoader, preclazz: Class[_]) ex
             val fldMirror = im.reflectField(fir.field.get)
             val fldValue = fldMirror.get
             debug("pickling field value: " + fldValue)
-            val fldClass = if (fldValue != null) fldValue.getClass else mirror.runtimeClass(NullTpe)
+            val fldClass = if (fldValue != null) fldValue.getClass else null
             // by using only the class we convert Int to Integer
             // therefore we pass fir.tpe (as pretpe) in addition to the class and use it for the is primitive check
             val fldRuntime = new InterpretedPicklerRuntime(classLoader, fldClass)
@@ -87,7 +94,7 @@ class InterpretedPicklerRuntime(classLoader: ClassLoader, preclazz: Class[_]) ex
 
           builder.endEntry()
         } else {
-          builder.hintTag(ReifiedNull.tag)
+          builder.hintTag(typeTag[Null])
           builder.beginEntry(null)
           builder.endEntry()
         }
@@ -129,7 +136,7 @@ class InterpretedUnpicklerRuntime(mirror: Mirror, tag: TypeTag[_]) {
           val pendingFields = cir.fields.filter(fir => fir.isNonParam || fir.isReifiedParam)
           val fieldVals = pendingFields.map(fir => {
             val freader = reader.readField(fir.name)
-            val fstaticTag = TypeTag(fir.tpe.erasure)
+            val fstaticTag = TypeTag(fir.tpe)
             freader.hintTag(fstaticTag)
 
             val fstaticSym = fstaticTag.tpe.typeSymbol

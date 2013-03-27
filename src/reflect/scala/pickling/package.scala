@@ -18,8 +18,6 @@ package object pickling {
     def pickleInto(builder: PickleBuilder): _ = macro PickleMacros.pickleInto[T]
   }
 
-  def fastTypeTag[T]: TypeTag[T] = macro FastTypeTagMacro.impl[T]
-
   implicit class RichSymbol(sym: scala.reflect.api.Symbols#Symbol) {
     def isEffectivelyFinal = sym.asInstanceOf[scala.reflect.internal.Symbols#Symbol].isEffectivelyFinal
     def isNotNull = sym.asType.toType.asInstanceOf[scala.reflect.internal.Types#Type].isNotNull
@@ -85,6 +83,8 @@ package pickling {
     def hintKnownSize(knownSize: Int): this.type
     def hintStaticallyElidedType(): this.type
     def hintDynamicallyElidedType(): this.type
+    def pinHints(): this.type
+    def unpinHints(): this.type
   }
 
   trait PickleBuilder extends Hintable {

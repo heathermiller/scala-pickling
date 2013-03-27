@@ -6,7 +6,6 @@ import scala.collection.mutable.{Map => MutableMap, ListBuffer => MutableList, W
 import java.lang.ref.WeakReference
 import scala.collection.mutable.{Stack => MutableStack}
 import scala.reflect.runtime.universe._
-import scala.reflect.synthetic._
 
 object Tools {
   private val subclassCaches = new WeakHashMap[AnyRef, WeakReference[AnyRef]]()
@@ -52,7 +51,9 @@ class Tools[U <: Universe with Singleton](val u: U) {
     val nullTpe = if (tpe.baseClasses.contains(ObjectClass)) List(NullTpe) else Nil
     val subtypes = allStaticallyKnownConcreteSubclasses(tpe, mirror).filter(subtpe => subtpe.typeSymbol != tpe.typeSymbol)
     val selfTpe = if (isRelevantSubclass(tpe.typeSymbol, tpe.typeSymbol)) List(tpe) else Nil
-    nullTpe ++ subtypes ++ selfTpe
+    val result = nullTpe ++ subtypes ++ selfTpe
+    // println(s"$tpe => $result")
+    result
   }
 
   def allStaticallyKnownConcreteSubclasses(tpe: Type, mirror: Mirror): List[Type] = {
@@ -61,7 +62,8 @@ class Tools[U <: Universe with Singleton](val u: U) {
     // TODO: on a more elaborate note
     // given `class C; class D[T] extends C` we of course cannot return the infinite number of `D[X]` types
     // but what we can probably do is to additionally look up custom picklers/unpicklers of for specific `D[X]`
-    val baseSym = tpe.typeSymbol
+    val baseSym = tpe.typeSymbol.asType
+    val baseTargs = tpe match { case TypeRef(_, _, args) => args; case _ => Nil }
 
     def sourcepathScan(): List[Symbol] = {
       val g = u.asInstanceOf[scala.tools.nsc.Global]
@@ -124,15 +126,16 @@ class Tools[U <: Universe with Singleton](val u: U) {
       // NOTE: need to order the list: children first, parents last
       // otherwise pattern match which uses this list might work funnily
       val subSyms = unsorted.distinct.sortWith((c1, c2) => c1.asClass.baseClasses.contains(c2))
-      val subTpes = subSyms.map(subSym => {
-        val tpeWithMaybeTparams = subSym.asType.toType
-        val tparams = tpeWithMaybeTparams match {
-          case TypeRef(_, _, targs) => targs.map(_.typeSymbol)
-          case _ => Nil
-        }
-        existentialAbstraction(tparams, tpeWithMaybeTparams)
+      val subTpes = subSyms.map(_.asClass).map(subSym => {
+        def tparamNames(sym: TypeSymbol) = sym.typeParams.map(_.name.toString)
+        // val tparamsMatch = subSym.typeParams.nonEmpty && tparamNames(baseSym) == tparamNames(subSym)
+        val tparamsMatch = subSym.typeParams.nonEmpty && tparamNames(baseSym).length == tparamNames(subSym).length
+        val targsAreConcrete = baseTargs.nonEmpty && baseTargs.forall(_.typeSymbol.isClass)
+        // NOTE: this is an extremely naïve heuristics
+        // see http://groups.google.com/group/scala-internals/browse_thread/thread/3a43a6364b97b521 for more information
+        if (tparamsMatch && targsAreConcrete) appliedType(subSym.toTypeConstructor, baseTargs)
+        else existentialAbstraction(subSym.typeParams, subSym.toType)
       })
-      // println(s"allStaticallyKnownConcreteSubclasses($tpe) = $subTpes")
       subTpes
     }
   }
@@ -166,10 +169,9 @@ abstract class Macro extends scala.reflect.macros.Macro {
 
   def syntheticPackageName: String = "scala.pickling.synthetic"
   def syntheticBaseName(tpe: Type): TypeName = {
-    def prettyName(sym: Symbol) = sym.fullName.split('.').map(_.capitalize).mkString("") + (if (sym.isModuleClass) "$" else "")
-    var erasedTypeName = prettyName(tpe.typeSymbol)
-    if (tpe.typeSymbol == ArrayClass) erasedTypeName += prettyName(tpe.asInstanceOf[TypeRef].args.head.typeSymbol)
-    TypeName(erasedTypeName)
+    val raw = tpe.key.split('.').map(_.capitalize).mkString("")
+    val encoded = TypeName(raw).encoded
+    TypeName(encoded)
   }
   def syntheticBaseQualifiedName(tpe: Type): TypeName = TypeName(syntheticPackageName + "." + syntheticBaseName(tpe).toString)
 
@@ -237,7 +239,7 @@ abstract class Macro extends scala.reflect.macros.Macro {
     // 3) overridden fields
     val wrappedBody =
       q"""
-        val $firSymbol = scala.pickling.`package`.fastTypeTag[${field.owner.asClass.toType}].tpe.member(TermName(${field.name.toString}))
+        val $firSymbol = typeTag[${field.owner.asClass.toType.erasure}].tpe.member(TermName(${field.name.toString}))
         if ($firSymbol.isTerm) ${body(q"im.reflectField($firSymbol.asTerm)")}
       """
     prologue ++ wrappedBody.stats :+ wrappedBody.expr
@@ -262,59 +264,47 @@ abstract class Macro extends scala.reflect.macros.Macro {
   }
 }
 
-trait FastTypeTagMacro extends Macro {
-  def impl[T: c.WeakTypeTag]: c.Tree = {
-    import c.universe._
-    import definitions._
-    val tpe = weakTypeOf[T]
-    val wrapperPid = "scala.reflect.synthetic"
-    val wrapperName = TermName("Reified" + syntheticBaseName(tpe))
-    val wrapperRef =
-      introduceTopLevel(wrapperPid, wrapperName) {
-        val reifiedTpe = c.reifyType(treeBuild.mkRuntimeUniverseRef, EmptyTree, tpe, concrete = true)
-        q"object $wrapperName { val tag = $reifiedTpe }"
-      }
-    q"$wrapperRef.tag.asInstanceOf[scala.reflect.runtime.universe.TypeTag[$tpe]]"
-  }
+case class Hints(
+  tag: TypeTag[_] = null,
+  knownSize: Int = -1,
+  isStaticallyElidedType: Boolean = false,
+  isDynamicallyElidedType: Boolean = false) {
+  def isElidedType = isStaticallyElidedType || isDynamicallyElidedType
 }
 
 trait PickleTools {
-  private var hints = new Hints()
-  case class Hints(
-    tag: TypeTag[_] = null,
-    knownSize: Int = -1,
-    isStaticallyElidedType: Boolean = false,
-    isDynamicallyElidedType: Boolean = false) {
-    def isElidedType = isStaticallyElidedType || isDynamicallyElidedType
-  }
+  var hints = new Hints()
+  var areHintsPinned = false
 
   def hintTag(tag: TypeTag[_]): this.type = { hints = hints.copy(tag = tag); this }
   def hintKnownSize(knownSize: Int): this.type = { hints = hints.copy(knownSize = knownSize); this }
   def hintStaticallyElidedType(): this.type = { hints = hints.copy(isStaticallyElidedType = true); this }
   def hintDynamicallyElidedType(): this.type = { hints = hints.copy(isDynamicallyElidedType = true); this }
+  def pinHints(): this.type = { areHintsPinned = true; this }
+  def unpinHints(): this.type = { areHintsPinned = false; hints = new Hints(); this }
 
   def withHints[T](body: Hints => T): T = {
     val hints = this.hints
-    this.hints = new Hints
+    if (!areHintsPinned) this.hints = new Hints
     body(hints)
   }
 
-  def typeToString(tpe: Type): String = {
-    def loop(tpe: Type): String = {
-      tpe match {
-        case SingleType(pre, sym) => loop(TypeRef(pre, sym.asModule.moduleClass, Nil))
-        case TypeRef(_, sym, Nil) => s"${sym.fullName}" + (if (sym.isModuleClass) "$" else "")
-        // NOTE: we don't pickle targs, because of the erasure strategy we're employing to support polymorphics
-        // case TypeRef(_, sym, targs) => loop(tpe.typeConstructor) + s"[${targs.map(targ => loop(targ))}]"
-        case TypeRef(pre, sym, targs) => loop(TypeRef(pre, sym, Nil))
-        case _ => throw new PicklingException(s"fatal: unknown type $tpe repesented as ${showRaw(tpe)}")
+  def typeToString(tpe: Type): String = tpe.key
+
+  def typeFromString(mirror: Mirror, stpe: String): Type = {
+    val (ssym, stargs) = {
+      val Pattern = """^(.*?)(\[(.*?)\])?$""".r
+      def fail() = throw new PicklingException(s"fatal: cannot unpickle $stpe")
+      stpe match {
+        case Pattern("", _, _) => fail()
+        case Pattern(sym, _, null) => (sym, Nil)
+        case Pattern(sym, _, stargs) => (sym, stargs.split(",").map(_.trim).toList)
+        case _ => fail()
       }
     }
-    loop(tpe)
-  }
 
-  def typeFromString(mirror: Mirror, tpe: String): Type = {
-    val sym = if (tpe.endsWith("$")) mirror.staticModule(tpe.stripSuffix("$")).moduleClass else mirror.staticClass(tpe)
-    sym.asType.toType
+    val sym = if (ssym.endsWith(".type")) mirror.staticModule(ssym.stripSuffix(".type")).moduleClass else mirror.staticClass(ssym)
+    val tycon = sym.asType.toTypeConstructor
+    appliedType(tycon, stargs.map(starg => typeFromString(mirror, starg)))
   }
 }

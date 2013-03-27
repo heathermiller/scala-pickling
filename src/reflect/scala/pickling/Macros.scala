@@ -22,7 +22,6 @@ trait PicklerMacros extends Macro {
         def unifiedPickle = { // NOTE: unified = the same code works for both primitives and objects
           val cir = classIR(tpe)
           val beginEntry = q"""
-            builder.hintTag(scala.pickling.`package`.fastTypeTag[$tpe])
             builder.beginEntry(picklee)
           """
           val putFields = cir.fields.flatMap(fir => {
@@ -36,7 +35,7 @@ trait PicklerMacros extends Macro {
                     b.hintStaticallyElidedType()
                     $getterLogic.pickleInto(b)
                   """ else q"""
-                    val subPicklee = $getterLogic
+                    val subPicklee: ${fir.tpe} = $getterLogic
                     if (subPicklee == null || subPicklee.getClass == classOf[${fir.tpe}]) b.hintDynamicallyElidedType() else ()
                     subPicklee.pickleInto(b)
                   """
@@ -86,6 +85,7 @@ trait UnpicklerMacros extends Macro {
     import c.universe._
     import definitions._
     val tpe = weakTypeOf[T]
+    val targs = tpe match { case TypeRef(_, _, targs) => targs; case _ => Nil }
     val sym = tpe.typeSymbol.asClass
     import irs._
     val unpickler = {
@@ -94,22 +94,26 @@ trait UnpicklerMacros extends Macro {
       introduceTopLevel(unpicklerPid, unpicklerName) {
         def unpicklePrimitive = q"reader.readPrimitive(tag)"
         def unpickleObject = {
-          def readField(name: String, tpe: Type) = q"reader.readField($name).unpickle[${tpe.erasure}]"
+          def readField(name: String, tpe: Type) = q"reader.readField($name).unpickle[$tpe]"
 
           // TODO: validate that the tpe argument of unpickle and weakTypeOf[T] work together
           // NOTE: step 1) this creates an instance and initializes its fields reified from constructor arguments
           val cir = classIR(tpe)
-          val canCallCtor = !cir.fields.exists(_.isErasedParam) && sym.typeParams.isEmpty
+          val isPreciseType = targs.length == sym.typeParams.length && targs.forall(_.typeSymbol.isClass)
+          val canCallCtor = !cir.fields.exists(_.isErasedParam) && isPreciseType
           val pendingFields = cir.fields.filter(fir => fir.isNonParam || (!canCallCtor && fir.isReifiedParam))
           val instantiationLogic = {
             if (sym.isModuleClass) {
               q"${sym.module}"
             } else if (canCallCtor) {
-              val ctorSym = tpe.declaration(nme.CONSTRUCTOR) match {
-                case overloaded: TermSymbol => overloaded.alternatives.head.asMethod // NOTE: primary ctor is always the first in the list
-                case primaryCtor: MethodSymbol => primaryCtor
+              val ctorSig = cir.fields.filter(_.param.isDefined).map(fir => (fir.param.get: Symbol, fir.tpe)).toMap
+              val ctorArgs = {
+                if (ctorSig.isEmpty) List(List())
+                else {
+                  val ctorSym = ctorSig.head._1.owner.asMethod
+                  ctorSym.paramss.map(_.map(f => readField(f.name.toString, ctorSig(f))))
+                }
               }
-              val ctorArgs = ctorSym.paramss.map(_.map(f => readField(f.name.toString, f.typeSignature)))
               q"new $tpe(...$ctorArgs)"
             } else {
               q"scala.concurrent.util.Unsafe.instance.allocateInstance(classOf[$tpe]).asInstanceOf[$tpe]"
@@ -178,7 +182,10 @@ trait PickleMacros extends Macro {
     val sym = tpe.typeSymbol.asClass
     val q"${_}($pickleeArg)" = c.prefix.tree
 
-    def createPickler(tpe: Type) = q"implicitly[Pickler[${tpe.erasure}]]"
+    def createPickler(tpe: Type) = q"""
+      $builder.hintTag(scala.reflect.runtime.universe.typeTag[$tpe])
+      implicitly[Pickler[$tpe]]
+    """
     def finalDispatch = {
       if (sym.isNotNull) createPickler(tpe)
       else q"if (picklee != null) ${createPickler(tpe)} else ${createPickler(NullTpe)}"
@@ -191,9 +198,6 @@ trait PickleMacros extends Macro {
       //TODO OPTIMIZE: do getClass.getClassLoader only once
       val runtimeDispatch = CaseDef(Ident(nme.WILDCARD), EmptyTree, q"Pickler.genPickler(getClass.getClassLoader, clazz)")
       // TODO: do we still want to use something like HasPicklerDispatch?
-      // NOTE: we dispatch on erasure, because that's the best we can have here anyways
-      // so, if we have C[T], then we generate a pickler for C[_] and let the pickler do the rest
-      // (e.g. to fetch the type tag for T as discussed yesterday and do the necessary dispatch)
       q"""
         val clazz = if (picklee != null) picklee.getClass else null
         ${Match(q"clazz", nullDispatch +: compileTimeDispatch :+ runtimeDispatch)}
@@ -236,29 +240,24 @@ trait UnpickleMacros extends Macro {
     val sym = tpe.typeSymbol.asClass
     val readerArg = c.prefix.tree
 
-    def createUnpickler(tpe: Type) = q"implicitly[Unpickler[${tpe.erasure}]]"
+    def createUnpickler(tpe: Type) = q"implicitly[Unpickler[$tpe]]"
     def finalDispatch = {
       if (sym.isNotNull) createUnpickler(tpe)
-      else q"if (tag != scala.pickling.`package`.fastTypeTag[Null]) ${createUnpickler(tpe)} else ${createUnpickler(NullTpe)}"
+      else q"if (tag != scala.reflect.runtime.universe.typeTag[Null]) ${createUnpickler(tpe)} else ${createUnpickler(NullTpe)}"
     }
     def nonFinalDispatch = {
-      def compileTimeDispatch(fast: Boolean) = compileTimeDispatchees(tpe) map (subtpe => {
+      val compileTimeDispatch = compileTimeDispatchees(tpe) map (subtpe => {
         // TODO: do we still want to use something like HasPicklerDispatch (for unpicklers it would be routed throw tpe's companion)?
-        // NOTE: we have a precise type at hand here, but we do dispatch on erasure
-        // why? because picklers are created generic, i.e. for C[T] we have a single pickler of type Pickler[C[_]]
-        // therefore here we dispatch on erasure and later on pass the precise type to `unpickle`
-        val rhs = q"scala.pickling.`package`.fastTypeTag[$subtpe]"
-        val check = if (fast) q"tag == $rhs" else q"tag.tpe.typeSymbol == $rhs.tpe.typeSymbol"
-        CaseDef(Bind(TermName("tag"), Ident(nme.WILDCARD)), check, createUnpickler(subtpe))
+        CaseDef(Literal(Constant(subtpe.key)), EmptyTree, createUnpickler(subtpe))
       })
       val runtimeDispatch = CaseDef(Ident(nme.WILDCARD), EmptyTree, q"Unpickler.genUnpickler(reader.mirror, tag)")
-      Match(q"tag", compileTimeDispatch(fast = true) ++ compileTimeDispatch(fast = false) :+ runtimeDispatch)
+      Match(q"tag.key", compileTimeDispatch :+ runtimeDispatch)
     }
     val dispatchLogic = if (sym.isEffectivelyFinal) finalDispatch else nonFinalDispatch
 
     q"""
       val reader = $readerArg
-      reader.hintTag(scala.pickling.`package`.fastTypeTag[$tpe])
+      reader.hintTag(scala.reflect.runtime.universe.typeTag[$tpe])
       ${if (sym.isEffectivelyFinal) (q"reader.hintStaticallyElidedType()": Tree) else q""}
       val tag = reader.beginEntry()
       val unpickler = $dispatchLogic
