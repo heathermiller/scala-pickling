@@ -246,14 +246,20 @@ trait UnpickleMacros extends Macro {
     def createUnpickler(tpe: Type) = q"implicitly[Unpickler[$tpe]]"
     def finalDispatch = {
       if (sym.isNotNull) createUnpickler(tpe)
-      else q"if (tag != scala.reflect.runtime.universe.typeTag[Null]) ${createUnpickler(tpe)} else ${createUnpickler(NullTpe)}"
+      else q"""
+        val tag = TypeTag(scala.pickling.typeFromString(scala.pickling.mirror, typeString), typeString)
+        if (tag != scala.reflect.runtime.universe.typeTag[Null]) ${createUnpickler(tpe)} else ${createUnpickler(NullTpe)}
+      """
     }
     def nonFinalDispatch = {
       val compileTimeDispatch = compileTimeDispatchees(tpe) map (subtpe => {
         // TODO: do we still want to use something like HasPicklerDispatch (for unpicklers it would be routed throw tpe's companion)?
         CaseDef(Literal(Constant(subtpe.key)), EmptyTree, createUnpickler(subtpe))
       })
-      val runtimeDispatch = CaseDef(Ident(nme.WILDCARD), EmptyTree, q"Unpickler.genUnpickler(reader.mirror, tag)")
+      val runtimeDispatch = CaseDef(Ident(nme.WILDCARD), EmptyTree, q"""
+        val tag = TypeTag(scala.pickling.typeFromString(scala.pickling.mirror, typeString), typeString)
+        Unpickler.genUnpickler(reader.mirror, tag)
+      """)
       Match(q"typeString", compileTimeDispatch :+ runtimeDispatch)
     }
     val dispatchLogic = if (sym.isEffectivelyFinal) finalDispatch else nonFinalDispatch
@@ -261,6 +267,7 @@ trait UnpickleMacros extends Macro {
     //val tag = reader.beginEntry() // before dispatch logic
 
     q"""
+      import reflect.runtime.universe._
       val reader = $readerArg
       reader.hintTag(scala.reflect.runtime.universe.typeTag[$tpe])
       ${if (sym.isEffectivelyFinal) (q"reader.hintStaticallyElidedType()": Tree) else q""}
