@@ -33,6 +33,7 @@ package binary {
       }
     }
 
+    // PERF: this creates a closure object and passes it to withHints
     def beginEntry(picklee: Any): this.type = withHints { hints =>
       mkByteBuffer(hints.knownSize)
 
@@ -40,27 +41,39 @@ package binary {
         pos = byteBuffer.encodeByteTo(pos, NULL_TAG)
       } else {
         def writeTpe() = {
-          val tpe = hints.tag.tpe
+          val tpe = hints.tag.tpe // PERF bottleneck
+          //println("writing tpe: " + tpe)
           val tpeBytes = formatType(tpe)
-          pos = byteBuffer.encodeIntTo(pos, tpeBytes.length)
+          //pos = byteBuffer.encodeIntTo(pos, tpeBytes.length)
+          byteBuffer.encodeIntAtEnd(pos, tpeBytes.length)
+          pos += 4
           pos = byteBuffer.copyTo(pos, tpeBytes)
         }
 
-        hints.tag.key match {
+        hints.tag.key match { // PERF: should store typestring once in hints.
           case KEY_NULL =>
             if (!hints.isElidedType) writeTpe()
             pos = byteBuffer.encodeByteTo(pos, NULL_TAG)
           case KEY_INT =>
-            if (!hints.isElidedType) writeTpe()
-            pos = byteBuffer.encodeIntTo(pos, picklee.asInstanceOf[Int])
+            // PERF: why would Int ever be not elided?
+            //if (!hints.isElidedType) writeTpe()
+            //byteBuffer.encodeIntTo(pos, picklee.asInstanceOf[Int])
+            //pos = pos + 4
+            byteBuffer.encodeIntAtEnd(pos, picklee.asInstanceOf[Int])
+            pos += 4
           case KEY_BOOLEAN =>
-            if (!hints.isElidedType) writeTpe()
+            // PERF: why would Boolean ever be not elided?
+            //if (!hints.isElidedType) writeTpe()
             pos = byteBuffer.encodeBooleanTo(pos, picklee.asInstanceOf[Boolean])
           case KEY_SCALA_STRING | KEY_JAVA_STRING =>
-            if (!hints.isElidedType) writeTpe()
+            // PERF: why would String ever be not elided?
+            //if (!hints.isElidedType) writeTpe()
             pos = byteBuffer.encodeStringTo(pos, picklee.asInstanceOf[String])
           case _ =>
-            if (!hints.isElidedType) writeTpe()
+            if (!hints.isElidedType) {
+              //println("!!!!!! calling writeTpe")
+              writeTpe()
+            }
             else pos = byteBuffer.encodeByteTo(pos, ELIDED_TAG)
         }
       }
@@ -76,8 +89,13 @@ package binary {
 
     def endEntry(): Unit = { /* do nothing */ }
 
+    var beginCollPos = 0
+
     def beginCollection(length: Int): this.type = {
-      pos = byteBuffer.encodeIntTo(pos, length)
+      beginCollPos = pos
+      //pos = byteBuffer.encodeIntTo(pos, length)
+      byteBuffer.encodeIntAtEnd(pos, 0)
+      pos += 4
       this
     }
 
@@ -86,7 +104,9 @@ package binary {
       this
     }
 
-    def endCollection(): Unit = { /* do nothing */ }
+    def endCollection(length: Int): Unit = {
+      byteBuffer.encodeIntTo(beginCollPos, length)
+    }
 
     def result() = {
       BinaryPickle(byteBuffer.toArray)
@@ -100,7 +120,41 @@ package binary {
     private var pos = 0
     private var lastTagRead: TypeTag[_] = null
 
+    def beginEntryNoTag(): String = withHints { hints =>
+        if (hints.tag.key == KEY_SCALA_STRING || hints.tag.key == KEY_JAVA_STRING) {
+          val (lookahead, newpos) = byteBuffer.decodeByteFrom(pos)
+          lookahead match {
+            case NULL_TAG =>
+              pos = newpos
+              "scala.Null"
+            case _ =>
+              hints.tag.key
+          }
+        } else if (hints.isElidedType && primitives.contains(hints.tag.key)) {
+          hints.tag.key
+        } else {
+          val (lookahead, newpos) = byteBuffer.decodeByteFrom(pos)
+          lookahead match {
+            case NULL_TAG =>
+              pos = newpos
+              "scala.Null"
+            case ELIDED_TAG =>
+              pos = newpos
+              hints.tag.key
+            case _ =>
+              //PERF
+              val (typeString, newpos) = byteBuffer.decodeStringFrom(pos)
+              pos = newpos
+              //println("fast yay")
+              typeString
+          }
+        }
+    }
+
+
     def beginEntry(): TypeTag[_] = withHints { hints =>
+      //println("JJJJJJJ")
+      //println("TAG: " + hints.tag)
       lastTagRead = {
         if (hints.tag.key == KEY_SCALA_STRING || hints.tag.key == KEY_JAVA_STRING) {
           val (lookahead, newpos) = byteBuffer.decodeByteFrom(pos)
@@ -123,9 +177,15 @@ package binary {
               pos = newpos
               hints.tag
             case _ =>
+              //PERF
+              //println("elided: " + hints.isElidedType)
               val (typeString, newpos) = byteBuffer.decodeStringFrom(pos)
               pos = newpos
-              TypeTag(typeFromString(mirror, typeString), typeString)
+              if (hints.isElidedType) hints.tag
+              else {
+                //println("DECODING TAG")
+                TypeTag(typeFromString(mirror, typeString), typeString)
+              }
           }
         }
       }

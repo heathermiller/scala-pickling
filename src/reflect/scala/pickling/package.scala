@@ -22,6 +22,28 @@ package object pickling {
     def isEffectivelyFinal = sym.asInstanceOf[scala.reflect.internal.Symbols#Symbol].isEffectivelyFinal
     def isNotNull = sym.asType.toType.asInstanceOf[scala.reflect.internal.Types#Type].isNotNull
   }
+
+  var mirror: reflect.runtime.universe.Mirror = null
+
+  // PERF: can we provide a fast version of typeFromString without generics?
+  def typeFromString(mirror: Mirror, stpe: String): Type = {
+    // PERF
+    val (ssym, stargs) = {
+      val Pattern = """^(.*?)(\[(.*?)\])?$""".r
+      def fail() = throw new PicklingException(s"fatal: cannot unpickle $stpe")
+      stpe match {
+        case Pattern("", _, _) => fail()
+        case Pattern(sym, _, null) => (sym, Nil)
+        case Pattern(sym, _, stargs) => (sym, stargs.split(",").map(_.trim).toList)
+        case _ => fail()
+      }
+    }
+
+    val sym = if (ssym.endsWith(".type")) mirror.staticModule(ssym.stripSuffix(".type")).moduleClass else mirror.staticClass(ssym)
+    val tycon = sym.asType.toTypeConstructor
+    appliedType(tycon, stargs.map(starg => typeFromString(mirror, starg)))
+  }
+
 }
 
 package pickling {
@@ -49,7 +71,7 @@ package pickling {
   @implicitNotFound(msg = "Cannot generate an unpickler for ${T}. Recompile with -Xlog-implicits for details")
   trait Unpickler[T] {
     val format: PickleFormat
-    def unpickle(tag: TypeTag[_], reader: PickleReader): Any
+    def unpickle(tag: => TypeTag[_], reader: PickleReader): Any
   }
 
   trait GenUnpicklers {
@@ -70,6 +92,7 @@ package pickling {
 
     type PickleFormatType <: PickleFormat
     def unpickle[T] = macro UnpickleMacros.pickleUnpickle[T]
+    //def unpickleStatic[T] = macro UnpickleMacros.pickleUnpickleStatic[T]
   }
 
   trait PickleFormat {
@@ -93,13 +116,15 @@ package pickling {
     def endEntry(): Unit
     def beginCollection(length: Int): this.type
     def putElement(pickler: this.type => Unit): this.type
-    def endCollection(): Unit
+    //def endCollection(): Unit
+    def endCollection(length: Int): Unit
     def result(): Pickle
   }
 
   trait PickleReader extends Hintable {
     def mirror: Mirror
     def beginEntry(): TypeTag[_]
+    def beginEntryNoTag(): String
     def atPrimitive: Boolean
     def readPrimitive(): Any
     def atObject: Boolean
@@ -110,6 +135,7 @@ package pickling {
     def readElement(): PickleReader
     def endCollection(): Unit
     def unpickle[T] = macro UnpickleMacros.readerUnpickle[T]
+    //def unpickleStatic[T] = macro UnpickleMacros.readerUnpickleStatic[T]
   }
 
   @Inherited

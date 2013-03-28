@@ -98,7 +98,7 @@ package json {
       pickler(this)
       this
     }
-    def endCollection(): Unit = {
+    def endCollection(l: Int): Unit = {
       appendLine()
       append("]")
       // unindent()
@@ -127,6 +127,7 @@ package json {
       }
       nested
     }
+    def beginEntryNoTag(): String = beginEntry().key
     def beginEntry(): TypeTag[_] = withHints { hints =>
       lastReadTag = {
         if (datum == null) typeTag[Null]

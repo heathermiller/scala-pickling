@@ -102,16 +102,32 @@ package binary {
       i + 1
     }
 
-    def readBytesFrom(arr: Array[Byte], i: Int, len: Int): Array[Byte] = {
-      val subarr = Array.ofDim[Byte](len)
-      Array.copy(arr, i, subarr, 0, len)
-      subarr
-    }
+    //def readBytesFrom(arr: Array[Byte], i: Int, len: Int): Array[Byte] = {
+    //  val subarr = Array.ofDim[Byte](len)
+    //  Array.copy(arr, i, subarr, 0, len)
+    //  subarr
+    //}
 
+    /* fast array allocation:
+     byte[] a1 = new byte[0];
+     long mem1 = unsafe.allocateMemory(1000000);
+     unsafe.putLong(a1, 12, mem);
+     unsafe.putInt(a1, 8, 1000000);
+     */
     def decodeStringFrom(arr: Array[Byte], i: Int): (String, Int) = {
       val (len, _) = decodeIntFrom(arr, i)
-      val bytes = Array.ofDim[Byte](len)
-      Array.copy(arr, i + 4, bytes, 0, len)
+      val bytes: Array[Byte] = Array.ofDim[Byte](len) // use Unsafe to allocate uninitialized array?
+      Array.copy(arr, i + 4, bytes, 0, len) // PERF
+      // def copy(src: Object, srcPos: Int, dest: Object, destPos: Int, length: Int)
+
+      var from = i + 4
+      var to   = 0
+      while (to < len) {
+        putByte(bytes, to, getByte(arr, from))
+        from += 1
+        to += 1
+      }
+
       (new String(bytes, "UTF-8"), i + 4 + len)
     }
 
@@ -166,6 +182,15 @@ package binary {
     def getInt(buffer: Array[Byte], pos: Int): Int = {
       unsafe.getInt(buffer, byteArrayOffset + pos)
     }
+
+    def putByte(buffer: Array[Byte], pos: Int, value: Byte): Unit = {
+      unsafe.putByte(buffer, byteArrayOffset + pos, value)
+    }
+
+    def getByte(buffer: Array[Byte], pos: Int): Byte = {
+      unsafe.getByte(buffer, byteArrayOffset + pos)
+    }
+
   }
 
 }

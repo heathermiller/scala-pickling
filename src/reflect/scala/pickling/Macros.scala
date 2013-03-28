@@ -150,7 +150,7 @@ trait UnpicklerMacros extends Macro {
             import scala.pickling.ir._
             import scala.reflect.runtime.universe._
             implicit val format = new ${format.tpe}()
-            def unpickle(tag: TypeTag[_], reader: PickleReader): Any = $unpickleLogic
+            def unpickle(tag: => TypeTag[_], reader: PickleReader): Any = $unpickleLogic
           }
         """
       }
@@ -170,6 +170,8 @@ trait PickleMacros extends Macro {
     q"""
       import scala.pickling._
       val picklee: $tpe = $pickleeArg
+      if (mirror == null)
+        mirror = scala.reflect.runtime.currentMirror
       val builder = $format.createBuilder()
       picklee.pickleInto(builder)
       builder.result()
@@ -229,10 +231,11 @@ trait UnpickleMacros extends Macro {
     q"""
       val pickle = $pickleArg
       val format = new ${pickleFormatType(pickleArg)}()
-      val reader = format.createReader(pickle, scala.reflect.runtime.currentMirror)
+      val reader = format.createReader(pickle, scala.pickling.mirror)
       reader.unpickle[$tpe]
     """
   }
+
   def readerUnpickle[T: c.WeakTypeTag]: c.Tree = {
     import c.universe._
     import definitions._
@@ -251,21 +254,24 @@ trait UnpickleMacros extends Macro {
         CaseDef(Literal(Constant(subtpe.key)), EmptyTree, createUnpickler(subtpe))
       })
       val runtimeDispatch = CaseDef(Ident(nme.WILDCARD), EmptyTree, q"Unpickler.genUnpickler(reader.mirror, tag)")
-      Match(q"tag.key", compileTimeDispatch :+ runtimeDispatch)
+      Match(q"typeString", compileTimeDispatch :+ runtimeDispatch)
     }
     val dispatchLogic = if (sym.isEffectivelyFinal) finalDispatch else nonFinalDispatch
+
+    //val tag = reader.beginEntry() // before dispatch logic
 
     q"""
       val reader = $readerArg
       reader.hintTag(scala.reflect.runtime.universe.typeTag[$tpe])
       ${if (sym.isEffectivelyFinal) (q"reader.hintStaticallyElidedType()": Tree) else q""}
-      val tag = reader.beginEntry()
+      val typeString = reader.beginEntryNoTag()
       val unpickler = $dispatchLogic
-      val result = unpickler.unpickle(tag, reader)
+      val result = unpickler.unpickle({ TypeTag(scala.pickling.typeFromString(scala.pickling.mirror, typeString), typeString) }, reader)
       reader.endEntry()
       result.asInstanceOf[$tpe]
     """
   }
+
 }
 
 trait PickleableMacro extends AnnotationMacro {
