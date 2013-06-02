@@ -240,4 +240,4 @@ At the time of writing this guide, the scala-pickling project has the following 
 
 - At this time, `Double`s are not supported by our **binary** pickle format. However, all other numerics (`Float`, `Int`, `Long`, etc) are. (Note that all primitives are supported by the JSON pickle format, however.)
 - At this time, pickling and unpickling the Scala `Unit` type is not supported.
-- As indicated in the "future work" section of the paper, pickling closures is not yet supported, as an arbitrary closure can capture arbitrarily anything in its environment. This is beyond the scope of the current paper, and has required a solution specialized to closures (this is work done in parallel, but separate from the paper submitted to OOPSLA).
+- As indicated in the "future work" section of the paper, pickling closures is not yet supported, as an arbitrary closure can capture arbitrarily anything in its environment. This is beyond the scope of the current paper, and has required a solution specialized to closures.
