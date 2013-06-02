@@ -7,9 +7,9 @@ object BuildSettings {
   val buildScalaVersion = "2.11.0-SNAPSHOT"
   val buildScalaOrganization = "org.scala-lang.macro-paradise"
 
-  val useLocalBuildOfParadise = false
+  val useLocalBuildOfParadise = true
   // path to a build of https://github.com/scalamacros/kepler/tree/paradise/macros
-  val localBuildOfParadise211 = Properties.envOrElse("MACRO_PARADISE211", "/Users/xeno_by/Projects/Paradise/build/pack")
+  val localBuildOfParadise211 = Properties.envOrElse("MACRO_PARADISE211", "/Users/phaller/git-research/scala-pickling/scala-local")
 
   val buildSettings = Defaults.defaultSettings ++ Seq(
     version := buildVersion,
