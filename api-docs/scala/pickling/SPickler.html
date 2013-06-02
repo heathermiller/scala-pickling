@@ -44,7 +44,13 @@
       </span>
       </h4>
       
-          <div id="comment" class="fullcommenttop"><dl class="attributes block"> <dt>Annotations</dt><dd>
+          <div id="comment" class="fullcommenttop"><div class="comment cmt"><p>A static pickler for type <code>T</code>. Its <code>pickle</code> method takes an object-to-be-pickled of
+ static type <code>T</code>, and pickles it to an instance of <code>PBuilder</code>. In the process the object
+ is turned into some external representation like a byte array. The particular external
+ representation (the &quot;pickle format&quot;) is defined by the <code>format</code> val member (of type
+ <code>PickleFormat</code>).</p><p> This pickler requires that the dynamic type of the object-to-be-pickled is equal to
+ the erasure of its static type <code>T</code>.
+</p></div><dl class="attributes block"> <dt>Annotations</dt><dd>
                 <span class="name">@implicitNotFound</span><span class="args">(<span>
       
       <span class="defval" name="&quot;Cannot generate a pickler for ${T}. Recompile with -Xlog-implicits for details&quot;">...</span>
@@ -53,7 +59,10 @@
         </dd></dl><div class="toggleContainer block">
           <span class="toggle">Linear Supertypes</span>
           <div class="superTypes hiddenContent"><a href="../package.html#AnyRef=Object" class="extmbr" name="scala.AnyRef">AnyRef</a>, <span class="extype" name="scala.Any">Any</span></div>
-        </div></div>
+        </div><div class="toggleContainer block">
+            <span class="toggle">Known Subclasses</span>
+            <div class="subClasses hiddenContent"><a href="CorePicklersUnpicklers$PrimitivePicklerUnpickler.html" class="extype" name="scala.pickling.CorePicklersUnpicklers.PrimitivePicklerUnpickler">PrimitivePicklerUnpickler</a></div>
+          </div></div>
         
 
       <div id="mbrsel">

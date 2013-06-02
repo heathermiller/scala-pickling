@@ -44,7 +44,11 @@
       </span>
       </h4>
       
-          <div id="comment" class="fullcommenttop"><dl class="attributes block"> <dt>Annotations</dt><dd>
+          <div id="comment" class="fullcommenttop"><div class="comment cmt"><p>This annotation enables library authors to guarantee to their clients that
+ picklers for separately-compiled subclasses are fully generated at compile-time.</p><p> This annotation adds a method that returns a pickler specialized for the runtime
+ class of the annotated type. Note that the annotation is expanded in each subclass,
+ transitively.
+</p></div><dl class="attributes block"> <dt>Annotations</dt><dd>
                 <span class="name">@Inherited</span><span class="args">()</span>
               
         </dd></dl><div class="toggleContainer block">

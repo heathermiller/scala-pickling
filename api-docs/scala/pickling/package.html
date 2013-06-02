@@ -138,7 +138,7 @@
       </span>
       </h4>
       
-    </li><li name="scala.pickling.DPickler" visbl="pub" data-isabs="true" fullComment="yes" group="Ungrouped">
+    </li><li name="scala.pickling.DPickler" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
       <a id="DPickler[T]extendsAnyRef"></a>
       <a id="DPickler[T]:DPickler[T]"></a>
       <h4 class="signature">
@@ -150,13 +150,7 @@
         <a href="DPickler.html"><span class="name">DPickler</span></a><span class="tparams">[<span name="T">T</span>]</span><span class="result"> extends <a href="../package.html#AnyRef=Object" class="extmbr" name="scala.AnyRef">AnyRef</a></span>
       </span>
       </h4>
-      <div class="fullcomment"><dl class="attributes block"> <dt>Annotations</dt><dd>
-                <span class="name">@implicitNotFound</span><span class="args">(<span>
-      
-      <span class="defval" name="&quot;Cannot generate a DPickler for ${T}. Recompile with -Xlog-implicits for details&quot;">...</span>
-    </span>)</span>
-              
-        </dd></dl></div>
+      <p class="comment cmt">A dynamic pickler for type <code>T</code>.</p>
     </li><li name="scala.pickling.FastTypeTag" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
       <a id="FastTypeTag[T]extendsEquals"></a>
       <a id="FastTypeTag[T]:FastTypeTag[T]"></a>
@@ -313,6 +307,19 @@
       </span>
       </h4>
       
+    </li><li name="scala.pickling.PReader" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
+      <a id="PReaderextendsHintable"></a>
+      <a id="PReader:PReader"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">trait</span>
+      </span>
+      <span class="symbol">
+        <a href="PReader.html"><span class="name">PReader</span></a><span class="result"> extends <a href="Hintable.html" class="extype" name="scala.pickling.Hintable">Hintable</a></span>
+      </span>
+      </h4>
+      
     </li><li name="scala.pickling.Pickle" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
       <a id="PickleextendsAnyRef"></a>
       <a id="Pickle:Pickle"></a>
@@ -362,19 +369,6 @@
       </span>
       <span class="symbol">
         <a href="package$$PickleOps.html"><span class="name">PickleOps</span></a><span class="tparams">[<span name="T">T</span>]</span><span class="result"> extends <a href="../package.html#AnyRef=Object" class="extmbr" name="scala.AnyRef">AnyRef</a></span>
-      </span>
-      </h4>
-      
-    </li><li name="scala.pickling.PickleReader" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
-      <a id="PickleReaderextendsHintable"></a>
-      <a id="PickleReader:PickleReader"></a>
-      <h4 class="signature">
-      <span class="modifier_kind">
-        <span class="modifier"></span>
-        <span class="kind">trait</span>
-      </span>
-      <span class="symbol">
-        <a href="PickleReader.html"><span class="name">PickleReader</span></a><span class="result"> extends <a href="Hintable.html" class="extype" name="scala.pickling.Hintable">Hintable</a></span>
       </span>
       </h4>
       
@@ -495,7 +489,7 @@
       </span>
       </h4>
       
-    </li><li name="scala.pickling.SPickler" visbl="pub" data-isabs="true" fullComment="yes" group="Ungrouped">
+    </li><li name="scala.pickling.SPickler" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
       <a id="SPickler[T]extendsAnyRef"></a>
       <a id="SPickler[T]:SPickler[T]"></a>
       <h4 class="signature">
@@ -507,13 +501,7 @@
         <a href="SPickler.html"><span class="name">SPickler</span></a><span class="tparams">[<span name="T">T</span>]</span><span class="result"> extends <a href="../package.html#AnyRef=Object" class="extmbr" name="scala.AnyRef">AnyRef</a></span>
       </span>
       </h4>
-      <div class="fullcomment"><dl class="attributes block"> <dt>Annotations</dt><dd>
-                <span class="name">@implicitNotFound</span><span class="args">(<span>
-      
-      <span class="defval" name="&quot;Cannot generate a pickler for ${T}. Recompile with -Xlog-implicits for details&quot;">...</span>
-    </span>)</span>
-              
-        </dd></dl></div>
+      <p class="comment cmt">A static pickler for type <code>T</code>.</p>
     </li><li name="scala.pickling.Tools" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
       <a id="Tools[C&lt;:scala.reflect.macros.Context]extendsAnyRef"></a>
       <a id="Tools[C&lt;:Context]:Tools[C]"></a>
@@ -585,7 +573,7 @@
       </span>
       </h4>
       
-    </li><li name="scala.pickling.pickleable" visbl="pub" data-isabs="false" fullComment="yes" group="Ungrouped">
+    </li><li name="scala.pickling.pickleable" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
       <a id="pickleableextendsAnnotationwithMacroAnnotation"></a>
       <a id="pickleable:pickleable"></a>
       <h4 class="signature">
@@ -597,10 +585,8 @@
         <a href="pickleable.html"><span class="name">pickleable</span></a><span class="result"> extends <span class="extype" name="scala.annotation.Annotation">Annotation</span> with <span class="extype" name="scala.annotation.MacroAnnotation">MacroAnnotation</span></span>
       </span>
       </h4>
-      <div class="fullcomment"><dl class="attributes block"> <dt>Annotations</dt><dd>
-                <span class="name">@Inherited</span><span class="args">()</span>
-              
-        </dd></dl></div>
+      <p class="comment cmt">This annotation enables library authors to guarantee to their clients that
+ picklers for separately-compiled subclasses are fully generated at compile-time.</p>
     </li></ol>
             </div>
 
