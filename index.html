@@ -25,7 +25,9 @@ html,body{color:black}*:not('#mkdbuttons'){margin:0;padding:0}#wrapper{font:13.3
 
 <p><em>Authors: Heather Miller, Philipp Haller, Eugene Burmako, Martin Oderksy</em></p>
 
-<p>Scala pickling is&#8230;</p>
+<p>Our paper presented (a) a model of &#8220;object-oriented picklers&#8221; and (b) a framework for generating them. This guide describes how to get started with (b), the framework for generating the object-oriented pickler combinators.</p>
+
+<p>Scala-pickling aims to be very easy to use and to require little to no boilerplate at all. The basic usage is:</p>
 
 <h2 id="gettingstartedguide">Getting Started Guide</h2>
 
@@ -43,7 +45,7 @@ html,body{color:black}*:not('#mkdbuttons'){margin:0;padding:0}#wrapper{font:13.3
 
 <p>Our test suite can be run using SBT (a Scala build tool). SBT is included in this distribution (at <code>bin/sbt</code>). To start SBT simply do:</p>
 
-<pre><code>./bin/sbt
+<pre><code>bin/sbt
 </code></pre>
 
 <p>SBT will then print the status of fetching its (locally-included) dependencies. After that, you&#8217;ll see a <code>&gt;</code> prompt.</p>
@@ -55,6 +57,24 @@ html,body{color:black}*:not('#mkdbuttons'){margin:0;padding:0}#wrapper{font:13.3
 
 <p>SBT will compile scala-pickling as well as all of the test files, and will print output representing the status (pass/fail) all of its tests.</p>
 
+<h6 id="startingtherepl">Starting the REPL</h6>
+
+<p>One can also interact with scala-pickling from SBT by simply starting the REPL. Once SBT is started (as per the instructions in the section above), simply do:</p>
+
+<pre><code>&gt; console
+</code></pre>
+
+<p>SBT will then compile scala-pickling and start the REPL. After compilation, you should see the following prompt:</p>
+
+<pre><code>[info] Starting scala interpreter...
+[info]
+Welcome to Scala version 2.11.0-20130521-221431-39227d0382 (Java HotSpot(TM) 64-Bit Server VM, Java 1.6.0_43).
+Type in expressions to have them evaluated.
+Type :help for more information.
+
+scala&gt;
+</code></pre>
+
 <h3 id="ourbenchmarkscripts">#2 Our Benchmark Scripts</h3>
 
 <h3 id="scala-picklingsscalac">#3 Scala-pickling&#8217;s <code>scalac</code></h3>
@@ -65,9 +85,21 @@ html,body{color:black}*:not('#mkdbuttons'){margin:0;padding:0}#wrapper{font:13.3
 
 <ol>
 <li><strong>Our Test Suite</strong>, tweak existing tests or add new tests to the &gt;90 tests in our test suite.</li>
-<li><strong>Our Benchmark Scripts</strong>, reproduce our benchmark results locally on your architecture.</li>
 <li><strong>scala-pickling&#8217;s bootstrapped <code>scalac</code></strong>, write your own independent Scala programs and run them with the scala-pickling build of <code>scalac</code> (this is optional)</li>
 </ol>
+
+<p>(We also provide the scripts to reproduce the benchmarks in our paper. You may change those and re-run them if you&#8217;d like as well.)</p>
+
+<p>We provide suggestions below for</p>
+
+<h2 id="knownlimitations">Known Limitations</h2>
+
+<p>At the time of writing this guide, the scala-pickling project has the following known limitations:</p>
+
+<ul>
+<li>At this time, <code>Double</code>s are not supported by our <strong>binary</strong> pickle format. However, all other numerics (<code>Float</code>, <code>Int</code>, <code>Long</code>, etc) are. (Note that all primitives are supported by the JSON pickle format, however.)</li>
+<li>It is possible to switch between runtime compilation and runtime interpretation (as the runtime fallback mechanism). Although at present, the switch is manual- to toggle between the two, one must change line XXX in source file <a href=""></a>.</li>
+</ul>
     </div>
 </body>
 </html>
