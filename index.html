@@ -21,7 +21,7 @@ html,body{color:black}*:not('#mkdbuttons'){margin:0;padding:0}#wrapper{font:13.3
 </head>
 <body class="normal">
   <div id="wrapper">
-      <h2 id="artifactreview:paper182object-orientedpicklers">Artifact Review: Paper 182, Object-Oriented Picklers</h2>
+      <h1 id="artifactreview:paper182object-orientedpicklers">Artifact Review: Paper 182, Object-Oriented Picklers</h1>
 
 <p><em>Authors: Heather Miller, Philipp Haller, Eugene Burmako, Martin Oderksy</em></p>
 
@@ -45,7 +45,7 @@ val pckl = List(1, 2, 3, 4).pickle
 <p>With the exception of Java 1.6, this archive contains all that you will need to experiment with the scala-pickling project. To experiment with the scala-pickling project, you have a few choices:</p>
 
 <ol>
-<li><strong>Our Test Suite</strong>, tweak existing tests or add new tests to the &gt;90 tests in our test suite.</li>
+<li><strong>Our Test Suite</strong>, run (or tweak) the &gt;90 tests in our test suite.</li>
 <li><strong>Our Benchmark Scripts</strong>, reproduce our benchmark results locally on your architecture.</li>
 <li><strong>Scala-pickling&#8217;s bootstrapped <code>scalac</code></strong>, write your own independent Scala programs and run them with the scala-pickling build of <code>scalac</code> (this is optional)</li>
 </ol>
@@ -56,7 +56,12 @@ val pckl = List(1, 2, 3, 4).pickle
 
 <h3 id="startingsbt">Starting SBT</h3>
 
-<p>Our test suite can be run using SBT (a Scala build tool). SBT is included in this distribution (at <code>bin/sbt</code>). To start SBT simply do:</p>
+<p>Our test suite can be run using SBT (a Scala build tool). SBT is
+included in this distribution (at <code>bin/sbt</code>). Before running SBT it is
+necessary to adjust the absolute directory path of the local Scala
+build in file <a href="project/Build.scala">project/Build.scala</a>. Adjust the path on line 12 to
+match the directory into which you unpacked the archive. Then, to
+start SBT simply do:</p>
 
 <pre><code>bin/sbt
 </code></pre>
@@ -97,7 +102,13 @@ scala&gt;
 <pre><code>&gt; travInt
 </code></pre>
 
-<p>This shows the results of scala-pickling for the benchmark described in section 7 (Experimental Evaluation) of the paper. This this is only the time benchmark (Figure 1a), not the memory or size benchmarks shown in Figure 1b or 1c.</p>
+<p>This shows the results of scala-pickling for the benchmark described in section 7 (Experimental Evaluation) of the paper. This is only the &#8220;time&#8221; benchmark (Figure 1a), not the memory or size benchmarks shown in Figure 1b or 1c. The values printed to the screen are milliseconds.</p>
+
+<p><em>Note that SBT will set the following flags for you (as we have done for our benchmarks, as described in section 7 of the paper):</em> <code>-Xms1536M - Xmx4096M -Xss2M -XX:MaxPermSize=512M -XX:+UseParallelGC</code></p>
+
+<p>We also include two additional benchmarks not shown in the paper, but published on our project page: <a href="http://lampwww.epfl.ch/~hmiller/pickling/benchmarks/">Scala Pickling: Benchmarks</a> (We do have google analytics on our project website, but the project is public and linked to on github and other sites.)</p>
+
+<p>To run the</p>
 
 <h3 id="scala-picklingsscalac">#3 Scala-pickling&#8217;s <code>scalac</code></h3>
 
