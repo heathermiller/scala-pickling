@@ -12,8 +12,7 @@ object BuildSettings {
   val localBuildOfParadise211 = Properties.envOrElse("MACRO_PARADISE211", "/Users/phaller/git-research/scala-pickling/scala-local")
 
   val buildSettings = Defaults.defaultSettings ++ Seq(
-    version := buildVersion,
-    retrieveManaged in ThisBuild := true
+    version := buildVersion
   ) ++ (if (useLocalBuildOfParadise) Seq(
     scalaVersion := "2.11.0-local",
     autoScalaLibrary := false,
@@ -60,9 +59,6 @@ object MyBuild extends Build {
       libraryDependencies <+= (scalaVersion)(buildScalaOrganization % "scala-compiler" % _)
     )) ++ Seq(
       scalacOptions ++= Seq("-optimise"),
-      libraryDependencies += "org.scala-lang" % "scala-library" % "2.11.0-M3",
-      libraryDependencies += "org.scalatest" % "scalatest_2.11.0-M3" % "1.9.1" % "test",
-      libraryDependencies += "org.scalacheck" % "scalacheck_2.11.0-M3" % "1.10.1" % "test",
       conflictWarning in ThisBuild := ConflictWarning.disable,
       parallelExecution in Test := false, // hello, reflection sync!!
       run <<= run in Compile in sandbox, // http://www.scala-sbt.org/release/docs/Detailed-Topics/Tasks
