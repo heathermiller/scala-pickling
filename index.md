@@ -7,6 +7,7 @@ Scala-pickling aims to be very easy to use and to require little to no boilerpla
 
     import scala.pickling._
     import json._
+    // or import binary._ to pickle to binary format instead
 
     val pckl = List(1, 2, 3, 4).pickle
 
@@ -20,7 +21,7 @@ This guide assumes you have Java 1.6 on your path. Other than that, this archive
 
 1. **Our Test Suite**, run (or tweak) the >90 tests in our test suite.
 2. **Our Benchmark Scripts**, reproduce our benchmark results locally on your architecture.
-3. **Use Scala-Pickling with the Standalone Scala Compiler**, write your own independent Scala programs and run them with scala-pickling (this is optional)
+3. **Use Scala-Pickling with the Standalone Scala Compiler**, write your own independent Scala programs and run them with scala-pickling **\[this is optional\]**
 
 Below, we show how to get started with each of the thee possibilities above.
 
@@ -85,19 +86,28 @@ SBT will compile scala-pickling as well as all of the test files, and will print
 
 ### #2 Our Benchmarks
 
-To run the benchmark shown in the paper, once SBT is started, simply do:
+To run the benchmarks shown in the paper, once SBT is started, simply do:
 
     > travInt
 
-This shows the results of scala-pickling for the benchmark described in section 7 (Experimental Evaluation) of the paper. This is only the "time" benchmark (Figure 1a), not the memory or size benchmarks shown in Figure 1b or 1c. The values printed to the screen are milliseconds.
+This shows the results of scala-pickling for the main benchmark described in section 7 (Experimental Evaluation) of the paper. This is only the "time" benchmark (Figure 1a), not the memory or size benchmarks shown in Figure 1b or 1c.
 
-_Note that SBT will set the following flags for you (as we have done for our benchmarks, as described in section 7 of the paper):_ `-Xms1536M - Xmx4096M -Xss2M -XX:MaxPermSize=512M -XX:+UseParallelGC`
+The values printed to the screen are milliseconds. Each row represents independent JVM runs for values on the x-axis of the graph; for `travInt`, this means each row represents a different length of the `Vector` as described in the paper (from 100,000 to 1,000,000, from top to bottom). Each column corresponds to a separate run of the benchmark.
+
+The other two benchmarks, shown in Figure 1b (free memory), and Figure 1c (size) can be run from SBT using the following commands, respectively:
+
+    > travIntFreeMem
+    > travIntSize
+
+The values on the x-axis for `travIntFreeMem` and `travIntSize` are both in Bytes.
+
+_Note that SBT will set the following flags for you (as we have done for our benchmarks, and have described in section 7 of the paper):_ `-Xms1536M - Xmx4096M -Xss2M -XX:MaxPermSize=512M -XX:+UseParallelGC`
 
 We also include two additional benchmarks not shown in the paper, but published on our project page: [Scala Pickling: Benchmarks](http://lampwww.epfl.ch/~hmiller/pickling/benchmarks/) (We do have google analytics on our project website, but the project is public and linked to on github and other sites.)
 
 To run the
 
-### #3 Using Scala-Pickling with the Standalone Scala Compiler [Optional]
+### #3 Using Scala-Pickling with the Standalone Scala Compiler \[Optional\]
 
 Also included in this archive is a standalone version of the Scala compiler which can be used with scala-pickling. It is located at `scala-local/bin/scalac`. We provide this option for those who would like to avoid the use of build tools.
 
