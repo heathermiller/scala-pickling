@@ -113,6 +113,32 @@ To run the tests, once SBT is started, simply do:
 SBT will compile scala-pickling as well as all of the test files, and will
 print output representing the status (pass/fail) all of its tests.
 
+#### Tests
+
+In this section, we describe the different types of tests in our test suite.
+There are two types of tests:
+
+- Unit Tests
+- ScalaCheck Tests
+
+Both types of tests are located in the directory:
+[core/src/test/scala/pickling](core/src/test/scala/pickling).
+
+**Unit Tests** typically do some task, and then assert that a result is a
+certain value. A simple example of one of our unit tests is:
+[core/src/test/scala/pickling/simple-case-class.scala](core/src/test/scala/pickling/simple-case-class.scala).
+
+Note that nearly all files in the testing directory
+([core/src/test/scala/pickling](core/src/test/scala/pickling))
+are unit tests.
+
+**ScalaCheck Tests** generate random inputs for a specified test, and  runs
+the test 100 times with 100 different inputs.
+
+Our ScalaCheck Tests for JSON and binary formats are both in the same file:
+[core/src/test/scala/pickling/pickling-spec.scala](core/src/test/scala/pickling/pickling-spec.scala).
+JSON and binary tests exist in the `PicklingBinarySpec` and `PicklingJsonSpec`
+singleton objects, respectively.
 
 ### #2 Our Benchmarks
 
@@ -200,17 +226,6 @@ suggestions:
 We provide suggestions below for
 
 ### #1 Adding/Tweaking Tests in the Test Suite
-
-There are two types of tests.
-
-- Unit Tests
-- ScalaCheck Tests
-
-Unit Tests typically . For each ScalaCheck test, .
-
-Both types of tests are located in the directory: [core/src/test/scala/pickling](core/src/test/scala/pickling).
-
-ScalaCheck Tests for JSON and binary formats are in the file: [core/src/test/scala/pickling/pickling-spec.scala](core/src/test/scala/pickling/pickling-spec.scala).
 
 
 ## Known Limitations

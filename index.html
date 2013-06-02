@@ -146,6 +146,35 @@ res0: String = hi there!
 <p>SBT will compile scala-pickling as well as all of the test files, and will
 print output representing the status (pass/fail) all of its tests.</p>
 
+<h4 id="tests">Tests</h4>
+
+<p>In this section, we describe the different types of tests in our test suite.
+There are two types of tests:</p>
+
+<ul>
+<li>Unit Tests</li>
+<li>ScalaCheck Tests</li>
+</ul>
+
+<p>Both types of tests are located in the directory:
+<a href="core/src/test/scala/pickling">core/src/test/scala/pickling</a>.</p>
+
+<p><strong>Unit Tests</strong> typically do some task, and then assert that a result is a
+certain value. A simple example of one of our unit tests is:
+<a href="core/src/test/scala/pickling/simple-case-class.scala">core/src/test/scala/pickling/simple-case-class.scala</a>.</p>
+
+<p>Note that nearly all files in the testing directory
+(<a href="core/src/test/scala/pickling">core/src/test/scala/pickling</a>)
+are unit tests.</p>
+
+<p><strong>ScalaCheck Tests</strong> generate random inputs for a specified test, and runs
+the test 100 times with 100 different inputs.</p>
+
+<p>Our ScalaCheck Tests for JSON and binary formats are both in the same file:
+<a href="core/src/test/scala/pickling/pickling-spec.scala">core/src/test/scala/pickling/pickling-spec.scala</a>.
+JSON and binary tests exist in the <code>PicklingBinarySpec</code> and <code>PicklingJsonSpec</code>
+singleton objects, respectively.</p>
+
 <h3 id="ourbenchmarks">#2 Our Benchmarks</h3>
 
 <p>To run the benchmarks shown in the paper, once SBT is started, simply do:</p>
@@ -239,19 +268,6 @@ suggestions:</p>
 <p>We provide suggestions below for</p>
 
 <h3 id="addingtweakingtestsinthetestsuite">#1 Adding/Tweaking Tests in the Test Suite</h3>
-
-<p>There are two types of tests.</p>
-
-<ul>
-<li>Unit Tests</li>
-<li>ScalaCheck Tests</li>
-</ul>
-
-<p>Unit Tests typically . For each ScalaCheck test, .</p>
-
-<p>Both types of tests are located in the directory: <a href="core/src/test/scala/pickling">core/src/test/scala/pickling</a>.</p>
-
-<p>ScalaCheck Tests for JSON and binary formats are in the file: <a href="core/src/test/scala/pickling/pickling-spec.scala">core/src/test/scala/pickling/pickling-spec.scala</a>.</p>
 
 <h2 id="knownlimitations">Known Limitations</h2>
 
