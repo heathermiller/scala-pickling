@@ -45,7 +45,10 @@ object EvactorBench extends scala.testing.PicklingBenchmark {
     val pickles = for (evt <- evts) yield
       evt.pickle
 
-    val results = for (pickle <- pickles) yield
-      pickle.unpickle[DataEvent]
+    var i = 0
+    while (i < size) {
+      pickles(i).unpickle[DataEvent]
+      i += 1
+    }
   }
 }
