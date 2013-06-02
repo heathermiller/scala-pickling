@@ -23,7 +23,7 @@ html,body{color:black}*:not('#mkdbuttons'){margin:0;padding:0}#wrapper{font:13.3
   <div id="wrapper">
       <h1 id="artifactreview:paper182object-orientedpicklers">Artifact Review: Paper 182, Object-Oriented Picklers</h1>
 
-<p><em>Authors: Heather Miller, Philipp Haller, Eugene Burmako, Martin Oderksy</em></p>
+<p><em>Authors: Heather Miller, Philipp Haller, Eugene Burmako, Martin Odersky</em></p>
 
 <p>Our paper presented (a) a model of &#8220;object-oriented picklers&#8221; and (b) a framework for generating them. This guide describes how to get started with (b), the framework for generating the object-oriented pickler combinators.</p>
 
@@ -42,12 +42,12 @@ val pckl = List(1, 2, 3, 4).pickle
 
 <h2 id="gettingstartedguide">Getting Started Guide</h2>
 
-<p>With the exception of Java 1.6, this archive contains all that you will need to experiment with the scala-pickling project. To experiment with the scala-pickling project, you have a few choices:</p>
+<p>This guide assumes you have Java 1.6 on your path. Other than that, this archive contains all that you will need to experiment with the scala-pickling project. To experiment, you have a few ways to interact with scala-pickling:</p>
 
 <ol>
 <li><strong>Our Test Suite</strong>, run (or tweak) the &gt;90 tests in our test suite.</li>
 <li><strong>Our Benchmark Scripts</strong>, reproduce our benchmark results locally on your architecture.</li>
-<li><strong>Use Scala-Pickling with the Standalone Scala Compiler</strong>, write your own independent Scala programs and run them with the scala-pickling build of <code>scalac</code> (this is optional)</li>
+<li><strong>Use Scala-Pickling with the Standalone Scala Compiler</strong>, write your own independent Scala programs and run them with scala-pickling (this is optional)</li>
 </ol>
 
 <p>Below, we show how to get started with each of the thee possibilities above.</p>
@@ -84,6 +84,25 @@ Type in expressions to have them evaluated.
 Type :help for more information.
 
 scala&gt;
+</code></pre>
+
+<p>Example usage:</p>
+
+<pre><code>scala&gt; import scala.pickling._
+import scala.pickling._
+
+scala&gt; import json._
+import json._
+
+scala&gt; val p = &quot;hi there!&quot;.pickle
+p: scala.pickling.json.JSONPickle =
+JSONPickle({
+  &quot;tpe&quot;: &quot;java.lang.String&quot;,
+  &quot;value&quot;: &quot;hi there!&quot;
+})
+
+scala&gt; p.unpickle[String]
+res0: String = hi there!
 </code></pre>
 
 <h3 id="ourtestsuite">#1 Our Test Suite</h3>

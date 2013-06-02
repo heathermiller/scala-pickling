@@ -1,5 +1,5 @@
 # Artifact Review: Paper 182, Object-Oriented Picklers
-_Authors: Heather Miller, Philipp Haller, Eugene Burmako, Martin Oderksy_
+_Authors: Heather Miller, Philipp Haller, Eugene Burmako, Martin Odersky_
 
 Our paper presented (a) a model of "object-oriented picklers" and (b) a framework for generating them. This guide describes how to get started with (b), the framework for generating the object-oriented pickler combinators.
 
@@ -16,11 +16,11 @@ Unpickling is just as simple, its basic usage is:
 
 ## Getting Started Guide
 
-With the exception of Java 1.6, this archive contains all that you will need to experiment with the scala-pickling project. To experiment with the scala-pickling project, you have a few choices:
+This guide assumes you have Java 1.6 on your path. Other than that, this archive contains all that you will need to experiment with the scala-pickling project. To experiment, you have a few ways to interact with scala-pickling:
 
 1. **Our Test Suite**, run (or tweak) the >90 tests in our test suite.
 2. **Our Benchmark Scripts**, reproduce our benchmark results locally on your architecture.
-3. **Use Scala-Pickling with the Standalone Scala Compiler**, write your own independent Scala programs and run them with the scala-pickling build of `scalac` (this is optional)
+3. **Use Scala-Pickling with the Standalone Scala Compiler**, write your own independent Scala programs and run them with scala-pickling (this is optional)
 
 Below, we show how to get started with each of the thee possibilities above.
 
@@ -54,6 +54,24 @@ SBT will then compile scala-pickling and start the REPL. After compilation, you 
     Type :help for more information.
 
     scala>
+
+Example usage:
+
+    scala> import scala.pickling._
+    import scala.pickling._
+
+    scala> import json._
+    import json._
+
+    scala> val p = "hi there!".pickle
+    p: scala.pickling.json.JSONPickle =
+    JSONPickle({
+      "tpe": "java.lang.String",
+      "value": "hi there!"
+    })
+
+    scala> p.unpickle[String]
+    res0: String = hi there!
 
 
 ### #1 Our Test Suite
