@@ -30,24 +30,19 @@ object MyBuild extends Build {
   import BuildSettings._
 
   // http://www.scala-sbt.org/release/docs/Extending/Input-Tasks
-  def benchTask(benchClass: String) = inputTask((args: TaskKey[Seq[String]]) =>
+  def benchTask(benchClass: String, config: Traversable[Int]) = inputTask((args: TaskKey[Seq[String]]) =>
     (dependencyClasspath in Runtime in benchmark) map { (wrappedProjectCP) => {
-      val start = 100000
-      val finish = 1000000
-      val increment = 100000
-      val numRuns = 10
-
       val projectCP = wrappedProjectCP.map(_.data).mkString(java.io.File.pathSeparatorChar.toString)
       val toolCP = projectCP // TODO: segregate compiler jars from the rest of dependencies
       val libraryCP = projectCP
 
-      for (len <- (start to finish by increment)) {
+      for (len <- config) {
         import scala.sys.process._
         var shellCommand = Seq(
           "java", "-Dsize=" + len, "-cp", toolCP,
           "-Xms1536M", "-Xmx4096M", "-Xss2M", "-XX:MaxPermSize=512M", "-XX:+UseParallelGC",
           "scala.tools.nsc.MainGenericRunner", "-cp", libraryCP,
-          benchClass, numRuns.toString)
+          benchClass, "10")
         // println(shellCommand)
         shellCommand.!
       }
@@ -67,8 +62,11 @@ object MyBuild extends Build {
       parallelExecution in Test := false, // hello, reflection sync!!
       run <<= run in Compile in sandbox, // http://www.scala-sbt.org/release/docs/Detailed-Topics/Tasks
       InputKey[Unit]("travInt") <<= InputKey[Unit]("travInt") in Compile in benchmark,
-      InputKey[Unit]("geoTrellis") <<= InputKey[Unit]("geoTrellis") in Compile in benchmark
-      // ,InputKey[Unit]("evactor") <<= InputKey[Unit]("evactor") in Compile in benchmark
+      InputKey[Unit]("travIntFreeMem") <<= InputKey[Unit]("travIntFreeMem") in Compile in benchmark,
+      InputKey[Unit]("travIntSize") <<= InputKey[Unit]("travIntSize") in Compile in benchmark,
+      InputKey[Unit]("geoTrellis") <<= InputKey[Unit]("geoTrellis") in Compile in benchmark,
+      InputKey[Unit]("evactor1") <<= InputKey[Unit]("evactor1") in Compile in benchmark,
+      InputKey[Unit]("evactor2") <<= InputKey[Unit]("evactor2") in Compile in benchmark
     )
   )
 
@@ -92,9 +90,12 @@ object MyBuild extends Build {
     settings = buildSettings ++ Seq(
       sourceDirectory in Compile <<= baseDirectory(root => root),
       sourceDirectory in Test <<= baseDirectory(root => root),
-      InputKey[Unit]("travInt") <<= benchTask("TraversableIntBench"),
-      InputKey[Unit]("geoTrellis") <<= benchTask("GeoTrellisBench")
-      // ,InputKey[Unit]("evactor") <<= benchTask("EvactorBench")
+      InputKey[Unit]("travInt") <<= benchTask("TraversableIntBench", 100000 to 1000000 by 100000),
+      InputKey[Unit]("travIntFreeMem") <<= benchTask("TraversableIntBenchFreeMem", 100000 to 1000000 by 100000),
+      InputKey[Unit]("travIntSize") <<= benchTask("TraversableIntBenchSize", 100000 to 1000000 by 100000),
+      InputKey[Unit]("geoTrellis") <<= benchTask("GeoTrellisBench", 100000 to 1000000 by 100000),
+      InputKey[Unit]("evactor1") <<= benchTask("EvactorBench", 1000 to 10000 by 1000),
+      InputKey[Unit]("evactor2") <<= benchTask("EvactorBench", 20000 to 40000 by 2000)
     )
   ) dependsOn(core)
 }
