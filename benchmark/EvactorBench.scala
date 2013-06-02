@@ -3,12 +3,39 @@ import binary._
 
 import org.evactor.model.events.DataEvent
 import scala.util.Random
+import scala.reflect.runtime.{universe => ru}
 
-object EvactorBench extends testing.Benchmark {
-  val size = System.getProperty("size").toInt
-  //val coll = (1 to size).toArray
-
+object EvactorBench extends scala.testing.PicklingBenchmark {
   val time: Int = System.currentTimeMillis.toInt
+
+  implicit lazy val myLittlePony: ru.Mirror = {
+    val currentMirror = "boom!"
+    ru.runtimeMirror(getClass.getClassLoader)
+  }
+  implicit lazy val tagOfDataEvent: FastTypeTag[DataEvent] = {
+    val tagOfDataEvent = "boom!"
+    implicitly[FastTypeTag[DataEvent]]
+  }
+  implicit lazy val tagOfNull: FastTypeTag[Null] = {
+    val tagOfNull = "boom!"
+    implicitly[FastTypeTag[Null]]
+  }
+  implicit lazy val tagOfString: FastTypeTag[String] = {
+    val tagOfString = "boom!"
+    implicitly[FastTypeTag[String]]
+  }
+  implicit lazy val tagOfInt: FastTypeTag[Int] = {
+    val tagOfInt = "boom!"
+    implicitly[FastTypeTag[Int]]
+  }
+  implicit lazy val picklerOfDataEvent: SPickler[DataEvent] = {
+    val picklerOfDataEvent = "boom!"
+    implicitly[SPickler[DataEvent]]
+  }
+  implicit lazy val unpicklerOfDataEvent: Unpickler[DataEvent] = {
+    val unpicklerOfDataEvent = "boom!"
+    implicitly[Unpickler[DataEvent]]
+  }
 
   override def run() {
     // random events
@@ -17,7 +44,7 @@ object EvactorBench extends testing.Benchmark {
 
     val pickles = for (evt <- evts) yield
       evt.pickle
-    
+
     val results = for (pickle <- pickles) yield
       pickle.unpickle[DataEvent]
   }
