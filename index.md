@@ -20,7 +20,7 @@ With the exception of Java 1.6, this archive contains all that you will need to 
 
 1. **Our Test Suite**, run (or tweak) the >90 tests in our test suite.
 2. **Our Benchmark Scripts**, reproduce our benchmark results locally on your architecture.
-3. **Scala-pickling's bootstrapped `scalac`**, write your own independent Scala programs and run them with the scala-pickling build of `scalac` (this is optional)
+3. **Use Scala-Pickling with the Standalone Scala Compiler**, write your own independent Scala programs and run them with the scala-pickling build of `scalac` (this is optional)
 
 Below, we show how to get started with each of the thee possibilities above.
 
@@ -79,7 +79,31 @@ We also include two additional benchmarks not shown in the paper, but published 
 
 To run the
 
-### #3 Scala-pickling's `scalac`
+### #3 Using Scala-Pickling with the Standalone Scala Compiler [Optional]
+
+Also included in this archive is a standalone version of the Scala compiler which can be used with scala-pickling. It is located at `scala-local/bin/scalac`. We provide this option for those who would like to avoid the use of build tools.
+
+**Example**, for a program `test.scala`:
+
+    import scala.pickling._
+    import binary._
+
+    object Test extends App {
+      val x = 42
+      val p = x.pickle
+      val up = p.unpickle[Int]
+      println("unpickled: "+ up)
+    }
+
+To compile:
+<br>(with a local directory `classes` for the classfiles)
+
+    $ scala-local/bin/scalac -d classes -cp core/target/scala-2.11/classes test.scala
+
+To run:
+
+    $ scala-local/bin/scala -cp classes:core/target/scala-2.11/classes Test
+
 
 ## Step-by-Step Instructions
 

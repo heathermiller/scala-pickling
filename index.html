@@ -47,7 +47,7 @@ val pckl = List(1, 2, 3, 4).pickle
 <ol>
 <li><strong>Our Test Suite</strong>, run (or tweak) the &gt;90 tests in our test suite.</li>
 <li><strong>Our Benchmark Scripts</strong>, reproduce our benchmark results locally on your architecture.</li>
-<li><strong>Scala-pickling&#8217;s bootstrapped <code>scalac</code></strong>, write your own independent Scala programs and run them with the scala-pickling build of <code>scalac</code> (this is optional)</li>
+<li><strong>Use Scala-Pickling with the Standalone Scala Compiler</strong>, write your own independent Scala programs and run them with the scala-pickling build of <code>scalac</code> (this is optional)</li>
 </ol>
 
 <p>Below, we show how to get started with each of the thee possibilities above.</p>
@@ -110,7 +110,33 @@ scala&gt;
 
 <p>To run the</p>
 
-<h3 id="scala-picklingsscalac">#3 Scala-pickling&#8217;s <code>scalac</code></h3>
+<h3 id="optional">#3 Using Scala-Pickling with the Standalone Scala Compiler</h3>
+
+<p>Also included in this archive is a standalone version of the Scala compiler which can be used with scala-pickling. It is located at <code>scala-local/bin/scalac</code>. We provide this option for those who would like to avoid the use of build tools.</p>
+
+<p><strong>Example</strong>, for a program <code>test.scala</code>:</p>
+
+<pre><code>import scala.pickling._
+import binary._
+
+object Test extends App {
+  val x = 42
+  val p = x.pickle
+  val up = p.unpickle[Int]
+  println(&quot;unpickled: &quot;+ up)
+}
+</code></pre>
+
+<p>To compile:
+<br>(with a local directory <code>classes</code> for the classfiles)</p>
+
+<pre><code>$ scala-local/bin/scalac -d classes -cp core/target/scala-2.11/classes test.scala
+</code></pre>
+
+<p>To run:</p>
+
+<pre><code>$ scala-local/bin/scala -cp classes:core/target/scala-2.11/classes Test
+</code></pre>
 
 <h2 id="step-by-stepinstructions">Step-by-Step Instructions</h2>
 
