@@ -168,8 +168,6 @@ We provide this option for those who would like to avoid
 the use of build tools. The use of the standalone compiler is completely
 optional.
 
-_Note: this requires that you first build scala-pickling with SBT as described above_
-
 **Example**, for a program `test.scala`:
 
     import scala.pickling._
@@ -200,21 +198,15 @@ is to simply tweak tests or add new tests to our test suite.
 If you would rather not interact with the test suite, we offer the following
 alternate suggestions for interacting with the scala-pickling project:
 
-1. **Adding/Tweaking Tests in the Test Suite**, tweak existing tests or add new tests to the >90 tests in our test suite.
-2. **Experiment in the REPL**, test new inputs in SBT's `console`.
-3. **Use Scala-Pickling with the Standalone Scala Compiler**, write your own independent Scala programs and run them with scala-pickling (this is optional)
+1. **Experiment in the REPL**, test new inputs in SBT's `console`.
+2. **Use Scala-Pickling with the Standalone Scala Compiler**, write your own independent Scala programs and run them with scala-pickling (this is optional)
 
 (We also provide the scripts to reproduce the benchmarks in our paper. You may
 change those and re-run them if you'd like as well.)
 
-We provide suggestions below for
-
-### #1 Adding/Tweaking Tests in the Test Suite
-
-Have a look around...
-
-In the following section, we first describe the different types of tests in
-our test suite.
+We provide suggestions below for adding/tweaking tests in the test
+suite. In the following section, we first describe the different types
+of tests in our test suite.
 
 #### Tests
 
