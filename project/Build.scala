@@ -45,6 +45,7 @@ object MyBuild extends Build {
         import scala.sys.process._
         var shellCommand = Seq(
           "java", "-Dsize=" + len, "-cp", toolCP,
+          "-Xms1536M", "-Xmx4096M", "-Xss2M", "-XX:MaxPermSize=512M", "-XX:+UseParallelGC",
           "scala.tools.nsc.MainGenericRunner", "-cp", libraryCP,
           benchClass, numRuns.toString)
         // println(shellCommand)
@@ -65,7 +66,9 @@ object MyBuild extends Build {
       conflictWarning in ThisBuild := ConflictWarning.disable,
       parallelExecution in Test := false, // hello, reflection sync!!
       run <<= run in Compile in sandbox, // http://www.scala-sbt.org/release/docs/Detailed-Topics/Tasks
-      InputKey[Unit]("travInt") <<= InputKey[Unit]("travInt") in Compile in benchmark
+      InputKey[Unit]("travInt") <<= InputKey[Unit]("travInt") in Compile in benchmark,
+      InputKey[Unit]("geoTrellis") <<= InputKey[Unit]("geoTrellis") in Compile in benchmark
+      // ,InputKey[Unit]("evactor") <<= InputKey[Unit]("evactor") in Compile in benchmark
     )
   )
 
@@ -89,7 +92,9 @@ object MyBuild extends Build {
     settings = buildSettings ++ Seq(
       sourceDirectory in Compile <<= baseDirectory(root => root),
       sourceDirectory in Test <<= baseDirectory(root => root),
-      InputKey[Unit]("travInt") <<= benchTask("TraversableIntBench")
+      InputKey[Unit]("travInt") <<= benchTask("TraversableIntBench"),
+      InputKey[Unit]("geoTrellis") <<= benchTask("GeoTrellisBench")
+      // ,InputKey[Unit]("evactor") <<= benchTask("EvactorBench")
     )
   ) dependsOn(core)
 }
