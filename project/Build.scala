@@ -14,7 +14,8 @@ object BuildSettings {
   val buildSettings = Defaults.defaultSettings ++ Seq(
     version := buildVersion,
     scalaVersion := buildScalaVersion,
-    scalaOrganization := buildScalaOrganization
+    scalaOrganization := buildScalaOrganization,
+    retrieveManaged in ThisBuild := true
   ) ++ (if (useLocalBuildOfParadise) Seq(
     scalaHome := Some(file(localBuildOfParadise211)),
     unmanagedBase := file(localBuildOfParadise211 + "/lib")
