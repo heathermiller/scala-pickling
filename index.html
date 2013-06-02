@@ -85,6 +85,11 @@ the local Scala build in file <a href="project/Build.scala">project/Build.scala<
 Adjust the path on line 12 to match the directory into which you unpacked the
 archive.</strong></p>
 
+<p>For example, if the artifact is unpacked to <code>/Users/myname/tmp/182</code>, change the line to:</p>
+
+<pre><code>val localBuildOfParadise211 = Properties.envOrElse(&quot;MACRO_PARADISE211&quot;, &quot;/Users/myname/tmp/182/scala-local&quot;)
+</code></pre>
+
 <p>Then, to start SBT simply do:</p>
 
 <pre><code>bin/sbt
@@ -144,7 +149,7 @@ res0: String = hi there!
 </code></pre>
 
 <p>SBT will compile scala-pickling as well as all of the test files, and will
-print output representing the status (pass/fail) all of its tests.</p>
+print output representing the status (pass/fail) of all its tests.</p>
 
 <h3 id="ourbenchmarks">#2 Our Benchmarks</h3>
 
@@ -198,8 +203,6 @@ We provide this option for those who would like to avoid
 the use of build tools. The use of the standalone compiler is completely
 optional.</p>
 
-<p><em>Note: this requires that you first build scala-pickling with SBT as described above</em></p>
-
 <p><strong>Example</strong>, for a program <code>test.scala</code>:</p>
 
 <pre><code>import scala.pickling._
@@ -216,24 +219,23 @@ object Test extends App {
 <p>To compile:
 <br>(with a local directory <code>classes</code> for the classfiles)</p>
 
-<pre><code>$ scala-local/bin/scalac -d classes -cp core/target/scala-2.11/classes test.scala
+<pre><code>$ scala-local/bin/scalac -d classes test.scala
 </code></pre>
 
 <p>To run:</p>
 
-<pre><code>$ scala-local/bin/scala -cp classes:core/target/scala-2.11/classes Test
+<pre><code>$ scala-local/bin/scala -cp classes Test
 </code></pre>
 
 <h2 id="step-by-stepinstructions">Step-by-Step Instructions</h2>
 
-<p>The simplest and quickest way to experiment with the scala-pickling project,
-is to simply tweak tests or add new tests to our test suite.</p>
+<p><strong>The simplest and quickest way to experiment with the scala-pickling project,
+is to simply tweak tests or add new tests to our test suite.</strong></p>
 
 <p>If you would rather not interact with the test suite, we offer the following
 alternate suggestions for interacting with the scala-pickling project:</p>
 
 <ol>
-<li><strong>Adding/Tweaking Tests in the Test Suite</strong>, tweak existing tests or add new tests to the &gt;90 tests in our test suite.</li>
 <li><strong>Experiment in the REPL</strong>, test new inputs in SBT&#8217;s <code>console</code>.</li>
 <li><strong>Use Scala-Pickling with the Standalone Scala Compiler</strong>, write your own independent Scala programs and run them with scala-pickling (this is optional)</li>
 </ol>
@@ -241,14 +243,14 @@ alternate suggestions for interacting with the scala-pickling project:</p>
 <p>(We also provide the scripts to reproduce the benchmarks in our paper. You may
 change those and re-run them if you&#8217;d like as well.)</p>
 
-<p>We provide suggestions below for</p>
+<h3 id="addingtweakingtestsinthetestsuite">Adding/Tweaking Tests in the Test Suite</h3>
 
-<h3 id="addingtweakingtestsinthetestsuite">#1 Adding/Tweaking Tests in the Test Suite</h3>
+<p>If you don&#8217;t know where to start when adding a new test, the best thing to do
+is to browse the tests in our test suite, located in
+<a href="core/src/test/scala/pickling">core/src/test/scala/pickling</a>.</p>
 
-<p>Have a look around&#8230;</p>
-
-<p>In the following section, we first describe the different types of tests in
-our test suite.</p>
+<p>In the following section, we first describe the different types
+of tests in our test suite.</p>
 
 <h4 id="tests">Tests</h4>
 
@@ -284,9 +286,8 @@ singleton objects, respectively.</p>
 
 <ul>
 <li>At this time, <code>Double</code>s are not supported by our <strong>binary</strong> pickle format. However, all other numerics (<code>Float</code>, <code>Int</code>, <code>Long</code>, etc) are. (Note that all primitives are supported by the JSON pickle format, however.)</li>
-<li>It is possible to switch between runtime compilation and runtime interpretation (as the runtime fallback mechanism), based on the user&#8217;s preference. Although at present, the switch is manual- to toggle between the two, one must change lines 121 &amp; 139 in source file <a href="core/src/main/scala/pickling/package.scala">core/src/main/scala/pickling/package.scala</a>.</li>
 <li>At this time, pickling and unpickling the Scala <code>Unit</code> type is not supported.</li>
-<li>As indicated in the &#8220;future work&#8221; section of the paper, pickling closures is not yet supported, as an arbitrary closure can capture arbitrarily anything in its environment. This is beyond the scope of the current paper, and has required a solution specialized to closures (this is work done in parallel, but separate from the paper submitted to OOPSLA).</li>
+<li>As indicated in the &#8220;future work&#8221; section of the paper, pickling closures is not yet supported, as an arbitrary closure can capture arbitrarily anything in its environment. This is beyond the scope of the current paper, and has required a solution specialized to closures.</li>
 </ul>
     </div>
 </body>
