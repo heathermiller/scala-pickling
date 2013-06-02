@@ -1,0 +1,857 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html>
+        <head>
+          <title>pickling - scala.pickling</title>
+          <meta name="description" content="pickling - scala.pickling" />
+          <meta name="keywords" content="pickling scala.pickling" />
+          <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+          
+      <link href="../../lib/template.css" media="screen" type="text/css" rel="stylesheet" />
+      <link href="../../lib/diagrams.css" media="screen" type="text/css" rel="stylesheet" id="diagrams-css" />
+      <script type="text/javascript" src="../../lib/jquery.js" id="jquery-js"></script>
+      <script type="text/javascript" src="../../lib/jquery-ui.js"></script>
+      <script type="text/javascript" src="../../lib/template.js"></script>
+      <script type="text/javascript" src="../../lib/tools.tooltip.js"></script>
+      
+      <script type="text/javascript">
+         if(top === self) {
+            var url = '../../index.html';
+            var hash = 'scala.pickling.package';
+            var anchor = window.location.hash;
+            var anchor_opt = '';
+            if (anchor.length >= 1)
+              anchor_opt = '@' + anchor.substring(1);
+            window.location.href = url + '#' + hash + anchor_opt;
+         }
+   	  </script>
+    
+        </head>
+        <body class="value">
+      <div id="definition">
+        <img src="../../lib/package_big.png" />
+        <p id="owner"><a href="../package.html" class="extype" name="scala">scala</a></p>
+        <h1>pickling</h1>
+      </div>
+
+      <h4 id="signature" class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">package</span>
+      </span>
+      <span class="symbol">
+        <span class="name">pickling</span>
+      </span>
+      </h4>
+      
+          <div id="comment" class="fullcommenttop"><div class="toggleContainer block">
+          <span class="toggle">Linear Supertypes</span>
+          <div class="superTypes hiddenContent"><a href="../package.html#AnyRef=Object" class="extmbr" name="scala.AnyRef">AnyRef</a>, <span class="extype" name="scala.Any">Any</span></div>
+        </div></div>
+        
+
+      <div id="mbrsel">
+        <div id="textfilter"><span class="pre"></span><span class="input"><input id="mbrsel-input" type="text" accesskey="/" /></span><span class="post"></span></div>
+        <div id="order">
+              <span class="filtertype">Ordering</span>
+              <ol>
+                
+                <li class="alpha in"><span>Alphabetic</span></li>
+                <li class="inherit out"><span>By inheritance</span></li>
+              </ol>
+            </div>
+        <div id="ancestors">
+                <span class="filtertype">Inherited<br />
+                </span>
+                <ol id="linearization">
+                  <li class="in" name="scala.pickling"><span>pickling</span></li><li class="in" name="scala.AnyRef"><span>AnyRef</span></li><li class="in" name="scala.Any"><span>Any</span></li>
+                </ol>
+              </div><div id="ancestors">
+            <span class="filtertype"></span>
+            <ol>
+              <li class="hideall out"><span>Hide All</span></li>
+              <li class="showall in"><span>Show all</span></li>
+            </ol>
+            <a href="http://docs.scala-lang.org/overviews/scaladoc/usage.html#members" target="_blank">Learn more about member selection</a>
+          </div>
+        <div id="visbl">
+            <span class="filtertype">Visibility</span>
+            <ol><li class="public in"><span>Public</span></li><li class="all out"><span>All</span></li></ol>
+          </div>
+      </div>
+
+      <div id="template">
+        <div id="allMembers">
+        
+
+        <div id="types" class="types members">
+              <h3>Type Members</h3>
+              <ol><li name="scala.pickling.CollectionPicklerUnpicklerMacro" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
+      <a id="CollectionPicklerUnpicklerMacroextendsMacro"></a>
+      <a id="CollectionPicklerUnpicklerMacro:CollectionPicklerUnpicklerMacro"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">trait</span>
+      </span>
+      <span class="symbol">
+        <a href="CollectionPicklerUnpicklerMacro.html"><span class="name">CollectionPicklerUnpicklerMacro</span></a><span class="result"> extends <a href="Macro.html" class="extype" name="scala.pickling.Macro">Macro</a></span>
+      </span>
+      </h4>
+      
+    </li><li name="scala.pickling.CompiledPicklerRuntime" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="CompiledPicklerRuntimeextendsPicklerRuntime"></a>
+      <a id="CompiledPicklerRuntime:CompiledPicklerRuntime"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">class</span>
+      </span>
+      <span class="symbol">
+        <a href="CompiledPicklerRuntime.html"><span class="name">CompiledPicklerRuntime</span></a><span class="result"> extends <a href="PicklerRuntime.html" class="extype" name="scala.pickling.PicklerRuntime">PicklerRuntime</a></span>
+      </span>
+      </h4>
+      
+    </li><li name="scala.pickling.CompiledUnpicklerRuntime" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="CompiledUnpicklerRuntimeextendsAnyRef"></a>
+      <a id="CompiledUnpicklerRuntime:CompiledUnpicklerRuntime"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">class</span>
+      </span>
+      <span class="symbol">
+        <a href="CompiledUnpicklerRuntime.html"><span class="name">CompiledUnpicklerRuntime</span></a><span class="result"> extends <a href="../package.html#AnyRef=Object" class="extmbr" name="scala.AnyRef">AnyRef</a></span>
+      </span>
+      </h4>
+      
+    </li><li name="scala.pickling.CorePicklersUnpicklers" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
+      <a id="CorePicklersUnpicklersextendsGenPicklerswithGenUnpicklerswithLowPriorityPicklersUnpicklers"></a>
+      <a id="CorePicklersUnpicklers:CorePicklersUnpicklers"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">trait</span>
+      </span>
+      <span class="symbol">
+        <a href="CorePicklersUnpicklers.html"><span class="name">CorePicklersUnpicklers</span></a><span class="result"> extends <a href="GenPicklers.html" class="extype" name="scala.pickling.GenPicklers">GenPicklers</a> with <a href="GenUnpicklers.html" class="extype" name="scala.pickling.GenUnpicklers">GenUnpicklers</a> with <a href="LowPriorityPicklersUnpicklers.html" class="extype" name="scala.pickling.LowPriorityPicklersUnpicklers">LowPriorityPicklersUnpicklers</a></span>
+      </span>
+      </h4>
+      
+    </li><li name="scala.pickling.DPickler" visbl="pub" data-isabs="true" fullComment="yes" group="Ungrouped">
+      <a id="DPickler[T]extendsAnyRef"></a>
+      <a id="DPickler[T]:DPickler[T]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">trait</span>
+      </span>
+      <span class="symbol">
+        <a href="DPickler.html"><span class="name">DPickler</span></a><span class="tparams">[<span name="T">T</span>]</span><span class="result"> extends <a href="../package.html#AnyRef=Object" class="extmbr" name="scala.AnyRef">AnyRef</a></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Annotations</dt><dd>
+                <span class="name">@implicitNotFound</span><span class="args">(<span>
+      
+      <span class="defval" name="&quot;Cannot generate a DPickler for ${T}. Recompile with -Xlog-implicits for details&quot;">...</span>
+    </span>)</span>
+              
+        </dd></dl></div>
+    </li><li name="scala.pickling.FastTypeTag" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
+      <a id="FastTypeTag[T]extendsEquals"></a>
+      <a id="FastTypeTag[T]:FastTypeTag[T]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">trait</span>
+      </span>
+      <span class="symbol">
+        <a href="FastTypeTag.html"><span class="name">FastTypeTag</span></a><span class="tparams">[<span name="T">T</span>]</span><span class="result"> extends <span class="extype" name="scala.Equals">Equals</span></span>
+      </span>
+      </h4>
+      
+    </li><li name="scala.pickling.FastTypeTagMacros" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
+      <a id="FastTypeTagMacrosextendsMacro"></a>
+      <a id="FastTypeTagMacros:FastTypeTagMacros"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">trait</span>
+      </span>
+      <span class="symbol">
+        <a href="FastTypeTagMacros.html"><span class="name">FastTypeTagMacros</span></a><span class="result"> extends <a href="Macro.html" class="extype" name="scala.pickling.Macro">Macro</a></span>
+      </span>
+      </h4>
+      
+    </li><li name="scala.pickling.GenPicklers" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
+      <a id="GenPicklersextendsAnyRef"></a>
+      <a id="GenPicklers:GenPicklers"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">trait</span>
+      </span>
+      <span class="symbol">
+        <a href="GenPicklers.html"><span class="name">GenPicklers</span></a><span class="result"> extends <a href="../package.html#AnyRef=Object" class="extmbr" name="scala.AnyRef">AnyRef</a></span>
+      </span>
+      </h4>
+      
+    </li><li name="scala.pickling.GenUnpicklers" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
+      <a id="GenUnpicklersextendsAnyRef"></a>
+      <a id="GenUnpicklers:GenUnpicklers"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">trait</span>
+      </span>
+      <span class="symbol">
+        <a href="GenUnpicklers.html"><span class="name">GenUnpicklers</span></a><span class="result"> extends <a href="../package.html#AnyRef=Object" class="extmbr" name="scala.AnyRef">AnyRef</a></span>
+      </span>
+      </h4>
+      
+    </li><li name="scala.pickling.Hintable" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
+      <a id="HintableextendsAnyRef"></a>
+      <a id="Hintable:Hintable"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">trait</span>
+      </span>
+      <span class="symbol">
+        <a href="Hintable.html"><span class="name">Hintable</span></a><span class="result"> extends <a href="../package.html#AnyRef=Object" class="extmbr" name="scala.AnyRef">AnyRef</a></span>
+      </span>
+      </h4>
+      
+    </li><li name="scala.pickling.Hints" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="HintsextendsProductwithSerializable"></a>
+      <a id="Hints:Hints"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">case class</span>
+      </span>
+      <span class="symbol">
+        <a href="Hints.html"><span class="name">Hints</span></a><span class="params">(<span name="tag">tag: <a href="FastTypeTag.html" class="extype" name="scala.pickling.FastTypeTag">FastTypeTag</a>[_] = <span class="symbol">null</span></span>, <span name="knownSize">knownSize: <span class="extype" name="scala.Int">Int</span> = <span class="symbol">-1</span></span>, <span name="isStaticallyElidedType">isStaticallyElidedType: <span class="extype" name="scala.Boolean">Boolean</span> = <span class="symbol">false</span></span>, <span name="isDynamicallyElidedType">isDynamicallyElidedType: <span class="extype" name="scala.Boolean">Boolean</span> = <span class="symbol">false</span></span>)</span><span class="result"> extends <span class="extype" name="scala.Product">Product</span> with <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      </h4>
+      
+    </li><li name="scala.pickling.InterpretedPicklerRuntime" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="InterpretedPicklerRuntimeextendsPicklerRuntime"></a>
+      <a id="InterpretedPicklerRuntime:InterpretedPicklerRuntime"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">class</span>
+      </span>
+      <span class="symbol">
+        <a href="InterpretedPicklerRuntime.html"><span class="name">InterpretedPicklerRuntime</span></a><span class="result"> extends <a href="PicklerRuntime.html" class="extype" name="scala.pickling.PicklerRuntime">PicklerRuntime</a></span>
+      </span>
+      </h4>
+      
+    </li><li name="scala.pickling.InterpretedUnpicklerRuntime" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="InterpretedUnpicklerRuntimeextendsAnyRef"></a>
+      <a id="InterpretedUnpicklerRuntime:InterpretedUnpicklerRuntime"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">class</span>
+      </span>
+      <span class="symbol">
+        <a href="InterpretedUnpicklerRuntime.html"><span class="name">InterpretedUnpicklerRuntime</span></a><span class="result"> extends <a href="../package.html#AnyRef=Object" class="extmbr" name="scala.AnyRef">AnyRef</a></span>
+      </span>
+      </h4>
+      
+    </li><li name="scala.pickling.ListPicklerUnpicklerMacro" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
+      <a id="ListPicklerUnpicklerMacroextendsMacrowithCollectionPicklerUnpicklerMacro"></a>
+      <a id="ListPicklerUnpicklerMacro:ListPicklerUnpicklerMacro"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">trait</span>
+      </span>
+      <span class="symbol">
+        <a href="ListPicklerUnpicklerMacro.html"><span class="name">ListPicklerUnpicklerMacro</span></a><span class="result"> extends <a href="Macro.html" class="extype" name="scala.pickling.Macro">Macro</a> with <a href="CollectionPicklerUnpicklerMacro.html" class="extype" name="scala.pickling.CollectionPicklerUnpicklerMacro">CollectionPicklerUnpicklerMacro</a></span>
+      </span>
+      </h4>
+      
+    </li><li name="scala.pickling.LowPriorityPicklersUnpicklers" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
+      <a id="LowPriorityPicklersUnpicklersextendsAnyRef"></a>
+      <a id="LowPriorityPicklersUnpicklers:LowPriorityPicklersUnpicklers"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">trait</span>
+      </span>
+      <span class="symbol">
+        <a href="LowPriorityPicklersUnpicklers.html"><span class="name">LowPriorityPicklersUnpicklers</span></a><span class="result"> extends <a href="../package.html#AnyRef=Object" class="extmbr" name="scala.AnyRef">AnyRef</a></span>
+      </span>
+      </h4>
+      
+    </li><li name="scala.pickling.Macro" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
+      <a id="MacroextendsMacro"></a>
+      <a id="Macro:Macro"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier">abstract </span>
+        <span class="kind">class</span>
+      </span>
+      <span class="symbol">
+        <a href="Macro.html"><span class="name">Macro</span></a><span class="result"> extends <span class="extype" name="scala.reflect.macros.Macro">reflect.macros.Macro</span></span>
+      </span>
+      </h4>
+      
+    </li><li name="scala.pickling.PBuilder" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
+      <a id="PBuilderextendsHintable"></a>
+      <a id="PBuilder:PBuilder"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">trait</span>
+      </span>
+      <span class="symbol">
+        <a href="PBuilder.html"><span class="name">PBuilder</span></a><span class="result"> extends <a href="Hintable.html" class="extype" name="scala.pickling.Hintable">Hintable</a></span>
+      </span>
+      </h4>
+      
+    </li><li name="scala.pickling.Pickle" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
+      <a id="PickleextendsAnyRef"></a>
+      <a id="Pickle:Pickle"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">trait</span>
+      </span>
+      <span class="symbol">
+        <a href="Pickle.html"><span class="name">Pickle</span></a><span class="result"> extends <a href="../package.html#AnyRef=Object" class="extmbr" name="scala.AnyRef">AnyRef</a></span>
+      </span>
+      </h4>
+      
+    </li><li name="scala.pickling.PickleFormat" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
+      <a id="PickleFormatextendsAnyRef"></a>
+      <a id="PickleFormat:PickleFormat"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">trait</span>
+      </span>
+      <span class="symbol">
+        <a href="PickleFormat.html"><span class="name">PickleFormat</span></a><span class="result"> extends <a href="../package.html#AnyRef=Object" class="extmbr" name="scala.AnyRef">AnyRef</a></span>
+      </span>
+      </h4>
+      
+    </li><li name="scala.pickling.PickleMacros" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
+      <a id="PickleMacrosextendsMacro"></a>
+      <a id="PickleMacros:PickleMacros"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">trait</span>
+      </span>
+      <span class="symbol">
+        <a href="PickleMacros.html"><span class="name">PickleMacros</span></a><span class="result"> extends <a href="Macro.html" class="extype" name="scala.pickling.Macro">Macro</a></span>
+      </span>
+      </h4>
+      
+    </li><li name="scala.pickling.PickleOps" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="PickleOps[T]extendsAnyRef"></a>
+      <a id="PickleOps[T]:PickleOps[T]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier">implicit </span>
+        <span class="kind">class</span>
+      </span>
+      <span class="symbol">
+        <a href="package$$PickleOps.html"><span class="name">PickleOps</span></a><span class="tparams">[<span name="T">T</span>]</span><span class="result"> extends <a href="../package.html#AnyRef=Object" class="extmbr" name="scala.AnyRef">AnyRef</a></span>
+      </span>
+      </h4>
+      
+    </li><li name="scala.pickling.PickleReader" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
+      <a id="PickleReaderextendsHintable"></a>
+      <a id="PickleReader:PickleReader"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">trait</span>
+      </span>
+      <span class="symbol">
+        <a href="PickleReader.html"><span class="name">PickleReader</span></a><span class="result"> extends <a href="Hintable.html" class="extype" name="scala.pickling.Hintable">Hintable</a></span>
+      </span>
+      </h4>
+      
+    </li><li name="scala.pickling.PickleTools" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
+      <a id="PickleToolsextendsAnyRef"></a>
+      <a id="PickleTools:PickleTools"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">trait</span>
+      </span>
+      <span class="symbol">
+        <a href="PickleTools.html"><span class="name">PickleTools</span></a><span class="result"> extends <a href="../package.html#AnyRef=Object" class="extmbr" name="scala.AnyRef">AnyRef</a></span>
+      </span>
+      </h4>
+      
+    </li><li name="scala.pickling.PickleableBase" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
+      <a id="PickleableBaseextendsAnyRef"></a>
+      <a id="PickleableBase:PickleableBase"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">trait</span>
+      </span>
+      <span class="symbol">
+        <a href="PickleableBase.html"><span class="name">PickleableBase</span></a><span class="result"> extends <a href="../package.html#AnyRef=Object" class="extmbr" name="scala.AnyRef">AnyRef</a></span>
+      </span>
+      </h4>
+      
+    </li><li name="scala.pickling.PickleableMacro" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
+      <a id="PickleableMacroextendsAnnotationMacro"></a>
+      <a id="PickleableMacro:PickleableMacro"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">trait</span>
+      </span>
+      <span class="symbol">
+        <a href="PickleableMacro.html"><span class="name">PickleableMacro</span></a><span class="result"> extends <span class="extype" name="scala.reflect.macros.AnnotationMacro">AnnotationMacro</span></span>
+      </span>
+      </h4>
+      
+    </li><li name="scala.pickling.PicklerMacros" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
+      <a id="PicklerMacrosextendsMacro"></a>
+      <a id="PicklerMacros:PicklerMacros"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">trait</span>
+      </span>
+      <span class="symbol">
+        <a href="PicklerMacros.html"><span class="name">PicklerMacros</span></a><span class="result"> extends <a href="Macro.html" class="extype" name="scala.pickling.Macro">Macro</a></span>
+      </span>
+      </h4>
+      
+    </li><li name="scala.pickling.PicklerRuntime" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
+      <a id="PicklerRuntimeextendsAnyRef"></a>
+      <a id="PicklerRuntime:PicklerRuntime"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier">abstract </span>
+        <span class="kind">class</span>
+      </span>
+      <span class="symbol">
+        <a href="PicklerRuntime.html"><span class="name">PicklerRuntime</span></a><span class="result"> extends <a href="../package.html#AnyRef=Object" class="extmbr" name="scala.AnyRef">AnyRef</a></span>
+      </span>
+      </h4>
+      
+    </li><li name="scala.pickling.PicklingException" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="PicklingExceptionextendsExceptionwithProductwithSerializable"></a>
+      <a id="PicklingException:PicklingException"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">case class</span>
+      </span>
+      <span class="symbol">
+        <a href="PicklingException.html"><span class="name">PicklingException</span></a><span class="params">(<span name="msg">msg: <span class="extype" name="scala.Predef.String">String</span></span>)</span><span class="result"> extends <a href="../package.html#Exception=Exception" class="extmbr" name="scala.Exception">Exception</a> with <span class="extype" name="scala.Product">Product</span> with <span class="extype" name="scala.Serializable">Serializable</span></span>
+      </span>
+      </h4>
+      
+    </li><li name="scala.pickling.RichFieldMirror" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="RichFieldMirrorextendsAnyRef"></a>
+      <a id="RichFieldMirror:RichFieldMirror"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier">implicit </span>
+        <span class="kind">class</span>
+      </span>
+      <span class="symbol">
+        <a href="package$$RichFieldMirror.html"><span class="name">RichFieldMirror</span></a><span class="result"> extends <a href="../package.html#AnyRef=Object" class="extmbr" name="scala.AnyRef">AnyRef</a></span>
+      </span>
+      </h4>
+      
+    </li><li name="scala.pickling.RichSymbol" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="RichSymbolextendsAnyRef"></a>
+      <a id="RichSymbol:RichSymbol"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier">implicit </span>
+        <span class="kind">class</span>
+      </span>
+      <span class="symbol">
+        <a href="package$$RichSymbol.html"><span class="name">RichSymbol</span></a><span class="result"> extends <a href="../package.html#AnyRef=Object" class="extmbr" name="scala.AnyRef">AnyRef</a></span>
+      </span>
+      </h4>
+      
+    </li><li name="scala.pickling.RichType" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="RichTypeextendsAnyRef"></a>
+      <a id="RichType:RichType"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier">implicit </span>
+        <span class="kind">class</span>
+      </span>
+      <span class="symbol">
+        <a href="package$$RichType.html"><span class="name">RichType</span></a><span class="result"> extends <a href="../package.html#AnyRef=Object" class="extmbr" name="scala.AnyRef">AnyRef</a></span>
+      </span>
+      </h4>
+      
+    </li><li name="scala.pickling.SPickler" visbl="pub" data-isabs="true" fullComment="yes" group="Ungrouped">
+      <a id="SPickler[T]extendsAnyRef"></a>
+      <a id="SPickler[T]:SPickler[T]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">trait</span>
+      </span>
+      <span class="symbol">
+        <a href="SPickler.html"><span class="name">SPickler</span></a><span class="tparams">[<span name="T">T</span>]</span><span class="result"> extends <a href="../package.html#AnyRef=Object" class="extmbr" name="scala.AnyRef">AnyRef</a></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Annotations</dt><dd>
+                <span class="name">@implicitNotFound</span><span class="args">(<span>
+      
+      <span class="defval" name="&quot;Cannot generate a pickler for ${T}. Recompile with -Xlog-implicits for details&quot;">...</span>
+    </span>)</span>
+              
+        </dd></dl></div>
+    </li><li name="scala.pickling.Tools" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="Tools[C&lt;:scala.reflect.macros.Context]extendsAnyRef"></a>
+      <a id="Tools[C&lt;:Context]:Tools[C]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">class</span>
+      </span>
+      <span class="symbol">
+        <a href="Tools.html"><span class="name">Tools</span></a><span class="tparams">[<span name="C">C &lt;: <span class="extype" name="scala.reflect.macros.Context">Context</span></span>]</span><span class="result"> extends <a href="../package.html#AnyRef=Object" class="extmbr" name="scala.AnyRef">AnyRef</a></span>
+      </span>
+      </h4>
+      
+    </li><li name="scala.pickling.UnpickleMacros" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
+      <a id="UnpickleMacrosextendsMacro"></a>
+      <a id="UnpickleMacros:UnpickleMacros"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">trait</span>
+      </span>
+      <span class="symbol">
+        <a href="UnpickleMacros.html"><span class="name">UnpickleMacros</span></a><span class="result"> extends <a href="Macro.html" class="extype" name="scala.pickling.Macro">Macro</a></span>
+      </span>
+      </h4>
+      
+    </li><li name="scala.pickling.Unpickler" visbl="pub" data-isabs="true" fullComment="yes" group="Ungrouped">
+      <a id="Unpickler[T]extendsAnyRef"></a>
+      <a id="Unpickler[T]:Unpickler[T]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">trait</span>
+      </span>
+      <span class="symbol">
+        <a href="Unpickler.html"><span class="name">Unpickler</span></a><span class="tparams">[<span name="T">T</span>]</span><span class="result"> extends <a href="../package.html#AnyRef=Object" class="extmbr" name="scala.AnyRef">AnyRef</a></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Annotations</dt><dd>
+                <span class="name">@implicitNotFound</span><span class="args">(<span>
+      
+      <span class="defval" name="&quot;Cannot generate an unpickler for ${T}. Recompile with -Xlog-implicits for details&quot;">...</span>
+    </span>)</span>
+              
+        </dd></dl></div>
+    </li><li name="scala.pickling.UnpicklerMacros" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
+      <a id="UnpicklerMacrosextendsMacro"></a>
+      <a id="UnpicklerMacros:UnpicklerMacros"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">trait</span>
+      </span>
+      <span class="symbol">
+        <a href="UnpicklerMacros.html"><span class="name">UnpicklerMacros</span></a><span class="result"> extends <a href="Macro.html" class="extype" name="scala.pickling.Macro">Macro</a></span>
+      </span>
+      </h4>
+      
+    </li><li name="scala.pickling.VectorPicklerUnpicklerMacro" visbl="pub" data-isabs="true" fullComment="no" group="Ungrouped">
+      <a id="VectorPicklerUnpicklerMacroextendsMacrowithCollectionPicklerUnpicklerMacro"></a>
+      <a id="VectorPicklerUnpicklerMacro:VectorPicklerUnpicklerMacro"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">trait</span>
+      </span>
+      <span class="symbol">
+        <a href="VectorPicklerUnpicklerMacro.html"><span class="name">VectorPicklerUnpicklerMacro</span></a><span class="result"> extends <a href="Macro.html" class="extype" name="scala.pickling.Macro">Macro</a> with <a href="CollectionPicklerUnpicklerMacro.html" class="extype" name="scala.pickling.CollectionPicklerUnpicklerMacro">CollectionPicklerUnpicklerMacro</a></span>
+      </span>
+      </h4>
+      
+    </li><li name="scala.pickling.pickleable" visbl="pub" data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="pickleableextendsAnnotationwithMacroAnnotation"></a>
+      <a id="pickleable:pickleable"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">class</span>
+      </span>
+      <span class="symbol">
+        <a href="pickleable.html"><span class="name">pickleable</span></a><span class="result"> extends <span class="extype" name="scala.annotation.Annotation">Annotation</span> with <span class="extype" name="scala.annotation.MacroAnnotation">MacroAnnotation</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Annotations</dt><dd>
+                <span class="name">@Inherited</span><span class="args">()</span>
+              
+        </dd></dl></div>
+    </li></ol>
+            </div>
+
+        
+
+        <div id="values" class="values members">
+              <h3>Value Members</h3>
+              <ol><li name="scala.pickling.DPickler" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="DPickler"></a>
+      <a id="DPickler:DPickler"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">object</span>
+      </span>
+      <span class="symbol">
+        <a href="DPickler$.html"><span class="name">DPickler</span></a>
+      </span>
+      </h4>
+      
+    </li><li name="scala.pickling.FastTypeTag" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="FastTypeTag"></a>
+      <a id="FastTypeTag:FastTypeTag"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">object</span>
+      </span>
+      <span class="symbol">
+        <a href="FastTypeTag$.html"><span class="name">FastTypeTag</span></a>
+      </span>
+      </h4>
+      
+    </li><li name="scala.pickling.Runtime" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="Runtime"></a>
+      <a id="Runtime:Runtime"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">object</span>
+      </span>
+      <span class="symbol">
+        <a href="Runtime$.html"><span class="name">Runtime</span></a>
+      </span>
+      </h4>
+      
+    </li><li name="scala.pickling.SPickler" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="SPickler"></a>
+      <a id="SPickler:SPickler"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">object</span>
+      </span>
+      <span class="symbol">
+        <a href="SPickler$.html"><span class="name">SPickler</span></a><span class="result"> extends <a href="CorePicklersUnpicklers.html" class="extype" name="scala.pickling.CorePicklersUnpicklers">CorePicklersUnpicklers</a></span>
+      </span>
+      </h4>
+      
+    </li><li name="scala.pickling.Tools" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="Tools"></a>
+      <a id="Tools:Tools"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">object</span>
+      </span>
+      <span class="symbol">
+        <a href="Tools$.html"><span class="name">Tools</span></a>
+      </span>
+      </h4>
+      
+    </li><li name="scala.pickling.Unpickler" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="Unpickler"></a>
+      <a id="Unpickler:Unpickler"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">object</span>
+      </span>
+      <span class="symbol">
+        <a href="Unpickler$.html"><span class="name">Unpickler</span></a><span class="result"> extends <a href="CorePicklersUnpicklers.html" class="extype" name="scala.pickling.CorePicklersUnpicklers">CorePicklersUnpicklers</a></span>
+      </span>
+      </h4>
+      
+    </li><li name="scala.pickling.binary" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="binary"></a>
+      <a id="binary:binary"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">package</span>
+      </span>
+      <span class="symbol">
+        <a href="binary/package.html"><span class="name">binary</span></a>
+      </span>
+      </h4>
+      
+    </li><li name="scala.pickling#cachedMirror" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="cachedMirror:reflect.runtime.universe.Mirror"></a>
+      <a id="cachedMirror:reflect.api.JavaUniverse.Mirror"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">var</span>
+      </span>
+      <span class="symbol">
+        <span class="name">cachedMirror</span><span class="result">: <span class="extype" name="scala.reflect.api.JavaMirrors.Mirror">reflect.api.JavaUniverse.Mirror</span></span>
+      </span>
+      </h4>
+      
+    </li><li name="scala.pickling#currentMirror" visbl="pub" data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="currentMirror:reflect.runtime.universe.Mirror"></a>
+      <a id="currentMirror:reflect.api.JavaUniverse.Mirror"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">currentMirror</span><span class="result">: <span class="extype" name="scala.reflect.api.JavaMirrors.Mirror">reflect.api.JavaUniverse.Mirror</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Annotations</dt><dd>
+                <span class="name">@macroImpl</span><span class="args">(<span>
+      
+      <span class="defval" name="`macro`(&quot;versionFormat&quot; = 2, &quot;isBundle&quot; = false, &quot;className&quot; = &quot;scala.pickling.package$&quot;, &quot;methodName&quot; = &quot;impl&quot;, &quot;signature&quot; = List(List(-1)))">...</span>
+    </span>)</span>
+              
+        </dd></dl></div>
+    </li><li name="scala.pickling#debug" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="debug(output:=&gt;String):Unit"></a>
+      <a id="debug(⇒String):Unit"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">debug</span><span class="params">(<span name="output">output: ⇒ <span class="extype" name="scala.Predef.String">String</span></span>)</span><span class="result">: <span class="extype" name="scala.Unit">Unit</span></span>
+      </span>
+      </h4>
+      
+    </li><li name="scala.pickling#debugEnabled" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="debugEnabled:Boolean"></a>
+      <a id="debugEnabled:Boolean"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">var</span>
+      </span>
+      <span class="symbol">
+        <span class="name">debugEnabled</span><span class="result">: <span class="extype" name="scala.Boolean">Boolean</span></span>
+      </span>
+      </h4>
+      
+    </li><li name="scala.pickling#impl" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="impl(c:scala.reflect.macros.Context):c.Tree"></a>
+      <a id="impl(Context):reflect.macros.Context.Tree"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">impl</span><span class="params">(<span name="c">c: <span class="extype" name="scala.reflect.macros.Context">Context</span></span>)</span><span class="result">: <span class="extype" name="scala.reflect.macros.Aliases.Tree">reflect.macros.Context.Tree</span></span>
+      </span>
+      </h4>
+      
+    </li><li name="scala.pickling.ir" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="ir"></a>
+      <a id="ir:ir"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">package</span>
+      </span>
+      <span class="symbol">
+        <a href="ir/package.html"><span class="name">ir</span></a>
+      </span>
+      </h4>
+      
+    </li><li name="scala.pickling.json" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="json"></a>
+      <a id="json:json"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">package</span>
+      </span>
+      <span class="symbol">
+        <a href="json/package.html"><span class="name">json</span></a>
+      </span>
+      </h4>
+      
+    </li><li name="scala.pickling#typeFromString" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="typeFromString(mirror:reflect.runtime.universe.Mirror,stpe:String):reflect.runtime.universe.Type"></a>
+      <a id="typeFromString(reflect.api.JavaUniverse.Mirror,String):reflect.api.JavaUniverse.Type"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">typeFromString</span><span class="params">(<span name="mirror">mirror: <span class="extype" name="scala.reflect.api.JavaMirrors.Mirror">reflect.api.JavaUniverse.Mirror</span></span>, <span name="stpe">stpe: <span class="extype" name="scala.Predef.String">String</span></span>)</span><span class="result">: <span class="extype" name="scala.reflect.api.Types.Type">reflect.api.JavaUniverse.Type</span></span>
+      </span>
+      </h4>
+      
+    </li><li name="scala.pickling#typeToString" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="typeToString(tpe:reflect.runtime.universe.Type):String"></a>
+      <a id="typeToString(reflect.api.JavaUniverse.Type):String"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">typeToString</span><span class="params">(<span name="tpe">tpe: <span class="extype" name="scala.reflect.api.Types.Type">reflect.api.JavaUniverse.Type</span></span>)</span><span class="result">: <span class="extype" name="scala.Predef.String">String</span></span>
+      </span>
+      </h4>
+      
+    </li></ol>
+            </div>
+
+        
+
+        
+        </div>
+
+        <div id="inheritedMembers">
+        <div class="parent" name="scala.AnyRef">
+              <h3>Inherited from <a href="../package.html#AnyRef=Object" class="extmbr" name="scala.AnyRef">AnyRef</a></h3>
+            </div><div class="parent" name="scala.Any">
+              <h3>Inherited from <span class="extype" name="scala.Any">Any</span></h3>
+            </div>
+        
+        </div>
+
+        <div id="groupedMembers">
+        <div class="group" name="Ungrouped">
+              <h3>Ungrouped</h3>
+              
+            </div>
+        </div>
+
+      </div>
+
+      <div id="tooltip"></div>
+
+      <div id="footer">  </div>
+
+
+    </body>
+      </html>
