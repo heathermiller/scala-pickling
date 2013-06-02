@@ -13,13 +13,16 @@ object BuildSettings {
 
   val buildSettings = Defaults.defaultSettings ++ Seq(
     version := buildVersion,
-    scalaVersion := buildScalaVersion,
-    scalaOrganization := buildScalaOrganization,
     retrieveManaged in ThisBuild := true
   ) ++ (if (useLocalBuildOfParadise) Seq(
+    scalaVersion := "2.11.0-local",
+    autoScalaLibrary := false,
     scalaHome := Some(file(localBuildOfParadise211)),
     unmanagedBase := file(localBuildOfParadise211 + "/lib")
-  ) else Nil) ++ Seq(
+  ) else Seq(
+    scalaVersion := buildScalaVersion,
+    scalaOrganization := buildScalaOrganization
+  )) ++ Seq(
     resolvers += Resolver.sonatypeRepo("snapshots"),
     resolvers += Resolver.sonatypeRepo("releases"),
     scalacOptions ++= Seq("-feature")
