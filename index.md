@@ -57,6 +57,11 @@ the local Scala build in file [project/Build.scala](project/Build.scala).
 Adjust the path on line 12 to match the directory into which you unpacked the
 archive.**
 
+For example, if the artifact is unpacked to `/Users/myname/tmp/182`, change the line to:
+
+    val localBuildOfParadise211 = Properties.envOrElse("MACRO_PARADISE211", "/Users/myname/tmp/182/scala-local")
+
+
 Then, to start SBT simply do:
 
     bin/sbt
@@ -111,7 +116,7 @@ To run the tests, once SBT is started, simply do:
     > test
 
 SBT will compile scala-pickling as well as all of the test files, and will
-print output representing the status (pass/fail) all of its tests.
+print output representing the status (pass/fail) of all its tests.
 
 
 ### #2 Our Benchmarks
@@ -180,11 +185,11 @@ _Note: this requires that you first build scala-pickling with SBT as described a
 To compile:
 <br>(with a local directory `classes` for the classfiles)
 
-    $ scala-local/bin/scalac -d classes -cp core/target/scala-2.11/classes test.scala
+    $ scala-local/bin/scalac -d classes test.scala
 
 To run:
 
-    $ scala-local/bin/scala -cp classes:core/target/scala-2.11/classes Test
+    $ scala-local/bin/scala -cp classes Test
 
 
 ## Step-by-Step Instructions
@@ -242,6 +247,5 @@ singleton objects, respectively.
 At the time of writing this guide, the scala-pickling project has the following known limitations:
 
 - At this time, `Double`s are not supported by our **binary** pickle format. However, all other numerics (`Float`, `Int`, `Long`, etc) are. (Note that all primitives are supported by the JSON pickle format, however.)
-- It is possible to switch between runtime compilation and runtime interpretation (as the runtime fallback mechanism), based on the user's preference. Although at present, the switch is manual- to toggle between the two, one must change lines 121 & 139 in source file [core/src/main/scala/pickling/package.scala](core/src/main/scala/pickling/package.scala).
 - At this time, pickling and unpickling the Scala `Unit` type is not supported.
 - As indicated in the "future work" section of the paper, pickling closures is not yet supported, as an arbitrary closure can capture arbitrarily anything in its environment. This is beyond the scope of the current paper, and has required a solution specialized to closures (this is work done in parallel, but separate from the paper submitted to OOPSLA).
