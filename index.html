@@ -45,11 +45,15 @@ val pckl = List(1, 2, 3, 4).pickle
 
 <p>(Local) API documentation is also included and available at: <a href="api-docs/index.html">api-docs/index.html</a></p>
 
+<h3 id="source">Source</h3>
+
+<p>(Local) Source code for the scala-pickling project also included and available at: <a href="core/src/main/scala/pickling">core/src/main/scala/pickling</a></p>
+
 <h2 id="gettingstartedguide">Getting Started Guide</h2>
 
 <p>This guide assumes you have Java 1.6 on your path. Other than that, this archive contains all that you will need to experiment with the scala-pickling project.</p>
 
-<p>You will primarily be using SBT (a Scala build tool)</p>
+<p>You will primarily be using a Scala build tool called SBT (included).</p>
 
 <p>To experiment, you have a few ways to interact with scala-pickling:</p>
 
@@ -59,18 +63,20 @@ val pckl = List(1, 2, 3, 4).pickle
 <li><strong>Use Scala-Pickling with the Standalone Scala Compiler</strong>, write your own independent Scala programs and run them with scala-pickling <strong>[this is optional]</strong></li>
 </ol>
 
-<p>Below, we show how to get started with each of the thee possibilities above.</p>
-
-<p><strong>Choice 1 &amp; 2 (running the test suite and benchmarks) are done through SBT. We first show how to start and use SBT below.</strong></p>
+<p>Because running the test suite and benchmarks are done through SBT, we first show you how to start and use SBT.
+We will then show how to get started with each of the thee possibilities above.</p>
 
 <h3 id="startingsbt">Starting SBT</h3>
 
-<p>Our test suite can be run using SBT (a Scala build tool). SBT is
-included in this distribution (at <code>bin/sbt</code>). Before running SBT it is
+<p>Our test suite and benchmarks can be run using SBT (a Scala build tool). SBT is
+included in this distribution (at <code>bin/sbt</code>).</p>
+
+<p><strong>Before running SBT it is
 necessary to adjust the absolute directory path of the local Scala
 build in file <a href="project/Build.scala">project/Build.scala</a>. Adjust the path on line 12 to
-match the directory into which you unpacked the archive. Then, to
-start SBT simply do:</p>
+match the directory into which you unpacked the archive.</strong></p>
+
+<p>Then, to start SBT simply do:</p>
 
 <pre><code>bin/sbt
 </code></pre>
@@ -132,7 +138,7 @@ res0: String = hi there!
 <pre><code>&gt; travInt
 </code></pre>
 
-<p>This shows the results of scala-pickling for the main benchmark described in section 7 (Experimental Evaluation) of the paper. This is only the &#8220;time&#8221; benchmark (Figure 1a), not the memory or size benchmarks shown in Figure 1b or 1c.</p>
+<p>This shows the results of scala-pickling for the main benchmark described in section 7 (Experimental Evaluation) of the paper. This is the &#8220;time&#8221; benchmark (Figure 1a), not the memory or size benchmarks shown in Figure 1b or 1c.</p>
 
 <p>The values printed to the screen are milliseconds. Each row represents independent JVM runs for values on the x-axis of the graph; for <code>travInt</code>, this means each row represents a different length of the <code>Vector</code> as described in the paper (from 100,000 to 1,000,000, from top to bottom). Each column corresponds to a separate run of the benchmark.</p>
 
@@ -187,11 +193,12 @@ object Test extends App {
 
 <h2 id="step-by-stepinstructions">Step-by-Step Instructions</h2>
 
-<p>To experiment with the scala-pickling project, you have a few choices:</p>
+<p>To experiment with the scala-pickling project, we offer the following suggestions:</p>
 
 <ol>
 <li><strong>Our Test Suite</strong>, tweak existing tests or add new tests to the &gt;90 tests in our test suite.</li>
-<li><strong>scala-pickling&#8217;s bootstrapped <code>scalac</code></strong>, write your own independent Scala programs and run them with the scala-pickling build of <code>scalac</code> (this is optional)</li>
+<li><strong>Experiment in the REPL</strong>, test new inputs in SBT&#8217;s <code>console</code>.</li>
+<li><strong>Use Scala-Pickling with the Standalone Scala Compiler</strong>, write your own independent Scala programs and run them with scala-pickling (this is optional)</li>
 </ol>
 
 <p>(We also provide the scripts to reproduce the benchmarks in our paper. You may change those and re-run them if you&#8217;d like as well.)</p>
@@ -219,7 +226,9 @@ object Test extends App {
 
 <ul>
 <li>At this time, <code>Double</code>s are not supported by our <strong>binary</strong> pickle format. However, all other numerics (<code>Float</code>, <code>Int</code>, <code>Long</code>, etc) are. (Note that all primitives are supported by the JSON pickle format, however.)</li>
-<li>It is possible to switch between runtime compilation and runtime interpretation (as the runtime fallback mechanism). Although at present, the switch is manual- to toggle between the two, one must change lines 121 &amp; 139 in source file <a href="core/src/main/scala/pickling/package.scala">core/src/main/scala/pickling/package.scala</a>.</li>
+<li>It is possible to switch between runtime compilation and runtime interpretation (as the runtime fallback mechanism), based on the user&#8217;s preference. Although at present, the switch is manual- to toggle between the two, one must change lines 121 &amp; 139 in source file <a href="core/src/main/scala/pickling/package.scala">core/src/main/scala/pickling/package.scala</a>.</li>
+<li>At this time, pickling and unpickling the Scala <code>Unit</code> type is not supported.</li>
+<li>As indicated in the &#8220;future work&#8221; section of the paper, pickling closures is not yet supported, as an arbitrary closure can capture arbitrarily anything in its environment. This is beyond the scope of the current paper, and has required a solution specialized to closures (this is work done in parallel, but separate from the paper submitted to OOPSLA).</li>
 </ul>
     </div>
 </body>
