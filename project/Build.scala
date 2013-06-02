@@ -60,6 +60,7 @@ object MyBuild extends Build {
       libraryDependencies <+= (scalaVersion)(buildScalaOrganization % "scala-compiler" % _)
     )) ++ Seq(
       scalacOptions ++= Seq("-optimise"),
+      libraryDependencies += "org.scala-lang" % "scala-library_2.11.0-M3" % "2.11.0-M3",
       libraryDependencies += "org.scalatest" % "scalatest_2.11.0-M3" % "1.9.1" % "test",
       libraryDependencies += "org.scalacheck" % "scalacheck_2.11.0-M3" % "1.10.1" % "test",
       conflictWarning in ThisBuild := ConflictWarning.disable,
