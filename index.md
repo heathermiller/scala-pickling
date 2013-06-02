@@ -145,6 +145,8 @@ The values on the x-axis for `travIntFreeMem` and `travIntSize` are both in Byte
 
 _Note that SBT will set the following flags for you (as we have done for our benchmarks, and have described in section 7 of the paper):_ `-Xms1536M - Xmx4096M -Xss2M -XX:MaxPermSize=512M -XX:+UseParallelGC`
 
+#### Other Benchmarks
+
 We also include two additional benchmarks not shown in the paper, but
 published on our project page:
 [Scala Pickling:Benchmarks](http://lampwww.epfl.ch/~hmiller/pickling/benchmarks/)
@@ -198,8 +200,8 @@ is to simply tweak tests or add new tests to our test suite.**
 If you would rather not interact with the test suite, we offer the following
 alternate suggestions for interacting with the scala-pickling project:
 
-1. **Experiment in the REPL**, test new inputs in SBT's `console`.
-2. **Use Scala-Pickling with the Standalone Scala Compiler**, write your own independent Scala programs and run them with scala-pickling (this is optional)
+1. **Experiment in the REPL**, test new inputs in SBT's `console`. (Covered in the relevant section of the [getting started guide](#startingthereplfromsbt) above.)
+2. **Use Scala-Pickling with the Standalone Scala Compiler**, write your own independent Scala programs and run them with scala-pickling. (Covered in the relevant section of the [getting started guide](#usingscala-picklingwiththestandalonescalacompileroptional) above.)
 
 (We also provide the scripts to reproduce the benchmarks in our paper. You may
 change those and re-run them if you'd like as well.)
