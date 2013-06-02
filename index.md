@@ -1,4 +1,4 @@
-## Artifact Review: Paper 182, Object-Oriented Picklers
+# Artifact Review: Paper 182, Object-Oriented Picklers
 _Authors: Heather Miller, Philipp Haller, Eugene Burmako, Martin Oderksy_
 
 Our paper presented (a) a model of "object-oriented picklers" and (b) a framework for generating them. This guide describes how to get started with (b), the framework for generating the object-oriented pickler combinators.
@@ -18,7 +18,7 @@ Unpickling is just as simple, its basic usage is:
 
 With the exception of Java 1.6, this archive contains all that you will need to experiment with the scala-pickling project. To experiment with the scala-pickling project, you have a few choices:
 
-1. **Our Test Suite**, tweak existing tests or add new tests to the >90 tests in our test suite.
+1. **Our Test Suite**, run (or tweak) the >90 tests in our test suite.
 2. **Our Benchmark Scripts**, reproduce our benchmark results locally on your architecture.
 3. **Scala-pickling's bootstrapped `scalac`**, write your own independent Scala programs and run them with the scala-pickling build of `scalac` (this is optional)
 
@@ -66,7 +66,13 @@ To run the benchmark shown in the paper, once SBT is started, simply do:
 
     > travInt
 
-This shows the results of scala-pickling for the benchmark described in section 7 (Experimental Evaluation) of the paper. This this is only the time benchmark (Figure 1a), not the memory or size benchmarks shown in Figure 1b or 1c.
+This shows the results of scala-pickling for the benchmark described in section 7 (Experimental Evaluation) of the paper. This is only the time benchmark (Figure 1a), not the memory or size benchmarks shown in Figure 1b or 1c.
+
+_Note that SBT will set the following flags for you (as we have done for our benchmarks, as described in section 7 of the paper):_ `-Xms1536M - Xmx4096M -Xss2M -XX:MaxPermSize=512M -XX:+UseParallelGC`
+
+We also include two additional benchmarks not shown in the paper, but published on our project page: [Scala Pickling: Benchmarks](http://lampwww.epfl.ch/~hmiller/pickling/benchmarks/) (We do have google analytics on our project website, but the project is public)
+
+To run the
 
 ### #3 Scala-pickling's `scalac`
 
