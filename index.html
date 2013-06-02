@@ -60,6 +60,27 @@ html,body{color:black}*:not('#mkdbuttons'){margin:0;padding:0}#wrapper{font:13.3
   margin: 0 auto;
   padding: 50px;
 }
+
+.numberCircle {
+  vertical-align:middle;
+  display: inline-block;
+  -webkit-border-radius: 999px;
+  -moz-border-radius: 999px;
+  border-radius: 999px;
+  width: 24px;
+  height: 24px;
+  padding: 8px;
+  background: #859900;
+  border: 2px solid #fff;
+  color: #fff;
+  text-align: center;
+  font-size: 28px;
+  line-height: 1em;
+}
+
+.middle {
+  vertical-align: middle;
+}
 </style>
 <script type="text/javascript" src="jquery.js"></script>
 
@@ -188,7 +209,7 @@ res0: String = hi there!
 <p>To quit the REPL (without quitting SBT), type <code>:q</code></p>
 </div>
 
-<h3 id="ourtestsuite">#1 Our Test Suite</h3>
+<h3 id="ourtestsuite" class="middle"><div class="numberCircle">1</div> Our Test Suite</h3>
 
 <p>To run the tests, once SBT is started, simply do:</p>
 
@@ -198,7 +219,7 @@ res0: String = hi there!
 <p>SBT will compile scala-pickling as well as all of the test files, and will
 print output representing the status (pass/fail) of all its tests.</p>
 
-<h3 id="ourbenchmarks">#2 Our Benchmarks</h3>
+<h3 id="ourbenchmarks" class="middle"><div class="numberCircle">2</div> Our Benchmarks</h3>
 
 <p>To run the benchmarks shown in the paper, once SBT is started, simply do:</p>
 
@@ -246,7 +267,7 @@ no real risk of tracing.)</p>
 </ul>
 </div>
 
-<h3 id="usingscala-picklingwiththestandalonescalacompileroptional" class="heading"><span class="closed-arrow"></span><span class="open-arrow" style="display:none;"></span> #3 Using Scala-Pickling with the Standalone Scala Compiler [Optional] <span class="click-to-expand"></span></h3>
+<h3 id="usingscala-picklingwiththestandalonescalacompileroptional" class="heading middle"><span class="closed-arrow"></span><span class="open-arrow" style="display:none;"></span><div class="numberCircle">3</div> Using Scala-Pickling with the Standalone Scala Compiler [Optional] <span class="click-to-expand"></span></h3>
 <div class="content">
 <p>Also included in this archive is a standalone version of the Scala compiler
 which can be used with scala-pickling. It is located at <code>scala-local/bin/scalac</code>.
