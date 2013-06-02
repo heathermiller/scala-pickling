@@ -51,7 +51,7 @@ val pckl = List(1, 2, 3, 4).pickle
 
 <h3 id="source">Source</h3>
 
-<p>(Local) Source code for the scala-pickling project also
+<p>(Local) Source code for the scala-pickling project is also
 included and available at:
 <a href="core/src/main/scala/pickling">core/src/main/scala/pickling</a></p>
 
@@ -146,35 +146,6 @@ res0: String = hi there!
 <p>SBT will compile scala-pickling as well as all of the test files, and will
 print output representing the status (pass/fail) all of its tests.</p>
 
-<h4 id="tests">Tests</h4>
-
-<p>In this section, we describe the different types of tests in our test suite.
-There are two types of tests:</p>
-
-<ul>
-<li>Unit Tests</li>
-<li>ScalaCheck Tests</li>
-</ul>
-
-<p>Both types of tests are located in the directory:
-<a href="core/src/test/scala/pickling">core/src/test/scala/pickling</a>.</p>
-
-<p><strong>Unit Tests</strong> typically do some task, and then assert that a result is a
-certain value. A simple example of one of our unit tests is:
-<a href="core/src/test/scala/pickling/simple-case-class.scala">core/src/test/scala/pickling/simple-case-class.scala</a>.</p>
-
-<p>Note that nearly all files in the testing directory
-(<a href="core/src/test/scala/pickling">core/src/test/scala/pickling</a>)
-are unit tests.</p>
-
-<p><strong>ScalaCheck Tests</strong> generate random inputs for a specified test, and runs
-the test 100 times with 100 different inputs.</p>
-
-<p>Our ScalaCheck Tests for JSON and binary formats are both in the same file:
-<a href="core/src/test/scala/pickling/pickling-spec.scala">core/src/test/scala/pickling/pickling-spec.scala</a>.
-JSON and binary tests exist in the <code>PicklingBinarySpec</code> and <code>PicklingJsonSpec</code>
-singleton objects, respectively.</p>
-
 <h3 id="ourbenchmarks">#2 Our Benchmarks</h3>
 
 <p>To run the benchmarks shown in the paper, once SBT is started, simply do:</p>
@@ -222,10 +193,12 @@ no real risk of tracing.)</p>
 <h3 id="usingscala-picklingwiththestandalonescalacompileroptional">#3 Using Scala-Pickling with the Standalone Scala Compiler [Optional]</h3>
 
 <p>Also included in this archive is a standalone version of the Scala compiler
-which can be used with scala-pickling. It is located at <code>scala-
-local/bin/scalac</code>. We provide this option for those who would like to avoid
+which can be used with scala-pickling. It is located at <code>scala-local/bin/scalac</code>.
+We provide this option for those who would like to avoid
 the use of build tools. The use of the standalone compiler is completely
 optional.</p>
+
+<p><em>Note: this requires that you first build scala-pickling with SBT as described above</em></p>
 
 <p><strong>Example</strong>, for a program <code>test.scala</code>:</p>
 
@@ -253,21 +226,57 @@ object Test extends App {
 
 <h2 id="step-by-stepinstructions">Step-by-Step Instructions</h2>
 
-<p>To experiment with the scala-pickling project, we offer the following
-suggestions:</p>
+<p>The simplest and quickest way to experiment with the scala-pickling project,
+is to simply tweak tests or add new tests to our test suite.</p>
+
+<p>If you would rather not interact with the test suite, we offer the following
+alternate suggestions for interacting with the scala-pickling project:</p>
 
 <ol>
-<li><strong>Our Test Suite</strong>, tweak existing tests or add new tests to the &gt;90 tests in our test suite.</li>
+<li><strong>Adding/Tweaking Tests in the Test Suite</strong>, tweak existing tests or add new tests to the &gt;90 tests in our test suite.</li>
 <li><strong>Experiment in the REPL</strong>, test new inputs in SBT&#8217;s <code>console</code>.</li>
 <li><strong>Use Scala-Pickling with the Standalone Scala Compiler</strong>, write your own independent Scala programs and run them with scala-pickling (this is optional)</li>
 </ol>
 
 <p>(We also provide the scripts to reproduce the benchmarks in our paper. You may
-(change those and re-run them if you&#8217;d like as well.)</p>
+change those and re-run them if you&#8217;d like as well.)</p>
 
 <p>We provide suggestions below for</p>
 
 <h3 id="addingtweakingtestsinthetestsuite">#1 Adding/Tweaking Tests in the Test Suite</h3>
+
+<p>Have a look around&#8230;</p>
+
+<p>In the following section, we first describe the different types of tests in
+our test suite.</p>
+
+<h4 id="tests">Tests</h4>
+
+<p>There are two types of tests:</p>
+
+<ul>
+<li>Unit Tests</li>
+<li>ScalaCheck Tests</li>
+</ul>
+
+<p>Both types of tests are located in the directory:
+<a href="core/src/test/scala/pickling">core/src/test/scala/pickling</a>.</p>
+
+<p><strong>Unit Tests</strong> typically do some task, and then assert that a result is a
+certain value. A simple example of one of our unit tests is:
+<a href="core/src/test/scala/pickling/simple-case-class.scala">core/src/test/scala/pickling/simple-case-class.scala</a>.</p>
+
+<p>Note that nearly all files in the testing directory
+(<a href="core/src/test/scala/pickling">core/src/test/scala/pickling</a>)
+are unit tests.</p>
+
+<p><strong>ScalaCheck Tests</strong> generate random inputs for a specified test, and runs
+the test 100 times with 100 different inputs.</p>
+
+<p>Our ScalaCheck Tests for JSON and binary formats are both in the same file:
+<a href="core/src/test/scala/pickling/pickling-spec.scala">core/src/test/scala/pickling/pickling-spec.scala</a>.
+JSON and binary tests exist in the <code>PicklingBinarySpec</code> and <code>PicklingJsonSpec</code>
+singleton objects, respectively.</p>
 
 <h2 id="knownlimitations">Known Limitations</h2>
 
