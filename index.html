@@ -41,9 +41,17 @@ val pckl = List(1, 2, 3, 4).pickle
 <pre><code>val lst = pckl.unpickle[List[Int]]
 </code></pre>
 
+<h3 id="apidocs">API Docs</h3>
+
+<p>(Local) API documentation is also included and available at: <a href="api-docs/index.html">api-docs/index.html</a></p>
+
 <h2 id="gettingstartedguide">Getting Started Guide</h2>
 
-<p>This guide assumes you have Java 1.6 on your path. Other than that, this archive contains all that you will need to experiment with the scala-pickling project. To experiment, you have a few ways to interact with scala-pickling:</p>
+<p>This guide assumes you have Java 1.6 on your path. Other than that, this archive contains all that you will need to experiment with the scala-pickling project.</p>
+
+<p>You will primarily be using SBT (a Scala build tool)</p>
+
+<p>To experiment, you have a few ways to interact with scala-pickling:</p>
 
 <ol>
 <li><strong>Our Test Suite</strong>, run (or tweak) the &gt;90 tests in our test suite.</li>
@@ -106,6 +114,8 @@ scala&gt; p.unpickle[String]
 res0: String = hi there!
 </code></pre>
 
+<p>To quit the REPL (without quitting SBT), type <code>:q</code></p>
+
 <h3 id="ourtestsuite">#1 Our Test Suite</h3>
 
 <p>To run the tests, once SBT is started, simply do:</p>
@@ -136,13 +146,20 @@ res0: String = hi there!
 
 <p><em>Note that SBT will set the following flags for you (as we have done for our benchmarks, and have described in section 7 of the paper):</em> <code>-Xms1536M - Xmx4096M -Xss2M -XX:MaxPermSize=512M -XX:+UseParallelGC</code></p>
 
-<p>We also include two additional benchmarks not shown in the paper, but published on our project page: <a href="http://lampwww.epfl.ch/~hmiller/pickling/benchmarks/">Scala Pickling: Benchmarks</a> (We do have google analytics on our project website, but the project is public and linked to on github and other sites.)</p>
+<p>We also include two additional benchmarks not shown in the paper, but published on our project page: <a href="http://lampwww.epfl.ch/~hmiller/pickling/benchmarks/">Scala Pickling: Benchmarks</a> (We do have google analytics on our project website, but the project site is public, linked to on github and other sites, and gets traffic, so there is no real risk of tracing.)</p>
 
-<p>To run the</p>
+<p>Included are the following benchmarks:</p>
+
+<ul>
+<li><code>geoTrellis</code>. <a href="http://lampwww.epfl.ch/~hmiller/pickling/benchmarks/geotrellis.html">GeoTrellis benchmark</a> varied up to 1,000,000 elements. To run this benchmark, simply do <code>geoTrellis</code> within SBT.</li>
+<li><code>evactor1</code>. <a href="http://lampwww.epfl.ch/~hmiller/pickling/benchmarks/evactor.html">Evactor benchmark</a> varied up to
+10,000 events. To run this benchmark, simply do <code>evactor1</code> within SBT.</li>
+<li><code>evactor2</code>. <a href="http://lampwww.epfl.ch/~hmiller/pickling/benchmarks/evactor.html">Evactor benchmark</a> varied up to 38,000 events. To run this benchmark, simply do <code>evactor2</code> within SBT.</li>
+</ul>
 
 <h3 id="usingscala-picklingwiththestandalonescalacompileroptional">#3 Using Scala-Pickling with the Standalone Scala Compiler [Optional]</h3>
 
-<p>Also included in this archive is a standalone version of the Scala compiler which can be used with scala-pickling. It is located at <code>scala-local/bin/scalac</code>. We provide this option for those who would like to avoid the use of build tools.</p>
+<p>Also included in this archive is a standalone version of the Scala compiler which can be used with scala-pickling. It is located at <code>scala-local/bin/scalac</code>. We provide this option for those who would like to avoid the use of build tools. The use of the standalone compiler is completely optional.</p>
 
 <p><strong>Example</strong>, for a program <code>test.scala</code>:</p>
 
@@ -180,6 +197,21 @@ object Test extends App {
 <p>(We also provide the scripts to reproduce the benchmarks in our paper. You may change those and re-run them if you&#8217;d like as well.)</p>
 
 <p>We provide suggestions below for</p>
+
+<h3 id="addingtweakingtestsinthetestsuite">#1 Adding/Tweaking Tests in the Test Suite</h3>
+
+<p>There are two types of tests.</p>
+
+<ul>
+<li>Unit Tests</li>
+<li>ScalaCheck Tests</li>
+</ul>
+
+<p>Unit Tests typically . For each ScalaCheck test, .</p>
+
+<p>Both types of tests are located in the directory: <a href="core/src/test/scala/pickling">core/src/test/scala/pickling</a>.</p>
+
+<p>ScalaCheck Tests for JSON and binary formats are in the file: <a href="core/src/test/scala/pickling/pickling-spec.scala">core/src/test/scala/pickling/pickling-spec.scala</a>.</p>
 
 <h2 id="knownlimitations">Known Limitations</h2>
 

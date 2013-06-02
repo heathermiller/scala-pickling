@@ -15,9 +15,16 @@ Unpickling is just as simple, its basic usage is:
 
     val lst = pckl.unpickle[List[Int]]
 
+### API Docs
+(Local) API documentation is also included and available at: [api-docs/index.html](api-docs/index.html)
+
 ## Getting Started Guide
 
-This guide assumes you have Java 1.6 on your path. Other than that, this archive contains all that you will need to experiment with the scala-pickling project. To experiment, you have a few ways to interact with scala-pickling:
+This guide assumes you have Java 1.6 on your path. Other than that, this archive contains all that you will need to experiment with the scala-pickling project.
+
+You will primarily be using SBT (a Scala build tool)
+
+To experiment, you have a few ways to interact with scala-pickling:
 
 1. **Our Test Suite**, run (or tweak) the >90 tests in our test suite.
 2. **Our Benchmark Scripts**, reproduce our benchmark results locally on your architecture.
@@ -74,6 +81,7 @@ Example usage:
     scala> p.unpickle[String]
     res0: String = hi there!
 
+To quit the REPL (without quitting SBT), type `:q`
 
 ### #1 Our Test Suite
 
@@ -103,13 +111,19 @@ The values on the x-axis for `travIntFreeMem` and `travIntSize` are both in Byte
 
 _Note that SBT will set the following flags for you (as we have done for our benchmarks, and have described in section 7 of the paper):_ `-Xms1536M - Xmx4096M -Xss2M -XX:MaxPermSize=512M -XX:+UseParallelGC`
 
-We also include two additional benchmarks not shown in the paper, but published on our project page: [Scala Pickling: Benchmarks](http://lampwww.epfl.ch/~hmiller/pickling/benchmarks/) (We do have google analytics on our project website, but the project is public and linked to on github and other sites.)
+We also include two additional benchmarks not shown in the paper, but published on our project page: [Scala Pickling: Benchmarks](http://lampwww.epfl.ch/~hmiller/pickling/benchmarks/) (We do have google analytics on our project website, but the project site is public, linked to on github and other sites, and gets traffic, so there is no real risk of tracing.)
 
-To run the
+Included are the following benchmarks:
+
+- `geoTrellis`. [GeoTrellis benchmark](http://lampwww.epfl.ch/~hmiller/pickling/benchmarks/geotrellis.html) varied up to 1,000,000 elements. To run this benchmark, simply do `geoTrellis` within SBT.
+- `evactor1`. [Evactor benchmark](http://lampwww.epfl.ch/~hmiller/pickling/benchmarks/evactor.html) varied up to
+10,000 events. To run this benchmark, simply do `evactor1` within SBT.
+- `evactor2`. [Evactor benchmark](http://lampwww.epfl.ch/~hmiller/pickling/benchmarks/evactor.html) varied up to 38,000 events. To run this benchmark, simply do `evactor2` within SBT.
+
 
 ### #3 Using Scala-Pickling with the Standalone Scala Compiler \[Optional\]
 
-Also included in this archive is a standalone version of the Scala compiler which can be used with scala-pickling. It is located at `scala-local/bin/scalac`. We provide this option for those who would like to avoid the use of build tools.
+Also included in this archive is a standalone version of the Scala compiler which can be used with scala-pickling. It is located at `scala-local/bin/scalac`. We provide this option for those who would like to avoid the use of build tools. The use of the standalone compiler is completely optional.
 
 **Example**, for a program `test.scala`:
 
@@ -144,7 +158,18 @@ To experiment with the scala-pickling project, you have a few choices:
 
 We provide suggestions below for
 
+### #1 Adding/Tweaking Tests in the Test Suite
 
+There are two types of tests.
+
+- Unit Tests
+- ScalaCheck Tests
+
+Unit Tests typically . For each ScalaCheck test, .
+
+Both types of tests are located in the directory: [core/src/test/scala/pickling](core/src/test/scala/pickling).
+
+ScalaCheck Tests for JSON and binary formats are in the file: [core/src/test/scala/pickling/pickling-spec.scala](core/src/test/scala/pickling/pickling-spec.scala).
 
 
 ## Known Limitations
