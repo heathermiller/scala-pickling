@@ -66,11 +66,11 @@ To run the benchmark shown in the paper, once SBT is started, simply do:
 
     > travInt
 
-This shows the results of scala-pickling for the benchmark described in section 7 (Experimental Evaluation) of the paper. This is only the time benchmark (Figure 1a), not the memory or size benchmarks shown in Figure 1b or 1c.
+This shows the results of scala-pickling for the benchmark described in section 7 (Experimental Evaluation) of the paper. This is only the "time" benchmark (Figure 1a), not the memory or size benchmarks shown in Figure 1b or 1c. The values printed to the screen are milliseconds.
 
 _Note that SBT will set the following flags for you (as we have done for our benchmarks, as described in section 7 of the paper):_ `-Xms1536M - Xmx4096M -Xss2M -XX:MaxPermSize=512M -XX:+UseParallelGC`
 
-We also include two additional benchmarks not shown in the paper, but published on our project page: [Scala Pickling: Benchmarks](http://lampwww.epfl.ch/~hmiller/pickling/benchmarks/) (We do have google analytics on our project website, but the project is public)
+We also include two additional benchmarks not shown in the paper, but published on our project page: [Scala Pickling: Benchmarks](http://lampwww.epfl.ch/~hmiller/pickling/benchmarks/) (We do have google analytics on our project website, but the project is public and linked to on github and other sites.)
 
 To run the
 
