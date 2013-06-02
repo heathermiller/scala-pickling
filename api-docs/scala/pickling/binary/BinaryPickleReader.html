@@ -1,0 +1,761 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html>
+        <head>
+          <title>BinaryPickleReader - scala.pickling.binary.BinaryPickleReader</title>
+          <meta name="description" content="BinaryPickleReader - scala.pickling.binary.BinaryPickleReader" />
+          <meta name="keywords" content="BinaryPickleReader scala.pickling.binary.BinaryPickleReader" />
+          <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+          
+      <link href="../../../lib/template.css" media="screen" type="text/css" rel="stylesheet" />
+      <link href="../../../lib/diagrams.css" media="screen" type="text/css" rel="stylesheet" id="diagrams-css" />
+      <script type="text/javascript" src="../../../lib/jquery.js" id="jquery-js"></script>
+      <script type="text/javascript" src="../../../lib/jquery-ui.js"></script>
+      <script type="text/javascript" src="../../../lib/template.js"></script>
+      <script type="text/javascript" src="../../../lib/tools.tooltip.js"></script>
+      
+      <script type="text/javascript">
+         if(top === self) {
+            var url = '../../../index.html';
+            var hash = 'scala.pickling.binary.BinaryPickleReader';
+            var anchor = window.location.hash;
+            var anchor_opt = '';
+            if (anchor.length >= 1)
+              anchor_opt = '@' + anchor.substring(1);
+            window.location.href = url + '#' + hash + anchor_opt;
+         }
+   	  </script>
+    
+        </head>
+        <body class="type">
+      <div id="definition">
+        <img src="../../../lib/class_big.png" />
+        <p id="owner"><a href="../../package.html" class="extype" name="scala">scala</a>.<a href="../package.html" class="extype" name="scala.pickling">pickling</a>.<a href="package.html" class="extype" name="scala.pickling.binary">binary</a></p>
+        <h1>BinaryPickleReader</h1>
+      </div>
+
+      <h4 id="signature" class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">class</span>
+      </span>
+      <span class="symbol">
+        <span class="name">BinaryPickleReader</span><span class="result"> extends <a href="../PickleReader.html" class="extype" name="scala.pickling.PickleReader">PickleReader</a> with <a href="../PickleTools.html" class="extype" name="scala.pickling.PickleTools">PickleTools</a></span>
+      </span>
+      </h4>
+      
+          <div id="comment" class="fullcommenttop"><div class="toggleContainer block">
+          <span class="toggle">Linear Supertypes</span>
+          <div class="superTypes hiddenContent"><a href="../PickleTools.html" class="extype" name="scala.pickling.PickleTools">PickleTools</a>, <a href="../PickleReader.html" class="extype" name="scala.pickling.PickleReader">PickleReader</a>, <a href="../Hintable.html" class="extype" name="scala.pickling.Hintable">Hintable</a>, <a href="../../package.html#AnyRef=Object" class="extmbr" name="scala.AnyRef">AnyRef</a>, <span class="extype" name="scala.Any">Any</span></div>
+        </div></div>
+        
+
+      <div id="mbrsel">
+        <div id="textfilter"><span class="pre"></span><span class="input"><input id="mbrsel-input" type="text" accesskey="/" /></span><span class="post"></span></div>
+        <div id="order">
+              <span class="filtertype">Ordering</span>
+              <ol>
+                
+                <li class="alpha in"><span>Alphabetic</span></li>
+                <li class="inherit out"><span>By inheritance</span></li>
+              </ol>
+            </div>
+        <div id="ancestors">
+                <span class="filtertype">Inherited<br />
+                </span>
+                <ol id="linearization">
+                  <li class="in" name="scala.pickling.binary.BinaryPickleReader"><span>BinaryPickleReader</span></li><li class="in" name="scala.pickling.PickleTools"><span>PickleTools</span></li><li class="in" name="scala.pickling.PickleReader"><span>PickleReader</span></li><li class="in" name="scala.pickling.Hintable"><span>Hintable</span></li><li class="in" name="scala.AnyRef"><span>AnyRef</span></li><li class="in" name="scala.Any"><span>Any</span></li>
+                </ol>
+              </div><div id="ancestors">
+            <span class="filtertype"></span>
+            <ol>
+              <li class="hideall out"><span>Hide All</span></li>
+              <li class="showall in"><span>Show all</span></li>
+            </ol>
+            <a href="http://docs.scala-lang.org/overviews/scaladoc/usage.html#members" target="_blank">Learn more about member selection</a>
+          </div>
+        <div id="visbl">
+            <span class="filtertype">Visibility</span>
+            <ol><li class="public in"><span>Public</span></li><li class="all out"><span>All</span></li></ol>
+          </div>
+      </div>
+
+      <div id="template">
+        <div id="allMembers">
+        <div id="constructors" class="members">
+              <h3>Instance Constructors</h3>
+              <ol><li name="scala.pickling.binary.BinaryPickleReader#&lt;init&gt;" visbl="pub" data-isabs="false" fullComment="no" group="Ungrouped">
+      <a id="&lt;init&gt;(arr:Array[Byte],mirror:reflect.runtime.universe.Mirror,format:scala.pickling.binary.BinaryPickleFormat):scala.pickling.binary.BinaryPickleReader"></a>
+      <a id="&lt;init&gt;:BinaryPickleReader"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">new</span>
+      </span>
+      <span class="symbol">
+        <span class="name">BinaryPickleReader</span><span class="params">(<span name="arr">arr: <span class="extype" name="scala.Array">Array</span>[<span class="extype" name="scala.Byte">Byte</span>]</span>, <span name="mirror">mirror: <span class="extype" name="scala.reflect.api.JavaMirrors.Mirror">reflect.api.JavaUniverse.Mirror</span></span>, <span name="format">format: <a href="BinaryPickleFormat.html" class="extype" name="scala.pickling.binary.BinaryPickleFormat">BinaryPickleFormat</a></span>)</span>
+      </span>
+      </h4>
+      
+    </li></ol>
+            </div>
+
+        
+
+        
+
+        <div id="values" class="values members">
+              <h3>Value Members</h3>
+              <ol><li name="scala.AnyRef#!=" visbl="pub" data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="!=(x$1:AnyRef):Boolean"></a>
+      <a id="!=(AnyRef):Boolean"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier">final </span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span title="gt4s: $bang$eq" class="name">!=</span><span class="params">(<span name="arg0">arg0: <a href="../../package.html#AnyRef=Object" class="extmbr" name="scala.AnyRef">AnyRef</a></span>)</span><span class="result">: <span class="extype" name="scala.Boolean">Boolean</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd>AnyRef</dd></dl></div>
+    </li><li name="scala.Any#!=" visbl="pub" data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="!=(x$1:Any):Boolean"></a>
+      <a id="!=(Any):Boolean"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier">final </span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span title="gt4s: $bang$eq" class="name">!=</span><span class="params">(<span name="arg0">arg0: <span class="extype" name="scala.Any">Any</span></span>)</span><span class="result">: <span class="extype" name="scala.Boolean">Boolean</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd>Any</dd></dl></div>
+    </li><li name="scala.AnyRef###" visbl="pub" data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="##():Int"></a>
+      <a id="##():Int"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier">final </span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span title="gt4s: $hash$hash" class="name">##</span><span class="params">()</span><span class="result">: <span class="extype" name="scala.Int">Int</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd>AnyRef → Any</dd></dl></div>
+    </li><li name="scala.AnyRef#==" visbl="pub" data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="==(x$1:AnyRef):Boolean"></a>
+      <a id="==(AnyRef):Boolean"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier">final </span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span title="gt4s: $eq$eq" class="name">==</span><span class="params">(<span name="arg0">arg0: <a href="../../package.html#AnyRef=Object" class="extmbr" name="scala.AnyRef">AnyRef</a></span>)</span><span class="result">: <span class="extype" name="scala.Boolean">Boolean</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd>AnyRef</dd></dl></div>
+    </li><li name="scala.Any#==" visbl="pub" data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="==(x$1:Any):Boolean"></a>
+      <a id="==(Any):Boolean"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier">final </span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span title="gt4s: $eq$eq" class="name">==</span><span class="params">(<span name="arg0">arg0: <span class="extype" name="scala.Any">Any</span></span>)</span><span class="result">: <span class="extype" name="scala.Boolean">Boolean</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd>Any</dd></dl></div>
+    </li><li name="scala.pickling.PickleTools#areHintsPinned" visbl="pub" data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="areHintsPinned:Boolean"></a>
+      <a id="areHintsPinned:Boolean"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">var</span>
+      </span>
+      <span class="symbol">
+        <span class="name">areHintsPinned</span><span class="result">: <span class="extype" name="scala.Boolean">Boolean</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd><a href="../PickleTools.html" class="extype" name="scala.pickling.PickleTools">PickleTools</a></dd></dl></div>
+    </li><li name="scala.Any#asInstanceOf" visbl="pub" data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="asInstanceOf[T0]:T0"></a>
+      <a id="asInstanceOf[T0]:T0"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier">final </span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">asInstanceOf</span><span class="tparams">[<span name="T0">T0</span>]</span><span class="result">: <span class="extype" name="scala.Any.asInstanceOf.T0">T0</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd>Any</dd></dl></div>
+    </li><li name="scala.pickling.binary.BinaryPickleReader#atObject" visbl="pub" data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="atObject:Boolean"></a>
+      <a id="atObject:Boolean"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">atObject</span><span class="result">: <span class="extype" name="scala.Boolean">Boolean</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd><a href="" class="extype" name="scala.pickling.binary.BinaryPickleReader">BinaryPickleReader</a> → <a href="../PickleReader.html" class="extype" name="scala.pickling.PickleReader">PickleReader</a></dd></dl></div>
+    </li><li name="scala.pickling.binary.BinaryPickleReader#atPrimitive" visbl="pub" data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="atPrimitive:Boolean"></a>
+      <a id="atPrimitive:Boolean"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">atPrimitive</span><span class="result">: <span class="extype" name="scala.Boolean">Boolean</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd><a href="" class="extype" name="scala.pickling.binary.BinaryPickleReader">BinaryPickleReader</a> → <a href="../PickleReader.html" class="extype" name="scala.pickling.PickleReader">PickleReader</a></dd></dl></div>
+    </li><li name="scala.pickling.binary.BinaryPickleReader#beginCollection" visbl="pub" data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="beginCollection():scala.pickling.PickleReader"></a>
+      <a id="beginCollection():PickleReader"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">beginCollection</span><span class="params">()</span><span class="result">: <a href="../PickleReader.html" class="extype" name="scala.pickling.PickleReader">PickleReader</a></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd><a href="" class="extype" name="scala.pickling.binary.BinaryPickleReader">BinaryPickleReader</a> → <a href="../PickleReader.html" class="extype" name="scala.pickling.PickleReader">PickleReader</a></dd></dl></div>
+    </li><li name="scala.pickling.binary.BinaryPickleReader#beginEntry" visbl="pub" data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="beginEntry():scala.pickling.FastTypeTag[_]"></a>
+      <a id="beginEntry():FastTypeTag[_]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">beginEntry</span><span class="params">()</span><span class="result">: <a href="../FastTypeTag.html" class="extype" name="scala.pickling.FastTypeTag">FastTypeTag</a>[_]</span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd><a href="" class="extype" name="scala.pickling.binary.BinaryPickleReader">BinaryPickleReader</a> → <a href="../PickleReader.html" class="extype" name="scala.pickling.PickleReader">PickleReader</a></dd></dl></div>
+    </li><li name="scala.pickling.binary.BinaryPickleReader#beginEntryNoTag" visbl="pub" data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="beginEntryNoTag():String"></a>
+      <a id="beginEntryNoTag():String"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">beginEntryNoTag</span><span class="params">()</span><span class="result">: <span class="extype" name="scala.Predef.String">String</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd><a href="" class="extype" name="scala.pickling.binary.BinaryPickleReader">BinaryPickleReader</a> → <a href="../PickleReader.html" class="extype" name="scala.pickling.PickleReader">PickleReader</a></dd></dl></div>
+    </li><li name="scala.AnyRef#clone" visbl="prt" data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="clone():Object"></a>
+      <a id="clone():AnyRef"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">clone</span><span class="params">()</span><span class="result">: <a href="../../package.html#AnyRef=Object" class="extmbr" name="scala.AnyRef">AnyRef</a></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Attributes</dt><dd>protected[<a href="../../../java$lang.html" class="extype" name="java.lang">java.lang</a>] </dd><dt>Definition Classes</dt><dd>AnyRef</dd><dt>Annotations</dt><dd>
+                <span class="name">@throws</span><span class="args">(<span>
+      
+      <span class="defval" name="classOf[java.lang.CloneNotSupportedException]">...</span>
+    </span>)</span>
+              
+        </dd></dl></div>
+    </li><li name="scala.pickling.binary.BinaryPickleReader#endCollection" visbl="pub" data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="endCollection():Unit"></a>
+      <a id="endCollection():Unit"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">endCollection</span><span class="params">()</span><span class="result">: <span class="extype" name="scala.Unit">Unit</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd><a href="" class="extype" name="scala.pickling.binary.BinaryPickleReader">BinaryPickleReader</a> → <a href="../PickleReader.html" class="extype" name="scala.pickling.PickleReader">PickleReader</a></dd></dl></div>
+    </li><li name="scala.pickling.binary.BinaryPickleReader#endEntry" visbl="pub" data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="endEntry():Unit"></a>
+      <a id="endEntry():Unit"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">endEntry</span><span class="params">()</span><span class="result">: <span class="extype" name="scala.Unit">Unit</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd><a href="" class="extype" name="scala.pickling.binary.BinaryPickleReader">BinaryPickleReader</a> → <a href="../PickleReader.html" class="extype" name="scala.pickling.PickleReader">PickleReader</a></dd></dl></div>
+    </li><li name="scala.AnyRef#eq" visbl="pub" data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="eq(x$1:AnyRef):Boolean"></a>
+      <a id="eq(AnyRef):Boolean"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier">final </span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">eq</span><span class="params">(<span name="arg0">arg0: <a href="../../package.html#AnyRef=Object" class="extmbr" name="scala.AnyRef">AnyRef</a></span>)</span><span class="result">: <span class="extype" name="scala.Boolean">Boolean</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd>AnyRef</dd></dl></div>
+    </li><li name="scala.AnyRef#equals" visbl="pub" data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="equals(x$1:Any):Boolean"></a>
+      <a id="equals(Any):Boolean"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">equals</span><span class="params">(<span name="arg0">arg0: <span class="extype" name="scala.Any">Any</span></span>)</span><span class="result">: <span class="extype" name="scala.Boolean">Boolean</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd>AnyRef → Any</dd></dl></div>
+    </li><li name="scala.AnyRef#finalize" visbl="prt" data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="finalize():Unit"></a>
+      <a id="finalize():Unit"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">finalize</span><span class="params">()</span><span class="result">: <span class="extype" name="scala.Unit">Unit</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Attributes</dt><dd>protected[<a href="../../../java$lang.html" class="extype" name="java.lang">java.lang</a>] </dd><dt>Definition Classes</dt><dd>AnyRef</dd><dt>Annotations</dt><dd>
+                <span class="name">@throws</span><span class="args">(<span>
+      
+      <span class="symbol">classOf[java.lang.Throwable]</span>
+    </span>)</span>
+              
+        </dd></dl></div>
+    </li><li name="scala.AnyRef#getClass" visbl="pub" data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="getClass():Class[_]"></a>
+      <a id="getClass():Class[_]"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier">final </span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">getClass</span><span class="params">()</span><span class="result">: <span class="extype" name="java.lang.Class">Class</span>[_]</span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd>AnyRef → Any</dd></dl></div>
+    </li><li name="scala.AnyRef#hashCode" visbl="pub" data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="hashCode():Int"></a>
+      <a id="hashCode():Int"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">hashCode</span><span class="params">()</span><span class="result">: <span class="extype" name="scala.Int">Int</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd>AnyRef → Any</dd></dl></div>
+    </li><li name="scala.pickling.PickleTools#hintDynamicallyElidedType" visbl="pub" data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="hintDynamicallyElidedType():PickleTools.this.type"></a>
+      <a id="hintDynamicallyElidedType():BinaryPickleReader.this.type"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">hintDynamicallyElidedType</span><span class="params">()</span><span class="result">: <a href="" class="extype" name="scala.pickling.binary.BinaryPickleReader">BinaryPickleReader</a>.this.type</span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd><a href="../PickleTools.html" class="extype" name="scala.pickling.PickleTools">PickleTools</a></dd></dl></div>
+    </li><li name="scala.pickling.PickleTools#hintKnownSize" visbl="pub" data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="hintKnownSize(knownSize:Int):PickleTools.this.type"></a>
+      <a id="hintKnownSize(Int):BinaryPickleReader.this.type"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">hintKnownSize</span><span class="params">(<span name="knownSize">knownSize: <span class="extype" name="scala.Int">Int</span></span>)</span><span class="result">: <a href="" class="extype" name="scala.pickling.binary.BinaryPickleReader">BinaryPickleReader</a>.this.type</span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd><a href="../PickleTools.html" class="extype" name="scala.pickling.PickleTools">PickleTools</a></dd></dl></div>
+    </li><li name="scala.pickling.PickleTools#hintStaticallyElidedType" visbl="pub" data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="hintStaticallyElidedType():PickleTools.this.type"></a>
+      <a id="hintStaticallyElidedType():BinaryPickleReader.this.type"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">hintStaticallyElidedType</span><span class="params">()</span><span class="result">: <a href="" class="extype" name="scala.pickling.binary.BinaryPickleReader">BinaryPickleReader</a>.this.type</span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd><a href="../PickleTools.html" class="extype" name="scala.pickling.PickleTools">PickleTools</a></dd></dl></div>
+    </li><li name="scala.pickling.PickleTools#hintTag" visbl="pub" data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="hintTag(tag:scala.pickling.FastTypeTag[_]):PickleTools.this.type"></a>
+      <a id="hintTag(FastTypeTag[_]):BinaryPickleReader.this.type"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">hintTag</span><span class="params">(<span name="tag">tag: <a href="../FastTypeTag.html" class="extype" name="scala.pickling.FastTypeTag">FastTypeTag</a>[_]</span>)</span><span class="result">: <a href="" class="extype" name="scala.pickling.binary.BinaryPickleReader">BinaryPickleReader</a>.this.type</span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd><a href="../PickleTools.html" class="extype" name="scala.pickling.PickleTools">PickleTools</a></dd></dl></div>
+    </li><li name="scala.pickling.PickleTools#hints" visbl="pub" data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="hints:scala.pickling.Hints"></a>
+      <a id="hints:Hints"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">var</span>
+      </span>
+      <span class="symbol">
+        <span class="name">hints</span><span class="result">: <a href="../Hints.html" class="extype" name="scala.pickling.Hints">Hints</a></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd><a href="../PickleTools.html" class="extype" name="scala.pickling.PickleTools">PickleTools</a></dd></dl></div>
+    </li><li name="scala.Any#isInstanceOf" visbl="pub" data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="isInstanceOf[T0]:Boolean"></a>
+      <a id="isInstanceOf[T0]:Boolean"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier">final </span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">isInstanceOf</span><span class="tparams">[<span name="T0">T0</span>]</span><span class="result">: <span class="extype" name="scala.Boolean">Boolean</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd>Any</dd></dl></div>
+    </li><li name="scala.pickling.binary.BinaryPickleReader#mirror" visbl="pub" data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="mirror:reflect.runtime.universe.Mirror"></a>
+      <a id="mirror:reflect.api.JavaUniverse.Mirror"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">val</span>
+      </span>
+      <span class="symbol">
+        <span class="name">mirror</span><span class="result">: <span class="extype" name="scala.reflect.api.JavaMirrors.Mirror">reflect.api.JavaUniverse.Mirror</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd><a href="" class="extype" name="scala.pickling.binary.BinaryPickleReader">BinaryPickleReader</a> → <a href="../PickleReader.html" class="extype" name="scala.pickling.PickleReader">PickleReader</a></dd></dl></div>
+    </li><li name="scala.AnyRef#ne" visbl="pub" data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="ne(x$1:AnyRef):Boolean"></a>
+      <a id="ne(AnyRef):Boolean"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier">final </span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">ne</span><span class="params">(<span name="arg0">arg0: <a href="../../package.html#AnyRef=Object" class="extmbr" name="scala.AnyRef">AnyRef</a></span>)</span><span class="result">: <span class="extype" name="scala.Boolean">Boolean</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd>AnyRef</dd></dl></div>
+    </li><li name="scala.AnyRef#notify" visbl="pub" data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="notify():Unit"></a>
+      <a id="notify():Unit"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier">final </span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">notify</span><span class="params">()</span><span class="result">: <span class="extype" name="scala.Unit">Unit</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd>AnyRef</dd></dl></div>
+    </li><li name="scala.AnyRef#notifyAll" visbl="pub" data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="notifyAll():Unit"></a>
+      <a id="notifyAll():Unit"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier">final </span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">notifyAll</span><span class="params">()</span><span class="result">: <span class="extype" name="scala.Unit">Unit</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd>AnyRef</dd></dl></div>
+    </li><li name="scala.pickling.PickleTools#pinHints" visbl="pub" data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="pinHints():PickleTools.this.type"></a>
+      <a id="pinHints():BinaryPickleReader.this.type"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">pinHints</span><span class="params">()</span><span class="result">: <a href="" class="extype" name="scala.pickling.binary.BinaryPickleReader">BinaryPickleReader</a>.this.type</span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd><a href="../PickleTools.html" class="extype" name="scala.pickling.PickleTools">PickleTools</a></dd></dl></div>
+    </li><li name="scala.pickling.binary.BinaryPickleReader#readElement" visbl="pub" data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="readElement():scala.pickling.PickleReader"></a>
+      <a id="readElement():PickleReader"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">readElement</span><span class="params">()</span><span class="result">: <a href="../PickleReader.html" class="extype" name="scala.pickling.PickleReader">PickleReader</a></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd><a href="" class="extype" name="scala.pickling.binary.BinaryPickleReader">BinaryPickleReader</a> → <a href="../PickleReader.html" class="extype" name="scala.pickling.PickleReader">PickleReader</a></dd></dl></div>
+    </li><li name="scala.pickling.binary.BinaryPickleReader#readField" visbl="pub" data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="readField(name:String):scala.pickling.binary.BinaryPickleReader"></a>
+      <a id="readField(String):BinaryPickleReader"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">readField</span><span class="params">(<span name="name">name: <span class="extype" name="scala.Predef.String">String</span></span>)</span><span class="result">: <a href="" class="extype" name="scala.pickling.binary.BinaryPickleReader">BinaryPickleReader</a></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd><a href="" class="extype" name="scala.pickling.binary.BinaryPickleReader">BinaryPickleReader</a> → <a href="../PickleReader.html" class="extype" name="scala.pickling.PickleReader">PickleReader</a></dd></dl></div>
+    </li><li name="scala.pickling.binary.BinaryPickleReader#readLength" visbl="pub" data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="readLength():Int"></a>
+      <a id="readLength():Int"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">readLength</span><span class="params">()</span><span class="result">: <span class="extype" name="scala.Int">Int</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd><a href="" class="extype" name="scala.pickling.binary.BinaryPickleReader">BinaryPickleReader</a> → <a href="../PickleReader.html" class="extype" name="scala.pickling.PickleReader">PickleReader</a></dd></dl></div>
+    </li><li name="scala.pickling.binary.BinaryPickleReader#readPrimitive" visbl="pub" data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="readPrimitive():Any"></a>
+      <a id="readPrimitive():Any"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">readPrimitive</span><span class="params">()</span><span class="result">: <span class="extype" name="scala.Any">Any</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd><a href="" class="extype" name="scala.pickling.binary.BinaryPickleReader">BinaryPickleReader</a> → <a href="../PickleReader.html" class="extype" name="scala.pickling.PickleReader">PickleReader</a></dd></dl></div>
+    </li><li name="scala.AnyRef#synchronized" visbl="pub" data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="synchronized[T0](x$1:=&gt;T0):T0"></a>
+      <a id="synchronized[T0](⇒T0):T0"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier">final </span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">synchronized</span><span class="tparams">[<span name="T0">T0</span>]</span><span class="params">(<span name="arg0">arg0: ⇒ <span class="extype" name="java.lang.AnyRef.synchronized.T0">T0</span></span>)</span><span class="result">: <span class="extype" name="java.lang.AnyRef.synchronized.T0">T0</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd>AnyRef</dd></dl></div>
+    </li><li name="scala.AnyRef#toString" visbl="pub" data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="toString():String"></a>
+      <a id="toString():String"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">toString</span><span class="params">()</span><span class="result">: <span class="extype" name="java.lang.String">String</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd>AnyRef → Any</dd></dl></div>
+    </li><li name="scala.pickling.PickleReader#unpickle" visbl="pub" data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="unpickle[T]:T"></a>
+      <a id="unpickle[T]:T"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">unpickle</span><span class="tparams">[<span name="T">T</span>]</span><span class="result">: <span class="extype" name="scala.pickling.PickleReader.unpickle.T">T</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd><a href="../PickleReader.html" class="extype" name="scala.pickling.PickleReader">PickleReader</a></dd><dt>Annotations</dt><dd>
+                <span class="name">@macroImpl</span><span class="args">(<span>
+      
+      <span class="defval" name="`macro`(&quot;versionFormat&quot; = 2, &quot;isBundle&quot; = true, &quot;className&quot; = &quot;scala.reflect.macros.synthetic.ScalaPicklingUnpickleMacrosInvoker&quot;, &quot;methodName&quot; = &quot;readerUnpickle&quot;, &quot;signature&quot; = List(List(0)))[T]">...</span>
+    </span>)</span>
+              
+        </dd></dl></div>
+    </li><li name="scala.pickling.PickleReader#unpickleTopLevel" visbl="pub" data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="unpickleTopLevel[T]:T"></a>
+      <a id="unpickleTopLevel[T]:T"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">unpickleTopLevel</span><span class="tparams">[<span name="T">T</span>]</span><span class="result">: <span class="extype" name="scala.pickling.PickleReader.unpickleTopLevel.T">T</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd><a href="../PickleReader.html" class="extype" name="scala.pickling.PickleReader">PickleReader</a></dd><dt>Annotations</dt><dd>
+                <span class="name">@macroImpl</span><span class="args">(<span>
+      
+      <span class="defval" name="`macro`(&quot;versionFormat&quot; = 2, &quot;isBundle&quot; = true, &quot;className&quot; = &quot;scala.reflect.macros.synthetic.ScalaPicklingUnpickleMacrosInvoker&quot;, &quot;methodName&quot; = &quot;readerUnpickleTopLevel&quot;, &quot;signature&quot; = List(List(0)))[T]">...</span>
+    </span>)</span>
+              
+        </dd></dl></div>
+    </li><li name="scala.pickling.PickleTools#unpinHints" visbl="pub" data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="unpinHints():PickleTools.this.type"></a>
+      <a id="unpinHints():BinaryPickleReader.this.type"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">unpinHints</span><span class="params">()</span><span class="result">: <a href="" class="extype" name="scala.pickling.binary.BinaryPickleReader">BinaryPickleReader</a>.this.type</span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd><a href="../PickleTools.html" class="extype" name="scala.pickling.PickleTools">PickleTools</a></dd></dl></div>
+    </li><li name="scala.AnyRef#wait" visbl="pub" data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="wait():Unit"></a>
+      <a id="wait():Unit"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier">final </span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">wait</span><span class="params">()</span><span class="result">: <span class="extype" name="scala.Unit">Unit</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd>AnyRef</dd><dt>Annotations</dt><dd>
+                <span class="name">@throws</span><span class="args">(<span>
+      
+      <span class="defval" name="classOf[java.lang.InterruptedException]">...</span>
+    </span>)</span>
+              
+        </dd></dl></div>
+    </li><li name="scala.AnyRef#wait" visbl="pub" data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="wait(x$1:Long,x$2:Int):Unit"></a>
+      <a id="wait(Long,Int):Unit"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier">final </span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">wait</span><span class="params">(<span name="arg0">arg0: <span class="extype" name="scala.Long">Long</span></span>, <span name="arg1">arg1: <span class="extype" name="scala.Int">Int</span></span>)</span><span class="result">: <span class="extype" name="scala.Unit">Unit</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd>AnyRef</dd><dt>Annotations</dt><dd>
+                <span class="name">@throws</span><span class="args">(<span>
+      
+      <span class="defval" name="classOf[java.lang.InterruptedException]">...</span>
+    </span>)</span>
+              
+        </dd></dl></div>
+    </li><li name="scala.AnyRef#wait" visbl="pub" data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="wait(x$1:Long):Unit"></a>
+      <a id="wait(Long):Unit"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier">final </span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">wait</span><span class="params">(<span name="arg0">arg0: <span class="extype" name="scala.Long">Long</span></span>)</span><span class="result">: <span class="extype" name="scala.Unit">Unit</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd>AnyRef</dd><dt>Annotations</dt><dd>
+                <span class="name">@throws</span><span class="args">(<span>
+      
+      <span class="defval" name="classOf[java.lang.InterruptedException]">...</span>
+    </span>)</span>
+              
+        </dd></dl></div>
+    </li><li name="scala.pickling.PickleTools#withHints" visbl="pub" data-isabs="false" fullComment="yes" group="Ungrouped">
+      <a id="withHints[T](body:scala.pickling.Hints=&gt;T):T"></a>
+      <a id="withHints[T]((Hints)⇒T):T"></a>
+      <h4 class="signature">
+      <span class="modifier_kind">
+        <span class="modifier"></span>
+        <span class="kind">def</span>
+      </span>
+      <span class="symbol">
+        <span class="name">withHints</span><span class="tparams">[<span name="T">T</span>]</span><span class="params">(<span name="body">body: (<a href="../Hints.html" class="extype" name="scala.pickling.Hints">Hints</a>) ⇒ <span class="extype" name="scala.pickling.PickleTools.withHints.T">T</span></span>)</span><span class="result">: <span class="extype" name="scala.pickling.PickleTools.withHints.T">T</span></span>
+      </span>
+      </h4>
+      <div class="fullcomment"><dl class="attributes block"> <dt>Definition Classes</dt><dd><a href="../PickleTools.html" class="extype" name="scala.pickling.PickleTools">PickleTools</a></dd></dl></div>
+    </li></ol>
+            </div>
+
+        
+
+        
+        </div>
+
+        <div id="inheritedMembers">
+        <div class="parent" name="scala.pickling.PickleTools">
+              <h3>Inherited from <a href="../PickleTools.html" class="extype" name="scala.pickling.PickleTools">PickleTools</a></h3>
+            </div><div class="parent" name="scala.pickling.PickleReader">
+              <h3>Inherited from <a href="../PickleReader.html" class="extype" name="scala.pickling.PickleReader">PickleReader</a></h3>
+            </div><div class="parent" name="scala.pickling.Hintable">
+              <h3>Inherited from <a href="../Hintable.html" class="extype" name="scala.pickling.Hintable">Hintable</a></h3>
+            </div><div class="parent" name="scala.AnyRef">
+              <h3>Inherited from <a href="../../package.html#AnyRef=Object" class="extmbr" name="scala.AnyRef">AnyRef</a></h3>
+            </div><div class="parent" name="scala.Any">
+              <h3>Inherited from <span class="extype" name="scala.Any">Any</span></h3>
+            </div>
+        
+        </div>
+
+        <div id="groupedMembers">
+        <div class="group" name="Ungrouped">
+              <h3>Ungrouped</h3>
+              
+            </div>
+        </div>
+
+      </div>
+
+      <div id="tooltip"></div>
+
+      <div id="footer">  </div>
+
+
+    </body>
+      </html>
