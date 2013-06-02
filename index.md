@@ -28,7 +28,12 @@ Below, we show how to get started with each of the thee possibilities above.
 
 ### Starting SBT
 
-Our test suite can be run using SBT (a Scala build tool). SBT is included in this distribution (at `bin/sbt`). To start SBT simply do:
+Our test suite can be run using SBT (a Scala build tool). SBT is
+included in this distribution (at `bin/sbt`). Before running SBT it is
+necessary to adjust the absolute directory path of the local Scala
+build in file "project/Build.scala". Adjust the path on line 12 to
+match the directory into which you unpacked the archive. Then, to
+start SBT simply do:
 
     bin/sbt
 

@@ -1,0 +1,26 @@
+Manifest-Version: 1.0
+Ant-Version: Apache Ant 1.8.2
+Created-By: 1.7.0_07-b10 (Oracle Corporation)
+Bundle-ManifestVersion: 2
+Bundle-Name: Scala Distribution
+Bundle-SymbolicName: org.scala-ide.scala.compiler;singleton:=true
+Bundle-Version: 2.11.0-20130601-172752-8846a1ccc5
+Eclipse-LazyStart: true
+Bundle-ClassPath: .,bin,lib/jline.jar,
+Export-Package: scala.tools.nsc,scala.tools.nsc.ast,scala.tools.nsc.as
+ t.parser,scala.tools.nsc.backend,scala.tools.nsc.backend.icode,scala.
+ tools.nsc.backend.icode.analysis,scala.tools.nsc.backend.jvm,scala.to
+ ols.nsc.backend.opt,scala.tools.nsc.dependencies,scala.tools.nsc.doc,
+ scala.tools.nsc.doc.html,scala.tools.nsc.doc.html.page,scala.tools.ns
+ c.doc.model,scala.tools.nsc.doc.model.comment,scala.tools.nsc.interac
+ tive,scala.tools.nsc.interpreter,scala.tools.nsc.io,scala.tools.nsc.j
+ avac,scala.tools.nsc.matching,scala.tools.nsc.plugins,scala.tools.nsc
+ .reporters,scala.tools.nsc.settings,scala.tools.nsc.symtab,scala.tool
+ s.nsc.symtab.classfile,scala.tools.nsc.transform,scala.tools.nsc.type
+ checker,scala.tools.nsc.util,scala.tools.util,scala.reflect.internal,
+ scala.reflect.internal.pickling,scala.reflect.internal.settings,scala
+ .reflect.internal.util,scala.reflect.macros,scala.reflect.runtime,sca
+ la.reflect.internal.transform,scala.reflect.api,
+Require-Bundle: org.apache.ant,org.scala-ide.scala.library
+Class-Path: scala-reflect.jar scala-library.jar
+
