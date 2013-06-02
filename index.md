@@ -192,8 +192,8 @@ To run:
 
 ## Step-by-Step Instructions
 
-The simplest and quickest way to experiment with the scala-pickling project,
-is to simply tweak tests or add new tests to our test suite.
+**The simplest and quickest way to experiment with the scala-pickling project,
+is to simply tweak tests or add new tests to our test suite.**
 
 If you would rather not interact with the test suite, we offer the following
 alternate suggestions for interacting with the scala-pickling project:
@@ -204,8 +204,13 @@ alternate suggestions for interacting with the scala-pickling project:
 (We also provide the scripts to reproduce the benchmarks in our paper. You may
 change those and re-run them if you'd like as well.)
 
-We provide suggestions below for adding/tweaking tests in the test
-suite. In the following section, we first describe the different types
+### Adding/Tweaking Tests in the Test Suite
+
+If you don't know where to start when adding a new test, the best thing to do
+is to browse the tests in our test suite, located in
+[core/src/test/scala/pickling](core/src/test/scala/pickling).
+
+In the following section, we first describe the different types
 of tests in our test suite.
 
 #### Tests
@@ -240,4 +245,4 @@ At the time of writing this guide, the scala-pickling project has the following 
 
 - At this time, `Double`s are not supported by our **binary** pickle format. However, all other numerics (`Float`, `Int`, `Long`, etc) are. (Note that all primitives are supported by the JSON pickle format, however.)
 - At this time, pickling and unpickling the Scala `Unit` type is not supported.
-- As indicated in the "future work" section of the paper, pickling closures is not yet supported, as an arbitrary closure can capture arbitrarily anything in its environment. This is beyond the scope of the current paper, and has required a solution specialized to closures (this is work done in parallel, but separate from the paper submitted to OOPSLA).
+- As indicated in the "future work" section of the paper, pickling closures is not yet supported, as an arbitrary closure can capture arbitrarily anything in its environment. This is beyond the scope of the current paper, and has required a solution specialized to closures.
