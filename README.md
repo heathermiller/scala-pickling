@@ -1,3 +1,5 @@
+_(Please note that this project has been moved to [https://github.com/scala/pickling](https://github.com/scala/pickling).)_
+
 scala-pickling 2.10.x
 =====================
 
